@@ -22,8 +22,13 @@ import {
   Menu,
   X,
   ArrowLeftRight,
-  Loader2
+  Loader2,
+  AlertTriangle,
+  Square,
+  Trash2,
+  Ban
 } from 'lucide-react';
+import { AmmonitionModal } from './components/AmmonitionModal';
 
 type Tab = 'players' | 'trainings' | 'matches' | 'stats';
 type View = 'list' | 'form' | 'manage';
@@ -33,12 +38,17 @@ function App() {
   const [currentView, setCurrentView] = useState<View>('list');
   const [editingItem, setEditingItem] = useState<any>(null);
   const [managingMatch, setManagingMatch] = useState<Match | null>(null);
+  const [initialLineup, setInitialLineup] = useState<string[] | null>(null);
   const [showSubstitutionModal, setShowSubstitutionModal] = useState(false);
+  const [showAmmonitionModal, setShowAmmonitionModal] = useState(false);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
 
   // Stato per selezione marcatore
   const [selectedHomeScorer, setSelectedHomeScorer] = useState<string>('');
   const [selectedAwayScorer, setSelectedAwayScorer] = useState<number | ''>('');
+
+  // Stato per errori di gestione partita
+  const [manageError, setManageError] = useState<string | null>(null);
 
   // Database hook
   const database = useDatabase();
@@ -196,6 +206,7 @@ function App() {
 
   const handleMatchManage = (match: Match) => {
     setManagingMatch(match);
+    setInitialLineup(match.lineup); // salva la formazione iniziale
     setCurrentView('manage');
     timer.reset();
   };
@@ -302,6 +313,7 @@ function App() {
     setCurrentView('list');
     setEditingItem(null);
     setManagingMatch(null);
+    setInitialLineup(null); // azzera la formazione iniziale quando si esce dalla gestione partita
     timer.reset();
   };
 
@@ -346,6 +358,117 @@ function App() {
     );
   }
 
+  // handleAmmonition deve essere dichiarata PRIMA del renderContent
+  const handleAmmonition = (
+    type: 'yellow-card' | 'red-card' | 'second-yellow-card' | 'blue-card' | 'expulsion' | 'warning',
+    playerId: string
+  ) => {
+    if (!managingMatch) return;
+    const nowSeconds = timer.time;
+    let description = '';
+    if (playerId.startsWith('opp-')) {
+      const jersey = playerId.replace('opp-', '');
+      switch (type) {
+        case 'yellow-card': description = `Giallo a maglia avversaria #${jersey}`; break;
+        case 'second-yellow-card': description = `Secondo giallo a maglia avversaria #${jersey}`; break;
+        case 'red-card': description = `Rosso a maglia avversaria #${jersey}`; break;
+        case 'blue-card': description = `Blu a maglia avversaria #${jersey}`; break;
+        case 'expulsion': description = `Espulsione maglia avversaria #${jersey}`; break;
+        case 'warning': description = `Richiamo a maglia avversaria #${jersey}`; break;
+      }
+    } else {
+      const player = players.find(p => p.id === playerId);
+      switch (type) {
+        case 'yellow-card': description = `Giallo a ${player ? player.lastName : ''}`; break;
+        case 'second-yellow-card': description = `Secondo giallo a ${player ? player.lastName : ''}`; break;
+        case 'red-card': description = `Rosso a ${player ? player.lastName : ''}`; break;
+        case 'blue-card': description = `Blu a ${player ? player.lastName : ''}`; break;
+        case 'expulsion': description = `Espulsione ${player ? player.lastName : ''}`; break;
+        case 'warning': description = `Richiamo a ${player ? player.lastName : ''}`; break;
+      }
+    }
+    const ammonitionEvent = {
+      id: generateId(),
+      type,
+      minute: Math.floor(nowSeconds / 60),
+      second: nowSeconds % 60,
+      playerId,
+      description
+    };
+    const updatedMatch = {
+      ...managingMatch,
+      events: [...managingMatch.events, ammonitionEvent]
+    };
+    setManagingMatch(updatedMatch);
+    database.updateMatch(managingMatch.id, updatedMatch);
+    loadData();
+  };
+
+  // Funzione per rimuovere un evento (goal o ammonizione)
+  function handleRemoveEvent(eventId: string) {
+    if (!managingMatch) return;
+    // Rimuovi l'evento
+    const updatedEvents = managingMatch.events.filter(e => e.id !== eventId);
+
+    // Ricalcola il punteggio in base ai goal rimasti
+    let homeScore = 0;
+    let awayScore = 0;
+    updatedEvents.forEach(ev => {
+      if (ev.type === 'goal') {
+        if (ev.description?.includes('(nostro)')) {
+          if (managingMatch.homeAway === 'home') homeScore++;
+          else awayScore++;
+        } else if (ev.description?.includes('avversario')) {
+          if (managingMatch.homeAway === 'home') awayScore++;
+          else homeScore++;
+        }
+      }
+    });
+
+    const updatedMatch = { ...managingMatch, events: updatedEvents, homeScore, awayScore };
+    setManagingMatch(updatedMatch);
+    database.updateMatch(managingMatch.id, updatedMatch);
+    loadData();
+  }
+
+  // Funzione per rimuovere una sostituzione e ricalcolare la lineup
+  function handleRemoveSubstitution(subId: string) {
+    if (!managingMatch || !initialLineup) return;
+    // Rimuovi la sostituzione
+    const updatedSubs = managingMatch.substitutions.filter(s => s.id !== subId);
+    // Ricostruisci la lineup a partire dalla formazione iniziale e dalle sostituzioni rimaste
+    let lineup = [...initialLineup];
+    let error = null;
+    // Trova la lista delle sostituzioni rimaste ordinate per tempo
+    const orderedSubs = updatedSubs.slice().sort((a, b) => {
+      if (a.minute !== b.minute) return a.minute - b.minute;
+      return (a.second || 0) - (b.second || 0);
+    });
+    // Applica ogni sostituzione solo se valida
+    for (const sub of orderedSubs) {
+      if (!lineup.includes(sub.playerOut)) {
+        error = `Impossibile applicare la sostituzione: il giocatore che esce (#${players.find(p=>p.id===sub.playerOut)?.jerseyNumber||''}) non è in campo.`;
+        break;
+      }
+      if (lineup.includes(sub.playerIn)) {
+        error = `Impossibile applicare la sostituzione: il giocatore che entra (#${players.find(p=>p.id===sub.playerIn)?.jerseyNumber||''}) è già in campo.`;
+        break;
+      }
+      lineup = lineup.map(id => id === sub.playerOut ? sub.playerIn : id);
+    }
+    // Rimuovi eventuali duplicati (ulteriore sicurezza)
+    lineup = Array.from(new Set(lineup));
+    if (error) {
+      setManageError(error);
+      return;
+    }
+    setManageError(null);
+    const updatedMatch = { ...managingMatch, substitutions: updatedSubs, lineup };
+    setManagingMatch(updatedMatch);
+    database.updateMatch(managingMatch.id, updatedMatch);
+    loadData();
+  }
+
   const renderContent = () => {
     if (currentView === 'form') {
       switch (activeTab) {
@@ -381,18 +504,33 @@ function App() {
     if (currentView === 'manage' && managingMatch) {
       return (
         <div className="space-y-6">
-          <div className="flex items-center justify-between">
+          {manageError && (
+            <div className="bg-red-100 text-red-700 px-4 py-2 rounded-lg font-semibold">
+              {manageError}
+            </div>
+          )}
+          <div className="flex items-center justify-between gap-2">
             <h2 className="text-2xl font-bold text-gray-800">
               Gestione Partita vs {managingMatch.opponent}
             </h2>
-            <button
-              onClick={() => setShowSubstitutionModal(true)}
-              disabled={managingMatch.status === 'scheduled' || managingMatch.status === 'finished'}
-              className="flex items-center gap-2 bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 disabled:bg-gray-400 disabled:cursor-not-allowed transition-colors"
-            >
-              <ArrowLeftRight className="w-4 h-4" />
-              Sostituzione
-            </button>
+            <div className="flex gap-2">
+              <button
+                onClick={() => setShowSubstitutionModal(true)}
+                disabled={managingMatch.status === 'scheduled' || managingMatch.status === 'finished'}
+                className="flex items-center gap-2 bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 disabled:bg-gray-400 disabled:cursor-not-allowed transition-colors"
+              >
+                <ArrowLeftRight className="w-4 h-4" />
+                Sostituzione
+              </button>
+              <button
+                onClick={() => setShowAmmonitionModal(true)}
+                disabled={managingMatch.status === 'scheduled' || managingMatch.status === 'finished'}
+                className="flex items-center gap-2 bg-yellow-500 text-white px-4 py-2 rounded-lg hover:bg-yellow-600 disabled:bg-gray-400 disabled:cursor-not-allowed transition-colors"
+              >
+                <AlertTriangle className="w-4 h-4" />
+                Ammonizione
+              </button>
+            </div>
           </div>
 
           <MatchTimer
@@ -406,6 +544,45 @@ function App() {
             onFinish={handleFinishMatch}
             formatTime={timer.formatTime}
           />
+
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
+            <div>
+              <h3 className="text-lg font-semibold text-gray-800 mb-2">In campo</h3>
+              <div className="bg-white rounded-xl shadow p-4 mb-4 min-h-[60px]">
+                {getPlayersOnField().length === 0 ? (
+                  <span className="text-gray-400">Nessun giocatore in campo</span>
+                ) : (
+                  <ul className="space-y-1">
+                    {getPlayersOnField().map(player => (
+                      <li key={player.id} className="flex items-center gap-2">
+                        <span className="font-bold text-blue-700">#{player.jerseyNumber}</span>
+                        <span>{player.firstName} {player.lastName}</span>
+                        <span className="text-xs text-gray-500">{player.position}</span>
+                      </li>
+                    ))}
+                  </ul>
+                )}
+              </div>
+            </div>
+            <div>
+              <h3 className="text-lg font-semibold text-gray-800 mb-2">In panchina</h3>
+              <div className="bg-white rounded-xl shadow p-4 mb-4 min-h-[60px]">
+                {getPlayersOnBench().length === 0 ? (
+                  <span className="text-gray-400">Nessun giocatore in panchina</span>
+                ) : (
+                  <ul className="space-y-1">
+                    {getPlayersOnBench().map(player => (
+                      <li key={player.id} className="flex items-center gap-2">
+                        <span className="font-bold text-green-700">#{player.jerseyNumber}</span>
+                        <span>{player.firstName} {player.lastName}</span>
+                        <span className="text-xs text-gray-500">{player.position}</span>
+                      </li>
+                    ))}
+                  </ul>
+                )}
+              </div>
+            </div>
+          </div>
 
           <div className="grid grid-cols-2 gap-6 mb-6">
             <div>
@@ -460,67 +637,67 @@ function App() {
                   .filter(e => e.type === 'goal')
                   .sort((a, b) => {
                     if (b.minute !== a.minute) return b.minute - a.minute;
-                    // Se stesso minuto, ordina per secondi
                     return (b.second || 0) - (a.second || 0);
                   })
                   .map(goal => (
-                    <div key={goal.id} className="flex items-center gap-4 p-3 bg-green-50 rounded-lg">
-                      <span className="text-sm font-bold text-green-600">{goal.minute}{goal.second !== undefined ? `:${goal.second.toString().padStart(2, '0')}` : ''}</span>
+                    <div
+                      key={goal.id}
+                      className={`flex items-center gap-4 p-3 rounded-lg group relative ${goal.description?.includes('avversario') ? 'bg-red-50' : 'bg-green-50'}`}
+                    >
+                      <span className={`text-sm font-bold ${goal.description?.includes('avversario') ? 'text-red-600' : 'text-green-600'}`}>{goal.minute}{goal.second !== undefined ? `:${goal.second.toString().padStart(2, '0')}` : ''}</span>
                       <div className="flex items-center gap-2">
-                        <span className="text-gray-800">
-                          {goal.description}
-                        </span>
+                        <span className="text-gray-800">{goal.description}</span>
                       </div>
+                      <button
+                        onClick={() => handleRemoveEvent(goal.id)}
+                        className="ml-auto p-1 text-red-500 hover:bg-red-100 rounded-full opacity-0 group-hover:opacity-100 transition-opacity absolute right-2 top-1/2 -translate-y-1/2"
+                        title="Rimuovi goal"
+                      >
+                        <Trash2 className="w-4 h-4" />
+                      </button>
                     </div>
                   ))}
               </div>
             </div>
           )}
 
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-            <div className="bg-white rounded-xl shadow-md p-6">
-              <h3 className="text-lg font-semibold text-gray-800 mb-4">
-                In Campo ({getPlayersOnField().length})
-              </h3>
-              <div className="space-y-2">
-                {getPlayersOnField().map(player => (
-                  <div key={player.id} className="flex items-center gap-3 p-2 bg-green-50 rounded-lg">
-                    <span className="w-8 h-8 bg-blue-100 rounded-full flex items-center justify-center text-sm font-bold text-blue-600">
-                      #{player.jerseyNumber}
-                    </span>
-                    <div>
-                      <span className="font-medium text-gray-800">
-                        {player.firstName} {player.lastName}
-                      </span>
-                      <p className="text-sm text-gray-600">{player.position}</p>
+          {/* Cronologia Ammonizioni */}
+          {managingMatch.events.filter(e => e.type === 'yellow-card' || e.type === 'red-card' || e.type === 'second-yellow-card' || e.type === 'blue-card' || e.type === 'expulsion' || e.type === 'warning').length > 0 && (
+            <div className="bg-white rounded-xl shadow-md p-6 mb-6">
+              <h3 className="text-lg font-semibold text-gray-800 mb-4">Cronologia Ammonizioni</h3>
+              <div className="space-y-3">
+                {managingMatch.events
+                  .filter(e => ['yellow-card','red-card','second-yellow-card','blue-card','expulsion','warning'].includes(e.type))
+                  .sort((a, b) => {
+                    if (b.minute !== a.minute) return b.minute - a.minute;
+                    return (b.second || 0) - (a.second || 0);
+                  })
+                  .map(ev => (
+                    <div key={ev.id} className={`flex items-center gap-4 p-3 rounded-lg group relative ${ev.type === 'yellow-card' ? 'bg-yellow-50' : ev.type === 'red-card' ? 'bg-red-50' : ev.type === 'second-yellow-card' ? 'bg-orange-50' : ev.type === 'blue-card' ? 'bg-blue-50' : 'bg-gray-50'}`}>
+                      <span className={`text-sm font-bold ${ev.type === 'yellow-card' ? 'text-yellow-600' : ev.type === 'red-card' ? 'text-red-600' : ev.type === 'second-yellow-card' ? 'text-orange-600' : ev.type === 'blue-card' ? 'text-blue-600' : 'text-gray-600'}`}>{ev.minute}{ev.second !== undefined ? `:${ev.second.toString().padStart(2, '0')}` : ''}</span>
+                      <div className="flex items-center gap-2">
+                        {ev.type === 'yellow-card' && <Square className="w-5 h-5 text-yellow-500" />}
+                        {ev.type === 'red-card' && <Square className="w-5 h-5 text-red-600" />}
+                        {ev.type === 'second-yellow-card' && <Square className="w-5 h-5 text-orange-500" />}
+                        {ev.type === 'blue-card' && <Square className="w-5 h-5 text-blue-600" />}
+                        {ev.type === 'expulsion' && <Ban className="w-5 h-5 text-gray-700" />}
+                        {ev.type === 'warning' && <AlertTriangle className="w-5 h-5 text-yellow-400" />}
+                        <span className="text-gray-800">{ev.description}</span>
+                      </div>
+                      <button
+                        onClick={() => handleRemoveEvent(ev.id)}
+                        className="ml-auto p-1 text-red-500 hover:bg-red-100 rounded-full opacity-0 group-hover:opacity-100 transition-opacity absolute right-2 top-1/2 -translate-y-1/2"
+                        title="Rimuovi ammonizione"
+                      >
+                        <Trash2 className="w-4 h-4" />
+                      </button>
                     </div>
-                  </div>
-                ))}
+                  ))}
               </div>
             </div>
+          )}
 
-            <div className="bg-white rounded-xl shadow-md p-6">
-              <h3 className="text-lg font-semibold text-gray-800 mb-4">
-                In Panchina ({getPlayersOnBench().length})
-              </h3>
-              <div className="space-y-2">
-                {getPlayersOnBench().map(player => (
-                  <div key={player.id} className="flex items-center gap-3 p-2 bg-gray-50 rounded-lg">
-                    <span className="w-8 h-8 bg-gray-200 rounded-full flex items-center justify-center text-sm font-bold text-gray-600">
-                      #{player.jerseyNumber}
-                    </span>
-                    <div>
-                      <span className="font-medium text-gray-800">
-                        {player.firstName} {player.lastName}
-                      </span>
-                      <p className="text-sm text-gray-600">{player.position}</p>
-                    </div>
-                  </div>
-                ))}
-              </div>
-            </div>
-          </div>
-
+          {/* Cronologia Sostituzioni */}
           {managingMatch.substitutions.length > 0 && (
             <div className="bg-white rounded-xl shadow-md p-6">
               <h3 className="text-lg font-semibold text-gray-800 mb-4">Sostituzioni</h3>
@@ -535,7 +712,7 @@ function App() {
                     const playerOut = players.find(p => p.id === sub.playerOut);
                     const playerIn = players.find(p => p.id === sub.playerIn);
                     return (
-                      <div key={sub.id} className="flex items-center gap-4 p-3 bg-blue-50 rounded-lg">
+                      <div key={sub.id} className="flex items-center gap-4 p-3 bg-blue-50 rounded-lg group relative">
                         <span className="text-sm font-bold text-blue-600">{sub.minute}{sub.second !== undefined ? `:${sub.second.toString().padStart(2, '0')}` : ''}</span>
                         <div className="flex items-center gap-2">
                           <span className="text-red-600">
@@ -546,6 +723,13 @@ function App() {
                             #{playerIn?.jerseyNumber} {playerIn?.firstName} {playerIn?.lastName}
                           </span>
                         </div>
+                        <button
+                          onClick={() => handleRemoveSubstitution(sub.id)}
+                          className="ml-auto p-1 text-red-500 hover:bg-red-100 rounded-full opacity-0 group-hover:opacity-100 transition-opacity absolute right-2 top-1/2 -translate-y-1/2"
+                          title="Rimuovi sostituzione"
+                        >
+                          <Trash2 className="w-4 h-4" />
+                        </button>
                       </div>
                     );
                   })}
@@ -559,6 +743,15 @@ function App() {
             playersOnField={getPlayersOnField()}
             playersOnBench={getPlayersOnBench()}
             onSubstitute={handleSubstitution}
+            currentMinute={Math.floor(timer.time / 60)}
+          />
+
+          <AmmonitionModal
+            isOpen={showAmmonitionModal}
+            onClose={() => setShowAmmonitionModal(false)}
+            playersOnField={getPlayersOnField()}
+            opponentLineup={managingMatch.opponentLineup}
+            onAmmonition={handleAmmonition}
             currentMinute={Math.floor(timer.time / 60)}
           />
         </div>

@@ -48,6 +48,16 @@ export function useDatabase() {
         // La colonna esiste già, ignora l'errore
       }
 
+      // Migrazione: aggiorna il CHECK della colonna 'type' in match_events per supportare tutti i tipi
+      try {
+        database.run("CREATE TABLE IF NOT EXISTS match_events_tmp (id TEXT PRIMARY KEY, matchId TEXT NOT NULL, type TEXT NOT NULL CHECK (type IN ('goal', 'yellow-card', 'red-card', 'second-yellow-card', 'blue-card', 'expulsion', 'warning', 'substitution')), minute INTEGER NOT NULL, second INTEGER, playerId TEXT NOT NULL, description TEXT, FOREIGN KEY (matchId) REFERENCES matches(id) ON DELETE CASCADE, FOREIGN KEY (playerId) REFERENCES players(id) ON DELETE CASCADE)");
+        database.run("INSERT INTO match_events_tmp SELECT * FROM match_events");
+        database.run("DROP TABLE match_events");
+        database.run("ALTER TABLE match_events_tmp RENAME TO match_events");
+      } catch (e) {
+        // Se fallisce, probabilmente la tabella è già aggiornata
+      }
+
       setDb(database);
       setError(null);
     } catch (err) {
@@ -144,7 +154,7 @@ export function useDatabase() {
       CREATE TABLE IF NOT EXISTS match_events (
         id TEXT PRIMARY KEY,
         matchId TEXT NOT NULL,
-        type TEXT NOT NULL CHECK (type IN ('goal', 'yellow-card', 'red-card', 'substitution')),
+        type TEXT NOT NULL CHECK (type IN ('goal', 'yellow-card', 'red-card', 'second-yellow-card', 'blue-card', 'expulsion', 'warning', 'substitution')),
         minute INTEGER NOT NULL,
         second INTEGER,
         playerId TEXT NOT NULL,

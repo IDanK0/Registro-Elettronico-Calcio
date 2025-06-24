@@ -43,7 +43,7 @@ export interface Substitution {
 
 export interface MatchEvent {
   id: string;
-  type: 'goal' | 'yellow-card' | 'red-card' | 'substitution';
+  type: 'goal' | 'yellow-card' | 'red-card' | 'second-yellow-card' | 'blue-card' | 'expulsion' | 'warning' | 'substitution';
   minute: number;
   second?: number;
   playerId: string;
