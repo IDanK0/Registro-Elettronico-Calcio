@@ -188,57 +188,64 @@ export function ExportStatsButton({ players, matches, trainings, playerStats }: 
     doc.setTextColor(30, 64, 175);
     doc.text('Statistiche Stagionali', pageWidth / 2, y, { align: 'center' });
     y += 36;
-    // Box panoramica
+    // Box panoramica migliorato
     doc.setFillColor(239, 246, 255);
     doc.setDrawColor(191, 219, 254);
     const infoBoxX = 60;
     const infoBoxY = y;
     const infoBoxW = pageWidth - 120;
-    const infoBoxH = 120; // aumentato per più spazio verticale
+    const infoBoxH = 120;
     doc.roundedRect(infoBoxX, infoBoxY, infoBoxW, infoBoxH, 16, 16, 'FD');
     doc.setFont('helvetica', 'normal');
     doc.setFontSize(14);
     doc.setTextColor(55, 65, 81);
+    const colW = 120; // larghezza colonna compatta
+    const colGap = 40; // gap tra colonne
     const labelX = infoBoxX + 24;
-    const valueX = labelX + 90; // ridotto spazio orizzontale
-    const row1Y = infoBoxY + 36;
-    const row2Y = infoBoxY + 62;
-    const row3Y = infoBoxY + 88;
+    const valueX = labelX + colW;
+    const label2X = valueX + colGap;
+    const value2X = label2X + colW;
+    const label3X = value2X + colGap;
+    const value3X = label3X + colW;
+    const row1Y = infoBoxY + 38;
+    const row2Y = infoBoxY + 68;
+    const row3Y = infoBoxY + 98;
     // Colonna 1
     doc.text('Giocatori attivi:', labelX, row1Y);
-    doc.text(String(players.filter(p => p.isActive).length), valueX, row1Y);
+    doc.text(String(players.filter(p => p.isActive).length), valueX, row1Y, { align: 'right' });
     doc.text('Partite giocate:', labelX, row2Y);
-    doc.text(String(finished.length), valueX, row2Y);
+    doc.text(String(finished.length), valueX, row2Y, { align: 'right' });
     doc.text('Allenamenti:', labelX, row3Y);
-    doc.text(String(trainings.length), valueX, row3Y);
+    doc.text(String(trainings.length), valueX, row3Y, { align: 'right' });
     // Colonna 2
-    const label2X = labelX + 180; // ridotto spazio orizzontale
     doc.text('Vittorie:', label2X, row1Y);
-    doc.text(String(wins), label2X + 60, row1Y);
+    doc.text(String(wins), value2X, row1Y, { align: 'right' });
     doc.text('Pareggi:', label2X, row2Y);
-    doc.text(String(draws), label2X + 60, row2Y);
+    doc.text(String(draws), value2X, row2Y, { align: 'right' });
     doc.text('Sconfitte:', label2X, row3Y);
-    doc.text(String(losses), label2X + 60, row3Y);
+    doc.text(String(losses), value2X, row3Y, { align: 'right' });
     // Colonna 3
-    const label3X = label2X + 140; // ridotto spazio orizzontale
     doc.text('Presenza media:', label3X, row1Y);
-    doc.text(`${Math.round(avgAttendance)}%`, label3X + 80, row1Y);
+    doc.text(`${Math.round(avgAttendance)}%`, value3X, row1Y, { align: 'right' });
     doc.text('Gol fatti:', label3X, row2Y);
-    doc.text(String(totalGoalsFor), label3X + 80, row2Y);
+    doc.text(String(totalGoalsFor), value3X, row2Y, { align: 'right' });
     doc.text('Gol subiti:', label3X, row3Y);
-    doc.text(String(totalGoalsAgainst), label3X + 80, row3Y);
-    y += infoBoxH + 32;
-    addPageIfNeeded(infoBoxH + 32);
+    doc.text(String(totalGoalsAgainst), value3X, row3Y, { align: 'right' });
+    y += infoBoxH + 40; // più spazio dopo il box
+    addPageIfNeeded(infoBoxH + 40);
+    // Spazio extra tra le sezioni
+    const sectionSpace = 24;
     // Statistiche Partite
+    y += sectionSpace;
     doc.setFont('helvetica', 'bold');
     doc.setFontSize(18);
     doc.setTextColor(30, 64, 175);
     doc.text('Statistiche Partite', 70, y);
     y += 10;
-    doc.setDrawColor(191, 219, 254);
-    doc.setLineWidth(1);
+    doc.setDrawColor(30, 64, 175);
+    doc.setLineWidth(1.2);
     doc.line(70, y + 4, pageWidth - 70, y + 4);
-    y += 20;
+    y += 24;
     doc.setFont('helvetica', 'normal');
     doc.setFontSize(13);
     doc.setTextColor(37, 99, 235);
@@ -246,18 +253,19 @@ export function ExportStatsButton({ players, matches, trainings, playerStats }: 
     doc.text(`Media gol/partita: ${avgGoals}`, 250, y);
     doc.setTextColor(220, 38, 38);
     doc.text(`Media subiti/partita: ${avgConceded}`, 430, y);
-    y += 24;
-    addPageIfNeeded(24);
+    y += 32;
+    addPageIfNeeded(32);
     // Fair Play & Sostituzioni
+    y += sectionSpace;
     doc.setFont('helvetica', 'bold');
     doc.setFontSize(16);
     doc.setTextColor(202, 138, 4);
     doc.text('Fair Play & Sostituzioni', 70, y);
     y += 10;
-    doc.setDrawColor(254, 243, 199);
-    doc.setLineWidth(0.7);
+    doc.setDrawColor(202, 138, 4);
+    doc.setLineWidth(1.2);
     doc.line(70, y + 4, pageWidth - 70, y + 4);
-    y += 20;
+    y += 24;
     doc.setFont('helvetica', 'normal');
     doc.setFontSize(13);
     doc.setTextColor(202, 138, 4);
@@ -266,18 +274,19 @@ export function ExportStatsButton({ players, matches, trainings, playerStats }: 
     doc.text(`Espulsioni: ${totalReds}`, 320, y);
     doc.setTextColor(37, 99, 235);
     doc.text(`Sostituzioni: ${totalSubs} (media: ${avgSubs}/partita)`, 470, y);
-    y += 24;
-    addPageIfNeeded(24);
+    y += 32;
+    addPageIfNeeded(32);
     // Capocannonieri
+    y += sectionSpace;
     doc.setFont('helvetica', 'bold');
     doc.setFontSize(16);
     doc.setTextColor(22, 163, 74);
     doc.text('Capocannonieri', 70, y);
     y += 10;
-    doc.setDrawColor(187, 247, 208);
-    doc.setLineWidth(0.7);
+    doc.setDrawColor(22, 163, 74);
+    doc.setLineWidth(1.2);
     doc.line(70, y + 4, pageWidth - 70, y + 4);
-    y += 20;
+    y += 24;
     doc.setFont('helvetica', 'normal');
     doc.setFontSize(13);
     if (topScorers.length === 0) {
@@ -300,23 +309,24 @@ export function ExportStatsButton({ players, matches, trainings, playerStats }: 
         doc.setTextColor(30, 41, 59);
         doc.text(`${p.firstName} ${p.lastName} (#${p.jerseyNumber})`, 134, y + 6);
         doc.setTextColor(22, 163, 74);
-        doc.text(`${s.goals} goal`, 320, y + 6);
+        doc.text(`${s.goals} goal`, 320, y + 6, { align: 'right' });
         y += 28;
         addPageIfNeeded(28);
       });
     }
-    y += 8;
-    addPageIfNeeded(8);
+    y += 12;
+    addPageIfNeeded(12);
     // Più presenti
+    y += sectionSpace;
     doc.setFont('helvetica', 'bold');
     doc.setFontSize(16);
     doc.setTextColor(16, 185, 129);
     doc.text('Più Presenti', 70, y);
     y += 10;
-    doc.setDrawColor(191, 219, 254);
-    doc.setLineWidth(0.7);
+    doc.setDrawColor(16, 185, 129);
+    doc.setLineWidth(1.2);
     doc.line(70, y + 4, pageWidth - 70, y + 4);
-    y += 20;
+    y += 24;
     doc.setFont('helvetica', 'normal');
     doc.setFontSize(13);
     if (mostActive.length === 0) {
@@ -339,23 +349,24 @@ export function ExportStatsButton({ players, matches, trainings, playerStats }: 
         doc.setTextColor(30, 41, 59);
         doc.text(`${p.firstName} ${p.lastName} (#${p.jerseyNumber})`, 134, y + 6);
         doc.setTextColor(16, 185, 129);
-        doc.text(`${s.matchesPlayed} presenze`, 320, y + 6);
+        doc.text(`${s.matchesPlayed} presenze`, 320, y + 6, { align: 'right' });
         y += 28;
         addPageIfNeeded(28);
       });
     }
-    y += 8;
-    addPageIfNeeded(8);
+    y += 12;
+    addPageIfNeeded(12);
     // Più sostituiti/subentrati
+    y += sectionSpace;
     doc.setFont('helvetica', 'bold');
     doc.setFontSize(16);
     doc.setTextColor(37, 99, 235);
     doc.text('Sostituzioni', 70, y);
     y += 10;
-    doc.setDrawColor(191, 219, 254);
-    doc.setLineWidth(0.7);
+    doc.setDrawColor(37, 99, 235);
+    doc.setLineWidth(1.2);
     doc.line(70, y + 4, pageWidth - 70, y + 4);
-    y += 20;
+    y += 24;
     doc.setFont('helvetica', 'normal');
     doc.setFontSize(13);
     doc.setTextColor(220, 38, 38);
@@ -364,7 +375,7 @@ export function ExportStatsButton({ players, matches, trainings, playerStats }: 
     mostSubbedOut.forEach(({player, count}, i) => {
       if (!player) return;
       doc.text(`${player.firstName} ${player.lastName} (#${player.jerseyNumber})`, 180, yStart + i * 18);
-      doc.text(String(count), 340, yStart + i * 18);
+      doc.text(String(count), 340, yStart + i * 18, { align: 'right' });
     });
     y += 18 * Math.max(1, mostSubbedOut.length);
     doc.setTextColor(22, 163, 74);
@@ -373,36 +384,34 @@ export function ExportStatsButton({ players, matches, trainings, playerStats }: 
     mostSubbedIn.forEach(({player, count}, i) => {
       if (!player) return;
       doc.text(`${player.firstName} ${player.lastName} (#${player.jerseyNumber})`, 180, yStart + i * 18);
-      doc.text(String(count), 340, yStart + i * 18);
+      doc.text(String(count), 340, yStart + i * 18, { align: 'right' });
     });
     y += 18 * Math.max(1, mostSubbedIn.length);
     addPageIfNeeded(18 * (Math.max(mostSubbedOut.length, mostSubbedIn.length)));
     // Statistiche per ruolo
+    y += sectionSpace;
     doc.setFont('helvetica', 'bold');
     doc.setFontSize(16);
     doc.setTextColor(139, 92, 246);
     doc.text('Statistiche per Ruolo', 70, y);
     y += 10;
-    doc.setDrawColor(191, 219, 254);
-    doc.setLineWidth(0.7);
+    doc.setDrawColor(139, 92, 246);
+    doc.setLineWidth(1.2);
     doc.line(70, y + 4, pageWidth - 70, y + 4);
-    y += 20;
-    doc.setFont('helvetica', 'normal');
+    y += 24;
+    doc.setFont('helvetica', 'bold');
     doc.setFontSize(13);
-    doc.setTextColor(55, 65, 81);
-    // Tabella ruoli
+    doc.setTextColor(30, 64, 175);
+    // Tabella ruoli header
     const tableX = 90;
     let tableY = y;
     doc.setFillColor(243, 244, 246);
     doc.roundedRect(tableX, tableY, pageWidth - 180, 28, 8, 8, 'F');
-    doc.setFont('helvetica', 'bold');
-    doc.setFontSize(13);
-    doc.setTextColor(30, 64, 175);
-    doc.text('Ruolo', tableX + 40, tableY + 18);
-    doc.text('Goal', tableX + 140, tableY + 18);
-    doc.text('Presenze', tableX + 220, tableY + 18);
-    doc.text('Gialli', tableX + 320, tableY + 18);
-    doc.text('Rossi', tableX + 400, tableY + 18);
+    doc.text('Ruolo', tableX + 40, tableY + 18, { align: 'center' });
+    doc.text('Goal', tableX + 140, tableY + 18, { align: 'right' });
+    doc.text('Presenze', tableX + 220, tableY + 18, { align: 'right' });
+    doc.text('Gialli', tableX + 320, tableY + 18, { align: 'right' });
+    doc.text('Rossi', tableX + 400, tableY + 18, { align: 'right' });
     tableY += 32;
     doc.setFont('helvetica', 'normal');
     doc.setFontSize(13);
@@ -410,11 +419,11 @@ export function ExportStatsButton({ players, matches, trainings, playerStats }: 
       doc.setFillColor(idx % 2 === 0 ? 255 : 243, idx % 2 === 0 ? 255 : 244, idx % 2 === 0 ? 255 : 246);
       doc.roundedRect(tableX, tableY, pageWidth - 180, 24, 8, 8, 'F');
       doc.setTextColor(55, 65, 81);
-      doc.text(role, tableX + 40, tableY + 16);
-      doc.text(String(st.goals), tableX + 140, tableY + 16);
-      doc.text(String(st.matches), tableX + 220, tableY + 16);
-      doc.text(String(st.yellows), tableX + 320, tableY + 16);
-      doc.text(String(st.reds), tableX + 400, tableY + 16);
+      doc.text(role, tableX + 40, tableY + 16, { align: 'center' });
+      doc.text(String(st.goals), tableX + 140, tableY + 16, { align: 'right' });
+      doc.text(String(st.matches), tableX + 220, tableY + 16, { align: 'right' });
+      doc.text(String(st.yellows), tableX + 320, tableY + 16, { align: 'right' });
+      doc.text(String(st.reds), tableX + 400, tableY + 16, { align: 'right' });
       tableY += 26;
       addPageIfNeeded(26);
     });
