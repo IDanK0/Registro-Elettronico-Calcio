@@ -89,11 +89,11 @@ export function StatsOverview({ players, matches, trainings, playerStats }: Stat
 
   // Ammonizioni/Espulsioni
   const cardTypes = ['yellow-card','red-card','second-yellow-card','blue-card','expulsion','warning'];
-  const allCards = allEvents.filter(e => cardTypes.includes(e.type));
-  const totalCards = allCards.length;
-  const totalReds = allCards.filter(e => e.type === 'red-card' || e.type === 'expulsion').length;
-  const totalYellows = allCards.filter(e => e.type === 'yellow-card' || e.type === 'second-yellow-card').length;
-  const avgCardsPerMatch = finishedMatches.length > 0 ? (totalCards / finishedMatches.length).toFixed(2) : '0.00';
+  // Filtra solo i cartellini dei giocatori del team
+  const teamCards = allEvents.filter(e => cardTypes.includes(e.type) && players.some(p => p.id === e.playerId));
+  const totalReds = teamCards.filter(e => e.type === 'red-card' || e.type === 'expulsion').length;
+  const totalYellows = teamCards.filter(e => e.type === 'yellow-card' || e.type === 'second-yellow-card').length;
+  const avgCardsPerMatch = finishedMatches.length > 0 ? (teamCards.length / finishedMatches.length).toFixed(2) : '0.00';
 
   // Sostituzioni
   const totalSubs = allSubs.length;
@@ -226,7 +226,17 @@ export function StatsOverview({ players, matches, trainings, playerStats }: Stat
         <div>
           <h3 className="text-2xl font-bold text-gray-800">{value}</h3>
           <p className="text-gray-600 font-medium">{title}</p>
-          {subtitle && <p className="text-sm text-gray-500">{subtitle}</p>}
+          {subtitle && (
+            <p className="text-sm text-gray-500 flex items-center gap-1">
+              {subtitle}
+              {title === 'Vittorie' && (
+                <span data-tooltip-id="vittorie-tip" className="ml-1 cursor-pointer"><Info className="w-4 h-4 text-gray-400" /></span>
+              )}
+              {title === 'Vittorie' && (
+                <ReactTooltip id="vittorie-tip" place="top" content="P = Pareggi, S = Sconfitte. Esempio: 1P 2S significa 1 pareggio e 2 sconfitte." />
+              )}
+            </p>
+          )}
         </div>
       </div>
     </div>
@@ -287,7 +297,9 @@ export function StatsOverview({ players, matches, trainings, playerStats }: Stat
         <h2 className="text-xl md:text-2xl font-extrabold text-gray-800 mb-4 flex items-center gap-2">
           <BarChart3 className="w-6 h-6 text-blue-600" />
           Panoramica Generale
+          <span data-tooltip-id="overview-tip" className="ml-1 cursor-pointer"><Info className="w-4 h-4 text-gray-400" /></span>
         </h2>
+        <ReactTooltip id="overview-tip" place="top" content="Statistiche riassuntive della squadra" />
         <div className="grid grid-cols-2 md:grid-cols-4 gap-4 md:gap-6">
           <StatCard icon={Users} title="Giocatori Attivi" value={players.filter(p => p.isActive).length} color="bg-blue-600" />
           <StatCard icon={Target} title="Partite Giocate" value={finishedMatches.length} color="bg-green-600" />
@@ -302,7 +314,9 @@ export function StatsOverview({ players, matches, trainings, playerStats }: Stat
           <h2 className="text-xl md:text-2xl font-extrabold text-gray-800 mb-4 flex items-center gap-2">
             <Target className="w-6 h-6 text-red-600" />
             Statistiche Partite
+            <span data-tooltip-id="matches-tip" className="ml-1 cursor-pointer"><Info className="w-4 h-4 text-gray-400" /></span>
           </h2>
+          <ReactTooltip id="matches-tip" place="top" content="Risultati e performance delle partite concluse" />
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4 md:gap-6">
             <div className="bg-white rounded-xl shadow p-4 md:p-6 flex flex-col gap-2">
               <h3 className="text-base font-semibold text-gray-800 mb-2">Risultati</h3>
@@ -351,7 +365,9 @@ export function StatsOverview({ players, matches, trainings, playerStats }: Stat
               <h3 className="text-base font-semibold text-gray-800 mb-3 flex items-center gap-2">
                 <Award className="w-5 h-5 text-yellow-600" />
                 Capocannonieri
+                <span data-tooltip-id="topscorers-tip" className="ml-1 cursor-pointer"><Info className="w-4 h-4 text-gray-400" /></span>
               </h3>
+              <ReactTooltip id="topscorers-tip" place="top" content="Giocatori con il maggior numero di goal" />
               <ul className="space-y-2">
                 {topScorers.map((item, index) => (
                   <li key={item.playerId} className="flex justify-between items-center">
@@ -374,7 +390,9 @@ export function StatsOverview({ players, matches, trainings, playerStats }: Stat
               <h3 className="text-base font-semibold text-gray-800 mb-3 flex items-center gap-2">
                 <TrendingUp className="w-5 h-5 text-green-600" />
                 Più Presenti
+                <span data-tooltip-id="mostpresent-tip" className="ml-1 cursor-pointer"><Info className="w-4 h-4 text-gray-400" /></span>
               </h3>
+              <ReactTooltip id="mostpresent-tip" place="top" content="Giocatori più presenti in campo e allenamenti" />
               <ul className="space-y-2">
                 {mostActivePlaybers.map((item, index) => (
                   <li key={item.playerId} className="flex justify-between items-center">
@@ -399,7 +417,9 @@ export function StatsOverview({ players, matches, trainings, playerStats }: Stat
         <h2 className="text-xl md:text-2xl font-extrabold text-gray-800 mb-4 flex items-center gap-2">
           <Shield className="w-6 h-6 text-yellow-600" />
           Fair Play & Sostituzioni
+          <span data-tooltip-id="fairplay-tip" className="ml-1 cursor-pointer"><Info className="w-4 h-4 text-gray-400" /></span>
         </h2>
+        <ReactTooltip id="fairplay-tip" place="top" content="Cartellini e sostituzioni effettuate dalla squadra" />
         <div className="flex justify-between gap-4 mb-6">
           <div className="flex-1 bg-white rounded-xl shadow p-6 flex flex-col items-center justify-center">
             <Shield className="w-8 h-8 text-yellow-400 mb-2" />
@@ -457,7 +477,9 @@ export function StatsOverview({ players, matches, trainings, playerStats }: Stat
         <h2 className="text-xl md:text-2xl font-extrabold text-gray-800 mb-4 flex items-center gap-2">
           <BarChart2 className="w-6 h-6 text-purple-600" />
           Statistiche per Ruolo
+          <span data-tooltip-id="byrole-tip" className="ml-1 cursor-pointer"><Info className="w-4 h-4 text-gray-400" /></span>
         </h2>
+        <ReactTooltip id="byrole-tip" place="top" content="Statistiche aggregate per ciascun ruolo in campo" />
         <div className="overflow-x-auto">
           <table className="min-w-full bg-white rounded-xl shadow-md text-sm">
             <thead className="sticky top-0 z-10 bg-gray-100">

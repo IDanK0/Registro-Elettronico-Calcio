@@ -1015,13 +1015,26 @@ function App() {
                   </p>
                 </div>
               </div>
-              {/* Pulsante esporta statistiche solo su tab Statistiche */}
-              {currentView === 'list' && activeTab === 'stats' && (
-                <div className="flex-shrink-0">
-                  <ExportStatsButton
-                    playerStats={calculatePlayerStats()}
-                  />
-                </div>
+              {/* Pulsanti a destra: export o aggiungi */}
+              {currentView === 'list' && (
+                activeTab === 'stats' ? (
+                  <div className="flex-shrink-0">
+                    <ExportStatsButton
+                      players={players}
+                      matches={matches}
+                      trainings={trainings}
+                      playerStats={calculatePlayerStats()}
+                    />
+                  </div>
+                ) : (
+                  <button
+                    onClick={() => setCurrentView('form')}
+                    className="flex items-center gap-2 bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 transition-colors font-medium"
+                  >
+                    <Plus className="w-4 h-4" />
+                    Aggiungi {activeTab === 'players' ? 'Giocatore' : activeTab === 'trainings' ? 'Allenamento' : 'Partita'}
+                  </button>
+                )
               )}
             </div>
 

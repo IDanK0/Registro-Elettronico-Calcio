@@ -123,7 +123,6 @@ export function MatchList({ matches, players, onEdit, onDelete, onManage, onRepo
                         <p className="text-3xl font-bold text-gray-800">{ourScore}</p>
                       </div>
                       <div className="text-center">
-                        <p className="text-sm text-gray-600">-</p>
                         <div className={`text-lg font-bold ${getResultColor(match)}`}>
                           {result}
                         </div>
