@@ -29,6 +29,7 @@ import {
   Ban
 } from 'lucide-react';
 import { AmmonitionModal } from './components/AmmonitionModal';
+import { ReportMatch } from './components/ReportMatch';
 
 type Tab = 'players' | 'trainings' | 'matches' | 'stats';
 type View = 'list' | 'form' | 'manage';
@@ -42,6 +43,7 @@ function App() {
   const [showSubstitutionModal, setShowSubstitutionModal] = useState(false);
   const [showAmmonitionModal, setShowAmmonitionModal] = useState(false);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+  const [showReportMatch, setShowReportMatch] = useState<null | Match>(null);
 
   // Stato per selezione marcatore
   const [selectedHomeScorer, setSelectedHomeScorer] = useState<string>('');
@@ -779,13 +781,23 @@ function App() {
         );
       case 'matches':
         return (
-          <MatchList
-            matches={matches}
-            players={players}
-            onEdit={handleMatchEdit}
-            onDelete={handleMatchDelete}
-            onManage={handleMatchManage}
-          />
+          <>
+            <MatchList
+              matches={matches}
+              players={players}
+              onEdit={handleMatchEdit}
+              onDelete={handleMatchDelete}
+              onManage={handleMatchManage}
+              onReport={match => setShowReportMatch(match)}
+            />
+            {showReportMatch && (
+              <ReportMatch
+                match={showReportMatch}
+                players={players}
+                onClose={() => setShowReportMatch(null)}
+              />
+            )}
+          </>
         );
       case 'stats':
         return (

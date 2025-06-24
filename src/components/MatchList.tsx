@@ -8,9 +8,10 @@ interface MatchListProps {
   onEdit: (match: Match) => void;
   onDelete: (matchId: string) => void;
   onManage: (match: Match) => void;
+  onReport?: (match: Match) => void;
 }
 
-export function MatchList({ matches, players, onEdit, onDelete, onManage }: MatchListProps) {
+export function MatchList({ matches, players, onEdit, onDelete, onManage, onReport }: MatchListProps) {
   const formatDate = (dateString: string) => {
     const date = new Date(dateString);
     return date.toLocaleDateString('it-IT', {
@@ -155,8 +156,16 @@ export function MatchList({ matches, players, onEdit, onDelete, onManage }: Matc
                       <span>Sostituzioni: {match.substitutions.length}</span>
                     )}
                   </div>
-                  
                   <div className="flex gap-2">
+                    {match.status === 'finished' && onReport && (
+                      <button
+                        onClick={() => onReport(match)}
+                        className="p-2 text-purple-600 hover:bg-purple-100 rounded-lg transition-colors"
+                        title="Report Partita"
+                      >
+                        <Trophy className="w-4 h-4" />
+                      </button>
+                    )}
                     {match.status !== 'finished' && (
                       <button
                         onClick={() => onManage(match)}
