@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { Match, Player } from '../types';
 import { Download, FileText } from 'lucide-react';
 import { jsPDF } from 'jspdf';
+import * as XLSX from 'xlsx';
 
 interface ReportMatchProps {
   match: Match;
@@ -220,9 +221,160 @@ export function ReportMatch({ match, players, onClose }: ReportMatchProps) {
     doc.save(`report-partita-${match.date}.pdf`);
   };
 
+  // --- CSV ---
+  const exportCSV = () => {
+    const header = [
+      'Data',
+      'Avversario',
+      'Tipo',
+      'Risultato finale',
+      'Numero Giocatore',
+      'Nome Giocatore',
+      'Posizione Giocatore',
+      'Minuto Evento',
+      'Tipo Evento',
+      'Dettagli Evento'
+    ];
+    let csv = header.join(',') + '\n';
+    // Info partita base
+    const baseInfo = [
+      match.date,
+      match.opponent,
+      match.homeAway === 'home' ? 'Casa' : 'Trasferta',
+      `${match.homeAway === 'home' ? match.homeScore : match.awayScore}-${match.homeAway === 'home' ? match.awayScore : match.homeScore}`
+    ];
+    // Formazione titolare (una riga per ogni giocatore)
+    lineupPlayers.forEach(p => {
+      csv += [
+        ...baseInfo,
+        p.jerseyNumber,
+        `${p.firstName} ${p.lastName}`,
+        p.position,
+        '', '', ''
+      ].join(',') + '\n';
+    });
+    // Eventi: goal, ammonizioni, sostituzioni
+    // Goal
+    goals.forEach(g => {
+      csv += [
+        '', '', '', '', '', '', '',
+        `${g.minute}${g.second !== undefined ? ':' + g.second.toString().padStart(2, '0') : ''}`,
+        'Goal',
+        g.description ? `"${g.description}"` : ''
+      ].join(',') + '\n';
+    });
+    // Ammonizioni/Espulsioni
+    cards.forEach(c => {
+      let tipo = 'Ammonizione';
+      if (c.type === 'red-card' || c.type === 'expulsion') tipo = 'Espulsione';
+      else if (c.type === 'blue-card') tipo = 'Ammonizione';
+      else if (c.type === 'second-yellow-card') tipo = 'Seconda Gialla';
+      csv += [
+        '', '', '', '', '', '', '',
+        `${c.minute}${c.second !== undefined ? ':' + c.second.toString().padStart(2, '0') : ''}`,
+        tipo,
+        c.description ? `"${c.description}"` : ''
+      ].join(',') + '\n';
+    });
+    // Sostituzioni
+    substitutions.forEach(s => {
+      const out = players.find(p => p.id === s.playerOut);
+      const inP = players.find(p => p.id === s.playerIn);
+      csv += [
+        '', '', '', '', '', '', '',
+        `${s.minute}${s.second !== undefined ? ':' + s.second.toString().padStart(2, '0') : ''}`,
+        'Sostituzione',
+        `Esce ${out ? out.jerseyNumber + ' ' + out.lastName : s.playerOut} -> Entra ${inP ? inP.jerseyNumber + ' ' + inP.lastName : s.playerIn}`
+      ].join(',') + '\n';
+    });
+    // Salva CSV
+    const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `report-partita-${match.date}.csv`;
+    a.click();
+    URL.revokeObjectURL(url);
+  };
+
+  // --- XLSX ---
+  const exportXLSX = () => {
+    const header = [
+      'Data',
+      'Avversario',
+      'Tipo',
+      'Risultato finale',
+      'Numero Giocatore',
+      'Nome Giocatore',
+      'Posizione Giocatore',
+      'Minuto Evento',
+      'Tipo Evento',
+      'Dettagli Evento'
+    ];
+    const wsData = [header];
+    // Info partita base
+    const baseInfo = [
+      match.date,
+      match.opponent,
+      match.homeAway === 'home' ? 'Casa' : 'Trasferta',
+      `${match.homeAway === 'home' ? match.homeScore : match.awayScore}-${match.homeAway === 'home' ? match.awayScore : match.homeScore}`
+    ];
+    // Formazione titolare (una riga per ogni giocatore)
+    lineupPlayers.forEach(p => {
+      wsData.push([
+        ...baseInfo,
+        p.jerseyNumber,
+        `${p.firstName} ${p.lastName}`,
+        p.position,
+        '', '', ''
+      ]);
+    });
+    // Eventi: goal, ammonizioni, sostituzioni
+    // Goal
+    goals.forEach(g => {
+      wsData.push([
+        '', '', '', '', '', '', '',
+        `${g.minute}${g.second !== undefined ? ':' + g.second.toString().padStart(2, '0') : ''}`,
+        'Goal',
+        g.description ? `${g.description}` : ''
+      ]);
+    });
+    // Ammonizioni/Espulsioni
+    cards.forEach(c => {
+      let tipo = 'Ammonizione';
+      if (c.type === 'red-card' || c.type === 'expulsion') tipo = 'Espulsione';
+      else if (c.type === 'blue-card') tipo = 'Ammonizione';
+      else if (c.type === 'second-yellow-card') tipo = 'Seconda Gialla';
+      wsData.push([
+        '', '', '', '', '', '', '',
+        `${c.minute}${c.second !== undefined ? ':' + c.second.toString().padStart(2, '0') : ''}`,
+        tipo,
+        c.description ? `${c.description}` : ''
+      ]);
+    });
+    // Sostituzioni
+    substitutions.forEach(s => {
+      const out = players.find(p => p.id === s.playerOut);
+      const inP = players.find(p => p.id === s.playerIn);
+      wsData.push([
+        '', '', '', '', '', '', '',
+        `${s.minute}${s.second !== undefined ? ':' + s.second.toString().padStart(2, '0') : ''}`,
+        'Sostituzione',
+        `Esce ${out ? out.jerseyNumber + ' ' + out.lastName : s.playerOut} -> Entra ${inP ? inP.jerseyNumber + ' ' + inP.lastName : s.playerIn}`
+      ]);
+    });
+    // Crea foglio e salva
+    const ws = XLSX.utils.aoa_to_sheet(wsData);
+    const wb = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(wb, ws, 'Report Partita');
+    XLSX.writeFile(wb, `report-partita-${match.date}.xlsx`);
+  };
+
   const handleExport = (format: 'pdf' | 'csv' | 'xlsx') => {
     setShowExportMenu(false);
     if (format === 'pdf') exportPDF();
+    if (format === 'csv') exportCSV();
+    if (format === 'xlsx') exportXLSX();
   };
 
   return (
@@ -327,14 +479,32 @@ export function ReportMatch({ match, players, onClose }: ReportMatchProps) {
               Esporta
             </button>
             {showExportMenu && (
-              <div className="absolute right-0 mt-2 bg-white border border-gray-200 rounded-lg shadow-lg z-10 min-w-[160px]">
-                <button
-                  onClick={() => handleExport('pdf')}
-                  className="flex items-center gap-2 w-full px-4 py-2 hover:bg-blue-50 text-blue-700 text-left"
-                >
-                  <FileText className="w-4 h-4" /> PDF
-                </button>
-              </div>
+              <>
+                <div
+                  className="fixed inset-0 bg-black bg-opacity-60 z-[1100]"
+                  onClick={() => setShowExportMenu(false)}
+                />
+                <div className="fixed top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 bg-white border border-gray-200 rounded-lg shadow-2xl z-[1200] min-w-[180px] p-1">
+                  <button
+                    onClick={() => handleExport('pdf')}
+                    className="flex items-center gap-2 w-full px-4 py-2 hover:bg-blue-50 text-blue-700 text-left"
+                  >
+                    <FileText className="w-4 h-4" /> PDF
+                  </button>
+                  <button
+                    onClick={() => handleExport('csv')}
+                    className="flex items-center gap-2 w-full px-4 py-2 hover:bg-green-50 text-green-700 text-left"
+                  >
+                    <FileText className="w-4 h-4" /> CSV
+                  </button>
+                  <button
+                    onClick={() => handleExport('xlsx')}
+                    className="flex items-center gap-2 w-full px-4 py-2 hover:bg-yellow-50 text-yellow-700 text-left"
+                  >
+                    <FileText className="w-4 h-4" /> Excel
+                  </button>
+                </div>
+              </>
             )}
           </div>
           <button onClick={onClose} className="bg-blue-600 text-white px-6 py-2 rounded-lg hover:bg-blue-700 shadow font-semibold text-lg transition-colors">Chiudi</button>

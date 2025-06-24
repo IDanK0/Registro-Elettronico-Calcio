@@ -1,6 +1,6 @@
-import React from 'react';
+import React, { useMemo } from 'react';
 import { Player, Match, Training, PlayerStats } from '../types';
-import { Trophy, Target, Users, Calendar, TrendingUp, Award, Clock, BarChart3 } from 'lucide-react';
+import { Trophy, Target, Users, Calendar, TrendingUp, Award, Clock, BarChart3, BarChart2, FileText, Shield, Repeat, UserCheck } from 'lucide-react';
 
 interface StatsOverviewProps {
   players: Player[];
@@ -66,6 +66,56 @@ export function StatsOverview({ players, matches, trainings, playerStats }: Stat
       player: players.find(p => p.id === stat.playerId)
     }))
     .filter(item => item.player);
+
+  // --- Nuove metriche avanzate ---
+  // Estrai eventi da tutte le partite concluse
+  const allEvents = useMemo(() => finishedMatches.flatMap(m => m.events || []), [finishedMatches]);
+  const allSubs = useMemo(() => finishedMatches.flatMap(m => m.substitutions || []), [finishedMatches]);
+
+  // Ammonizioni/Espulsioni
+  const cardTypes = ['yellow-card','red-card','second-yellow-card','blue-card','expulsion','warning'];
+  const allCards = allEvents.filter(e => cardTypes.includes(e.type));
+  const totalCards = allCards.length;
+  const totalReds = allCards.filter(e => e.type === 'red-card' || e.type === 'expulsion').length;
+  const totalYellows = allCards.filter(e => e.type === 'yellow-card' || e.type === 'second-yellow-card').length;
+  const avgCardsPerMatch = finishedMatches.length > 0 ? (totalCards / finishedMatches.length).toFixed(2) : '0.00';
+
+  // Sostituzioni
+  const totalSubs = allSubs.length;
+  const avgSubsPerMatch = finishedMatches.length > 0 ? (totalSubs / finishedMatches.length).toFixed(2) : '0.00';
+  // Giocatori più sostituiti e che subentrano
+  const subOutCount: Record<string, number> = {};
+  const subInCount: Record<string, number> = {};
+  allSubs.forEach(s => {
+    subOutCount[s.playerOut] = (subOutCount[s.playerOut] || 0) + 1;
+    subInCount[s.playerIn] = (subInCount[s.playerIn] || 0) + 1;
+  });
+  const mostSubbedOut = Object.entries(subOutCount)
+    .sort((a,b) => b[1]-a[1])
+    .slice(0,3)
+    .map(([id,count]) => ({ player: players.find(p=>p.id===id), count }));
+  const mostSubbedIn = Object.entries(subInCount)
+    .sort((a,b) => b[1]-a[1])
+    .slice(0,3)
+    .map(([id,count]) => ({ player: players.find(p=>p.id===id), count }));
+
+  // Statistiche per ruolo
+  const roleStats = useMemo(() => {
+    const roles: Record<string, { goals: number; matches: number; yellows: number; reds: number }> = {};
+    players.forEach(p => {
+      if (!roles[p.position]) roles[p.position] = { goals: 0, matches: 0, yellows: 0, reds: 0 };
+    });
+    playerStats.forEach(stat => {
+      const player = players.find(p => p.id === stat.playerId);
+      if (player && roles[player.position]) {
+        roles[player.position].goals += stat.goals;
+        roles[player.position].matches += stat.matchesPlayed;
+        roles[player.position].yellows += stat.yellowCards;
+        roles[player.position].reds += stat.redCards;
+      }
+    });
+    return roles;
+  }, [players, playerStats]);
 
   const StatCard = ({ icon: Icon, title, value, subtitle, color }: {
     icon: any;
@@ -265,6 +315,98 @@ export function StatsOverview({ players, matches, trainings, playerStats }: Stat
             </div>
           </div>
         )}
+      </div>
+
+      {/* Statistiche Avanzate */}
+      <div>
+        <h2 className="text-2xl font-bold text-gray-800 mb-6 flex items-center gap-2">
+          <Shield className="w-6 h-6 text-yellow-600" />
+          Fair Play & Sostituzioni
+        </h2>
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+          <StatCard
+            icon={Shield}
+            title="Ammonizioni"
+            value={totalYellows}
+            subtitle={`Media: ${avgCardsPerMatch}/partita`}
+            color="bg-yellow-400"
+          />
+          <StatCard
+            icon={Shield}
+            title="Espulsioni"
+            value={totalReds}
+            subtitle={totalReds > 0 ? `Totale: ${totalReds}` : undefined}
+            color="bg-red-600"
+          />
+          <StatCard
+            icon={Repeat}
+            title="Sostituzioni"
+            value={totalSubs}
+            subtitle={`Media: ${avgSubsPerMatch}/partita`}
+            color="bg-blue-400"
+          />
+        </div>
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mt-6">
+          <div className="bg-white rounded-xl shadow-md p-6">
+            <h3 className="text-lg font-semibold text-gray-800 mb-4 flex items-center gap-2">
+              <UserCheck className="w-5 h-5 text-blue-600" />
+              Più sostituiti
+            </h3>
+            <ul className="space-y-2">
+              {mostSubbedOut.map(({player,count}) => player && (
+                <li key={player.id} className="flex justify-between items-center">
+                  <span>{player.firstName} {player.lastName} <span className="text-xs text-gray-500">#{player.jerseyNumber}</span></span>
+                  <span className="font-bold text-red-600">{count}</span>
+                </li>
+              ))}
+            </ul>
+          </div>
+          <div className="bg-white rounded-xl shadow-md p-6">
+            <h3 className="text-lg font-semibold text-gray-800 mb-4 flex items-center gap-2">
+              <UserCheck className="w-5 h-5 text-green-600" />
+              Più subentrati
+            </h3>
+            <ul className="space-y-2">
+              {mostSubbedIn.map(({player,count}) => player && (
+                <li key={player.id} className="flex justify-between items-center">
+                  <span>{player.firstName} {player.lastName} <span className="text-xs text-gray-500">#{player.jerseyNumber}</span></span>
+                  <span className="font-bold text-green-600">{count}</span>
+                </li>
+              ))}
+            </ul>
+          </div>
+        </div>
+      </div>
+      {/* Statistiche per ruolo */}
+      <div>
+        <h2 className="text-2xl font-bold text-gray-800 mb-6 flex items-center gap-2">
+          <BarChart2 className="w-6 h-6 text-purple-600" />
+          Statistiche per Ruolo
+        </h2>
+        <div className="overflow-x-auto">
+          <table className="min-w-full bg-white rounded-xl shadow-md">
+            <thead>
+              <tr className="bg-gray-100">
+                <th className="px-4 py-2 text-left">Ruolo</th>
+                <th className="px-4 py-2 text-center">Goal</th>
+                <th className="px-4 py-2 text-center">Presenze</th>
+                <th className="px-4 py-2 text-center">Gialli</th>
+                <th className="px-4 py-2 text-center">Rossi</th>
+              </tr>
+            </thead>
+            <tbody>
+              {Object.entries(roleStats).map(([role, stats]) => (
+                <tr key={role} className="border-b">
+                  <td className="px-4 py-2 font-medium">{role}</td>
+                  <td className="px-4 py-2 text-center">{stats.goals}</td>
+                  <td className="px-4 py-2 text-center">{stats.matches}</td>
+                  <td className="px-4 py-2 text-center">{stats.yellows}</td>
+                  <td className="px-4 py-2 text-center">{stats.reds}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
       </div>
     </div>
   );
