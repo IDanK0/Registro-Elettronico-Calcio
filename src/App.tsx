@@ -411,7 +411,7 @@ function App() {
             <div>
               <GoalCounter
                 teamName={"Nostra Squadra"}
-                score={managingMatch.homeScore}
+                score={managingMatch.homeAway === 'home' ? managingMatch.homeScore : managingMatch.awayScore}
                 onIncrement={handleHomeGoal}
                 onDecrement={handleHomeGoalRemove}
                 disabled={managingMatch.status === 'scheduled' || managingMatch.status === 'finished' || !selectedHomeScorer}
@@ -432,7 +432,7 @@ function App() {
             <div>
               <GoalCounter
                 teamName={managingMatch.opponent}
-                score={managingMatch.awayScore}
+                score={managingMatch.homeAway === 'home' ? managingMatch.awayScore : managingMatch.homeScore}
                 onIncrement={handleAwayGoal}
                 onDecrement={handleAwayGoalRemove}
                 disabled={managingMatch.status === 'scheduled' || managingMatch.status === 'finished' || !selectedAwayScorer}
@@ -618,15 +618,19 @@ function App() {
     return -1;
   };
 
-  // Gestione goal (UI e logica identica per casa e trasferta: la nostra squadra è sempre a sinistra, l'avversario a destra)
+  // Gestione goal (logica corretta per casa e trasferta)
   const handleHomeGoal = () => {
     if (!managingMatch) return;
     const scorerId = selectedHomeScorer;
     const nowSeconds = timer.time;
     if (!scorerId) return;
+    
+    // Se giochiamo in casa, i nostri goal vanno in homeScore
+    // Se giochiamo in trasferta, i nostri goal vanno in awayScore
     const updatedMatch = {
       ...managingMatch,
-      homeScore: managingMatch.homeScore + 1,
+      homeScore: managingMatch.homeAway === 'home' ? managingMatch.homeScore + 1 : managingMatch.homeScore,
+      awayScore: managingMatch.homeAway === 'away' ? managingMatch.awayScore + 1 : managingMatch.awayScore,
       events: [
         ...managingMatch.events,
         {
@@ -649,9 +653,13 @@ function App() {
     const jerseyNumber = selectedAwayScorer;
     const nowSeconds = timer.time;
     if (!jerseyNumber) return;
+    
+    // Se giochiamo in casa, i goal avversari vanno in awayScore
+    // Se giochiamo in trasferta, i goal avversari vanno in homeScore
     const updatedMatch = {
       ...managingMatch,
-      awayScore: managingMatch.awayScore + 1,
+      homeScore: managingMatch.homeAway === 'away' ? managingMatch.homeScore + 1 : managingMatch.homeScore,
+      awayScore: managingMatch.homeAway === 'home' ? managingMatch.awayScore + 1 : managingMatch.awayScore,
       events: [
         ...managingMatch.events,
         {
@@ -670,15 +678,22 @@ function App() {
   };
 
   const handleHomeGoalRemove = () => {
-    if (!managingMatch || managingMatch.homeScore <= 0) return;
+    if (!managingMatch) return;
+    
+    // Controlla il punteggio corretto basato su dove giochiamo
+    const ourCurrentScore = managingMatch.homeAway === 'home' ? managingMatch.homeScore : managingMatch.awayScore;
+    if (ourCurrentScore <= 0) return;
+    
     const events = [...managingMatch.events];
     const lastGoalIndex = findLastIndex(events, e => e.type === 'goal' && e.description?.includes('(nostro)'));
     if (lastGoalIndex !== -1) {
       events.splice(lastGoalIndex, 1);
     }
+    
     const updatedMatch = {
       ...managingMatch,
-      homeScore: managingMatch.homeScore - 1,
+      homeScore: managingMatch.homeAway === 'home' ? managingMatch.homeScore - 1 : managingMatch.homeScore,
+      awayScore: managingMatch.homeAway === 'away' ? managingMatch.awayScore - 1 : managingMatch.awayScore,
       events
     };
     setManagingMatch(updatedMatch);
@@ -687,15 +702,22 @@ function App() {
   };
 
   const handleAwayGoalRemove = () => {
-    if (!managingMatch || managingMatch.awayScore <= 0) return;
+    if (!managingMatch) return;
+    
+    // Controlla il punteggio avversario corretto basato su dove giochiamo
+    const theirCurrentScore = managingMatch.homeAway === 'home' ? managingMatch.awayScore : managingMatch.homeScore;
+    if (theirCurrentScore <= 0) return;
+    
     const events = [...managingMatch.events];
     const lastGoalIndex = findLastIndex(events, e => e.type === 'goal' && e.description?.includes('avversario'));
     if (lastGoalIndex !== -1) {
       events.splice(lastGoalIndex, 1);
     }
+    
     const updatedMatch = {
       ...managingMatch,
-      awayScore: managingMatch.awayScore - 1,
+      homeScore: managingMatch.homeAway === 'away' ? managingMatch.homeScore - 1 : managingMatch.homeScore,
+      awayScore: managingMatch.homeAway === 'home' ? managingMatch.awayScore - 1 : managingMatch.awayScore,
       events
     };
     setManagingMatch(updatedMatch);
