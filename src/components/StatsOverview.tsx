@@ -281,229 +281,148 @@ export function StatsOverview({ players, matches, trainings, playerStats }: Stat
   } as const;
 
   return (
-    <div className="space-y-8">
-      {/* Pulsante esportazione globale: rimosso per spostamento nell'header */}
-
-      {/* Statistiche Generali */}
-      <div>
-        <h2 className="text-2xl font-bold text-gray-800 mb-6 flex items-center gap-2">
+    <div className="space-y-10">
+      {/* Panoramica Generale */}
+      <section>
+        <h2 className="text-xl md:text-2xl font-extrabold text-gray-800 mb-4 flex items-center gap-2">
           <BarChart3 className="w-6 h-6 text-blue-600" />
           Panoramica Generale
         </h2>
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-          <StatCard
-            icon={Users}
-            title="Giocatori Attivi"
-            value={players.filter(p => p.isActive).length}
-            color="bg-blue-600"
-          />
-          <StatCard
-            icon={Target}
-            title="Partite Giocate"
-            value={finishedMatches.length}
-            color="bg-green-600"
-          />
-          <StatCard
-            icon={Calendar}
-            title="Allenamenti"
-            value={trainings.length}
-            subtitle={`${avgAttendance.toFixed(0)}% presenza media`}
-            color="bg-purple-600"
-          />
-          <StatCard
-            icon={Trophy}
-            title="Vittorie"
-            value={wins}
-            subtitle={`${draws}P ${losses}S`}
-            color="bg-yellow-600"
-          />
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-4 md:gap-6">
+          <StatCard icon={Users} title="Giocatori Attivi" value={players.filter(p => p.isActive).length} color="bg-blue-600" />
+          <StatCard icon={Target} title="Partite Giocate" value={finishedMatches.length} color="bg-green-600" />
+          <StatCard icon={Calendar} title="Allenamenti" value={trainings.length} subtitle={`${avgAttendance.toFixed(0)}% presenza media`} color="bg-purple-600" />
+          <StatCard icon={Trophy} title="Vittorie" value={wins} subtitle={`${draws}P ${losses}S`} color="bg-yellow-600" />
         </div>
-      </div>
+      </section>
 
       {/* Statistiche Partite */}
       {finishedMatches.length > 0 && (
-        <div>
-          <h2 className="text-2xl font-bold text-gray-800 mb-6 flex items-center gap-2">
+        <section>
+          <h2 className="text-xl md:text-2xl font-extrabold text-gray-800 mb-4 flex items-center gap-2">
             <Target className="w-6 h-6 text-red-600" />
             Statistiche Partite
           </h2>
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-            <div className="bg-white rounded-xl shadow-md p-6">
-              <h3 className="text-lg font-semibold text-gray-800 mb-4">Risultati</h3>
-              <div className="space-y-3">
-                <div className="flex justify-between items-center">
-                  <span className="text-green-600 font-medium">Vittorie</span>
-                  <span className="text-2xl font-bold text-green-600">{wins}</span>
-                </div>
-                <div className="flex justify-between items-center">
-                  <span className="text-yellow-600 font-medium">Pareggi</span>
-                  <span className="text-2xl font-bold text-yellow-600">{draws}</span>
-                </div>
-                <div className="flex justify-between items-center">
-                  <span className="text-red-600 font-medium">Sconfitte</span>
-                  <span className="text-2xl font-bold text-red-600">{losses}</span>
-                </div>
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4 md:gap-6">
+            <div className="bg-white rounded-xl shadow p-4 md:p-6 flex flex-col gap-2">
+              <h3 className="text-base font-semibold text-gray-800 mb-2">Risultati</h3>
+              <div className="flex flex-col gap-1">
+                <div className="flex justify-between items-center"><span className="text-green-600 font-medium">Vittorie</span><span className="font-bold text-green-600">{wins}</span></div>
+                <div className="flex justify-between items-center"><span className="text-yellow-600 font-medium">Pareggi</span><span className="font-bold text-yellow-600">{draws}</span></div>
+                <div className="flex justify-between items-center"><span className="text-red-600 font-medium">Sconfitte</span><span className="font-bold text-red-600">{losses}</span></div>
               </div>
             </div>
-
-            <div className="bg-white rounded-xl shadow-md p-6">
-              <h3 className="text-lg font-semibold text-gray-800 mb-4">Gol</h3>
-              <div className="space-y-3">
-                <div className="flex justify-between items-center">
-                  <span className="text-blue-600 font-medium">Fatti</span>
-                  <span className="text-2xl font-bold text-blue-600">{totalGoalsFor}</span>
-                </div>
-                <div className="flex justify-between items-center">
-                  <span className="text-red-600 font-medium">Subiti</span>
-                  <span className="text-2xl font-bold text-red-600">{totalGoalsAgainst}</span>
-                </div>
-                <div className="flex justify-between items-center">
-                  <span className="text-gray-600 font-medium">Differenza</span>
-                  <span className={`text-2xl font-bold ${
-                    totalGoalsFor - totalGoalsAgainst > 0 ? 'text-green-600' : 
-                    totalGoalsFor - totalGoalsAgainst < 0 ? 'text-red-600' : 'text-gray-600'
-                  }`}>
-                    {totalGoalsFor - totalGoalsAgainst > 0 ? '+' : ''}{totalGoalsFor - totalGoalsAgainst}
-                  </span>
-                </div>
+            <div className="bg-white rounded-xl shadow p-4 md:p-6 flex flex-col gap-2">
+              <h3 className="text-base font-semibold text-gray-800 mb-2">Gol</h3>
+              <div className="flex flex-col gap-1">
+                <div className="flex justify-between items-center"><span className="text-blue-600 font-medium">Fatti</span><span className="font-bold text-blue-600">{totalGoalsFor}</span></div>
+                <div className="flex justify-between items-center"><span className="text-red-600 font-medium">Subiti</span><span className="font-bold text-red-600">{totalGoalsAgainst}</span></div>
+                <div className="flex justify-between items-center"><span className="text-gray-600 font-medium">Differenza</span><span className={`font-bold ${totalGoalsFor-totalGoalsAgainst>0?'text-green-600':totalGoalsFor-totalGoalsAgainst<0?'text-red-600':'text-gray-600'}`}>{totalGoalsFor-totalGoalsAgainst>0?'+':''}{totalGoalsFor-totalGoalsAgainst}</span></div>
               </div>
             </div>
-
-            <div className="bg-white rounded-xl shadow-md p-6">
-              <h3 className="text-lg font-semibold text-gray-800 mb-4">Medie</h3>
-              <div className="space-y-3">
-                <div className="flex justify-between items-center">
-                  <span className="text-blue-600 font-medium">Gol/Partita</span>
-                  <span className="text-2xl font-bold text-blue-600">
-                    {finishedMatches.length > 0 ? (totalGoalsFor / finishedMatches.length).toFixed(1) : '0.0'}
-                  </span>
-                </div>
-                <div className="flex justify-between items-center">
-                  <span className="text-red-600 font-medium">Subiti/Partita</span>
-                  <span className="text-2xl font-bold text-red-600">
-                    {finishedMatches.length > 0 ? (totalGoalsAgainst / finishedMatches.length).toFixed(1) : '0.0'}
-                  </span>
-                </div>
+            <div className="bg-white rounded-xl shadow p-4 md:p-6 flex flex-col gap-2">
+              <h3 className="text-base font-semibold text-gray-800 mb-2">Medie</h3>
+              <div className="flex flex-col gap-1">
+                <div className="flex justify-between items-center"><span className="text-blue-600 font-medium">Gol/Partita</span><span className="font-bold text-blue-600">{finishedMatches.length > 0 ? (totalGoalsFor / finishedMatches.length).toFixed(1) : '0.0'}</span></div>
+                <div className="flex justify-between items-center"><span className="text-red-600 font-medium">Subiti/Partita</span><span className="font-bold text-red-600">{finishedMatches.length > 0 ? (totalGoalsAgainst / finishedMatches.length).toFixed(1) : '0.0'}</span></div>
               </div>
             </div>
           </div>
           {/* Grafico goal segnati e subiti per partita */}
           {matchesOfYear.length > 0 && (
-            <div className="bg-white rounded-xl shadow-md p-8 mt-8 relative">
+            <div className="bg-white rounded-xl shadow p-4 md:p-8 mt-6 relative">
               <div className="flex items-center gap-2 mb-2">
-                <span className="font-bold text-blue-700 text-lg">Goal segnati e subiti per partita ({selectedYear})</span>
+                <span className="font-bold text-blue-700 text-base md:text-lg">Goal segnati e subiti per partita ({selectedYear})</span>
                 <span data-tooltip-id="goals-tip" className="ml-1 cursor-pointer"><Info className="w-4 h-4 text-gray-400" /></span>
                 <ReactTooltip id="goals-tip" place="top" content="Numero di goal segnati e subiti per ciascuna partita, asse X = ordine cronologico delle partite." />
               </div>
               <Line data={goalsChartDataSingle} options={goalsChartOptionsSingle} height={120} />
             </div>
           )}
-        </div>
+        </section>
       )}
 
       {/* Top Players */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
-        {/* Capocannonieri */}
-        {topScorers.length > 0 && (
-          <div className="bg-white rounded-xl shadow-md p-6">
-            <h3 className="text-lg font-semibold text-gray-800 mb-4 flex items-center gap-2">
-              <Award className="w-5 h-5 text-yellow-600" />
-              Capocannonieri
-            </h3>
-            <div className="space-y-3">
-              {topScorers.map((item, index) => (
-                <div key={item.playerId} className="flex justify-between items-center">
-                  <div className="flex items-center gap-3">
-                    <span className={`w-6 h-6 rounded-full flex items-center justify-center text-xs font-bold ${
-                      index === 0 ? 'bg-yellow-500 text-white' :
-                      index === 1 ? 'bg-gray-400 text-white' :
-                      index === 2 ? 'bg-yellow-700 text-white' :
-                      'bg-gray-200 text-gray-600'
-                    }`}>
-                      {index + 1}
-                    </span>
-                    <div>
-                      <span className="font-medium text-gray-800">
-                        {item.player?.firstName} {item.player?.lastName}
-                      </span>
-                      <p className="text-xs text-gray-500">#{item.player?.jerseyNumber}</p>
+      <section>
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4 md:gap-8">
+          {/* Capocannonieri */}
+          {topScorers.length > 0 && (
+            <div className="bg-white rounded-xl shadow p-4 md:p-6">
+              <h3 className="text-base font-semibold text-gray-800 mb-3 flex items-center gap-2">
+                <Award className="w-5 h-5 text-yellow-600" />
+                Capocannonieri
+              </h3>
+              <ul className="space-y-2">
+                {topScorers.map((item, index) => (
+                  <li key={item.playerId} className="flex justify-between items-center">
+                    <div className="flex items-center gap-3">
+                      <span className={`w-7 h-7 rounded-full flex items-center justify-center text-xs font-bold ring-2 ring-white shadow ${index===0?'bg-yellow-500 text-white':index===1?'bg-gray-400 text-white':index===2?'bg-yellow-700 text-white':'bg-gray-200 text-gray-600'}`}>{index+1}</span>
+                      <div>
+                        <span className="font-medium text-gray-800">{item.player?.firstName} {item.player?.lastName}</span>
+                        <span className="ml-2 text-xs text-gray-500">#{item.player?.jerseyNumber}</span>
+                      </div>
                     </div>
-                  </div>
-                  <span className="text-xl font-bold text-blue-600">{item.goals}</span>
-                </div>
-              ))}
+                    <span className="text-lg font-bold text-blue-600">{item.goals}</span>
+                  </li>
+                ))}
+              </ul>
             </div>
-          </div>
-        )}
-
-        {/* Giocatori più attivi */}
-        {mostActivePlaybers.length > 0 && (
-          <div className="bg-white rounded-xl shadow-md p-6">
-            <h3 className="text-lg font-semibold text-gray-800 mb-4 flex items-center gap-2">
-              <TrendingUp className="w-5 h-5 text-green-600" />
-              Più Presenti
-            </h3>
-            <div className="space-y-3">
-              {mostActivePlaybers.map((item, index) => (
-                <div key={item.playerId} className="flex justify-between items-center">
-                  <div className="flex items-center gap-3">
-                    <span className={`w-6 h-6 rounded-full flex items-center justify-center text-xs font-bold ${
-                      index === 0 ? 'bg-green-500 text-white' :
-                      index === 1 ? 'bg-blue-500 text-white' :
-                      index === 2 ? 'bg-purple-500 text-white' :
-                      'bg-gray-200 text-gray-600'
-                    }`}>
-                      {index + 1}
-                    </span>
-                    <div>
-                      <span className="font-medium text-gray-800">
-                        {item.player?.firstName} {item.player?.lastName}
-                      </span>
-                      <p className="text-xs text-gray-500">
-                        Presenza allenamenti: {item.totalTrainings > 0 ? Math.round((item.trainingAttendance / item.totalTrainings) * 100) : 0}%
-                      </p>
+          )}
+          {/* Giocatori più attivi */}
+          {mostActivePlaybers.length > 0 && (
+            <div className="bg-white rounded-xl shadow p-4 md:p-6">
+              <h3 className="text-base font-semibold text-gray-800 mb-3 flex items-center gap-2">
+                <TrendingUp className="w-5 h-5 text-green-600" />
+                Più Presenti
+              </h3>
+              <ul className="space-y-2">
+                {mostActivePlaybers.map((item, index) => (
+                  <li key={item.playerId} className="flex justify-between items-center">
+                    <div className="flex items-center gap-3">
+                      <span className={`w-7 h-7 rounded-full flex items-center justify-center text-xs font-bold ring-2 ring-white shadow ${index===0?'bg-green-500 text-white':index===1?'bg-blue-500 text-white':index===2?'bg-purple-500 text-white':'bg-gray-200 text-gray-600'}`}>{index+1}</span>
+                      <div>
+                        <span className="font-medium text-gray-800">{item.player?.firstName} {item.player?.lastName}</span>
+                        <span className="ml-2 text-xs text-gray-500">#{item.player?.jerseyNumber}</span>
+                      </div>
                     </div>
-                  </div>
-                  <span className="text-xl font-bold text-green-600">{item.matchesPlayed}</span>
-                </div>
-              ))}
+                    <span className="text-lg font-bold text-green-600">{item.matchesPlayed}</span>
+                  </li>
+                ))}
+              </ul>
             </div>
-          </div>
-        )}
-      </div>
+          )}
+        </div>
+      </section>
 
-      {/* Statistiche Avanzate */}
-      <div>
-        <h2 className="text-2xl font-bold text-gray-800 mb-6 flex items-center gap-2">
+      {/* Fair Play & Sostituzioni */}
+      <section>
+        <h2 className="text-xl md:text-2xl font-extrabold text-gray-800 mb-4 flex items-center gap-2">
           <Shield className="w-6 h-6 text-yellow-600" />
           Fair Play & Sostituzioni
         </h2>
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-          <StatCard
-            icon={Shield}
-            title="Ammonizioni"
-            value={totalYellows}
-            subtitle={`Media: ${avgCardsPerMatch}/partita`}
-            color="bg-yellow-400"
-          />
-          <StatCard
-            icon={Shield}
-            title="Espulsioni"
-            value={totalReds}
-            subtitle={totalReds > 0 ? `Totale: ${totalReds}` : undefined}
-            color="bg-red-600"
-          />
-          <StatCard
-            icon={Repeat}
-            title="Sostituzioni"
-            value={totalSubs}
-            subtitle={`Media: ${avgSubsPerMatch}/partita`}
-            color="bg-blue-400"
-          />
+        <div className="flex justify-between gap-4 mb-6">
+          <div className="flex-1 bg-white rounded-xl shadow p-6 flex flex-col items-center justify-center">
+            <Shield className="w-8 h-8 text-yellow-400 mb-2" />
+            <span className="text-3xl font-bold text-yellow-600">{totalYellows}</span>
+            <span className="text-sm text-gray-600 mt-1">Ammonizioni</span>
+            <span className="text-xs text-gray-500 mt-0.5">Media: {avgCardsPerMatch}/partita</span>
+          </div>
+          <div className="flex-1 bg-white rounded-xl shadow p-6 flex flex-col items-center justify-center">
+            <Shield className="w-8 h-8 text-red-600 mb-2" />
+            <span className="text-3xl font-bold text-red-600">{totalReds}</span>
+            <span className="text-sm text-gray-600 mt-1">Espulsioni</span>
+            {totalReds > 0 && <span className="text-xs text-gray-500 mt-0.5">Totale: {totalReds}</span>}
+          </div>
+          <div className="flex-1 bg-white rounded-xl shadow p-6 flex flex-col items-center justify-center">
+            <Repeat className="w-8 h-8 text-blue-400 mb-2" />
+            <span className="text-3xl font-bold text-blue-400">{totalSubs}</span>
+            <span className="text-sm text-gray-600 mt-1">Sostituzioni</span>
+            <span className="text-xs text-gray-500 mt-0.5">Media: {avgSubsPerMatch}/partita</span>
+          </div>
         </div>
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mt-6">
-          <div className="bg-white rounded-xl shadow-md p-6">
-            <h3 className="text-lg font-semibold text-gray-800 mb-4 flex items-center gap-2">
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4 md:gap-6 mt-6">
+          <div className="bg-white rounded-xl shadow p-4 md:p-6">
+            <h3 className="text-base font-semibold text-gray-800 mb-3 flex items-center gap-2">
               <UserCheck className="w-5 h-5 text-blue-600" />
               Più sostituiti
             </h3>
@@ -516,8 +435,8 @@ export function StatsOverview({ players, matches, trainings, playerStats }: Stat
               ))}
             </ul>
           </div>
-          <div className="bg-white rounded-xl shadow-md p-6">
-            <h3 className="text-lg font-semibold text-gray-800 mb-4 flex items-center gap-2">
+          <div className="bg-white rounded-xl shadow p-4 md:p-6">
+            <h3 className="text-base font-semibold text-gray-800 mb-3 flex items-center gap-2">
               <UserCheck className="w-5 h-5 text-green-600" />
               Più subentrati
             </h3>
@@ -531,17 +450,18 @@ export function StatsOverview({ players, matches, trainings, playerStats }: Stat
             </ul>
           </div>
         </div>
-      </div>
+      </section>
+
       {/* Statistiche per ruolo */}
-      <div>
-        <h2 className="text-2xl font-bold text-gray-800 mb-6 flex items-center gap-2">
+      <section>
+        <h2 className="text-xl md:text-2xl font-extrabold text-gray-800 mb-4 flex items-center gap-2">
           <BarChart2 className="w-6 h-6 text-purple-600" />
           Statistiche per Ruolo
         </h2>
         <div className="overflow-x-auto">
-          <table className="min-w-full bg-white rounded-xl shadow-md">
-            <thead>
-              <tr className="bg-gray-100">
+          <table className="min-w-full bg-white rounded-xl shadow-md text-sm">
+            <thead className="sticky top-0 z-10 bg-gray-100">
+              <tr>
                 <th className="px-4 py-2 text-left">Ruolo</th>
                 <th className="px-4 py-2 text-center">Goal</th>
                 <th className="px-4 py-2 text-center">Presenze</th>
@@ -550,8 +470,8 @@ export function StatsOverview({ players, matches, trainings, playerStats }: Stat
               </tr>
             </thead>
             <tbody>
-              {Object.entries(roleStats).map(([role, stats]) => (
-                <tr key={role} className="border-b">
+              {Object.entries(roleStats).map(([role, stats], idx) => (
+                <tr key={role} className={idx%2===0?"bg-white":"bg-gray-50"}>
                   <td className="px-4 py-2 font-medium">{role}</td>
                   <td className="px-4 py-2 text-center">{stats.goals}</td>
                   <td className="px-4 py-2 text-center">{stats.matches}</td>
@@ -562,7 +482,7 @@ export function StatsOverview({ players, matches, trainings, playerStats }: Stat
             </tbody>
           </table>
         </div>
-      </div>
+      </section>
     </div>
   );
 }
