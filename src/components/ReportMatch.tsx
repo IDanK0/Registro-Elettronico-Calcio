@@ -1,5 +1,7 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { Match, Player } from '../types';
+import { Download, FileText } from 'lucide-react';
+import { jsPDF } from 'jspdf';
 
 interface ReportMatchProps {
   match: Match;
@@ -8,15 +10,220 @@ interface ReportMatchProps {
 }
 
 export function ReportMatch({ match, players, onClose }: ReportMatchProps) {
-  // Trova i giocatori titolari
+  const [showExportMenu, setShowExportMenu] = useState(false);
   const lineupPlayers = players.filter(p => match.lineup.includes(p.id));
-
-  // Eventi
   const goals = match.events.filter(e => e.type === 'goal');
   const cards = match.events.filter(e => [
     'yellow-card','red-card','second-yellow-card','blue-card','expulsion','warning'
   ].includes(e.type));
   const substitutions = match.substitutions;
+
+  // --- PDF ---
+  const exportPDF = () => {
+    const doc = new jsPDF({ unit: 'pt', format: 'a4' });
+    const pageWidth = doc.internal.pageSize.getWidth();
+    let y = 48;
+    // Titolo grande e centrato
+    doc.setFont('helvetica', 'bold');
+    doc.setFontSize(32);
+    doc.setTextColor(30, 64, 175);
+    doc.text('Report Partita', pageWidth / 2, y, { align: 'center' });
+    y += 32;
+
+    // Box info partita elegante e allineato
+    doc.setFillColor(239, 246, 255); // bg-blue-50
+    doc.setDrawColor(191, 219, 254); // border-blue-200
+    const infoBoxX = 60;
+    const infoBoxY = y;
+    const infoBoxW = pageWidth - 120;
+    const infoBoxH = 80;
+    doc.roundedRect(infoBoxX, infoBoxY, infoBoxW, infoBoxH, 16, 16, 'FD');
+    // Etichette e valori su due colonne
+    doc.setFont('helvetica', 'normal');
+    doc.setFontSize(14);
+    doc.setTextColor(55, 65, 81);
+    const labelX = infoBoxX + 24;
+    const valueX = labelX + 90;
+    const row1Y = infoBoxY + 32;
+    const row2Y = infoBoxY + 54;
+    doc.text('Data:', labelX, row1Y);
+    doc.text(match.date, valueX, row1Y);
+    doc.text('Avversario:', labelX, row2Y);
+    doc.text(match.opponent, valueX, row2Y);
+    // Seconda colonna (Tipo)
+    const label2X = labelX + 240;
+    doc.text('Tipo:', label2X, row1Y);
+    doc.text(match.homeAway === 'home' ? 'Casa' : 'Trasferta', label2X + 50, row1Y);
+    // Risultato allineato come gli altri
+    doc.setFont('helvetica', 'bold');
+    doc.setFontSize(14);
+    doc.setTextColor(37, 99, 235);
+    doc.text('Risultato:', label2X, row2Y);
+    doc.text(`${match.homeAway === 'home' ? match.homeScore : match.awayScore} - ${match.homeAway === 'home' ? match.awayScore : match.homeScore}`, label2X + 65, row2Y);
+    y += infoBoxH + 32; // Maggiore distanza tra box e formazione titolare
+
+    // --- Formazione Titolare ---
+    doc.setFont('helvetica', 'bold');
+    doc.setFontSize(18);
+    doc.setTextColor(30, 64, 175);
+    doc.text('Formazione Titolare', 70, y);
+    y += 10;
+    doc.setDrawColor(191, 219, 254);
+    doc.setLineWidth(1);
+    doc.line(70, y + 4, pageWidth - 70, y + 4);
+    y += 20; // Maggiore spaziatura
+    let col = 0;
+    doc.setFont('helvetica', 'normal');
+    doc.setFontSize(13);
+    lineupPlayers.forEach((p) => {
+      const badgeX = 70 + (col * 250);
+      doc.setFillColor(191, 219, 254);
+      doc.setDrawColor(147, 197, 253);
+      doc.roundedRect(badgeX, y - 12, 32, 32, 16, 16, 'FD');
+      doc.setFont('helvetica', 'bold');
+      doc.setFontSize(15);
+      doc.setTextColor(30, 64, 175);
+      doc.text(String(p.jerseyNumber), badgeX + 16, y + 8, { align: 'center' });
+      doc.setFont('helvetica', 'normal');
+      doc.setFontSize(13);
+      doc.setTextColor(30, 41, 59);
+      doc.text(`${p.firstName} ${p.lastName} `, badgeX + 44, y + 7);
+      doc.setFontSize(11);
+      doc.setTextColor(107, 114, 128);
+      doc.text(`(${p.position})`, badgeX + 160, y + 7);
+      col++;
+      if (col === 2) {
+        col = 0;
+        y += 44; // Maggiore spaziatura
+      }
+    });
+    if (col === 1) y += 44;
+    else y += 12;
+    y += 18;
+
+    // --- Goal ---
+    doc.setFont('helvetica', 'bold');
+    doc.setFontSize(16);
+    doc.setTextColor(22, 163, 74);
+    doc.text('Goal', 70, y);
+    y += 12;
+    doc.setDrawColor(187, 247, 208);
+    doc.setLineWidth(0.7);
+    doc.line(70, y + 4, pageWidth - 70, y + 4);
+    y += 20;
+    if (goals.length === 0) {
+      doc.setFont('helvetica', 'normal');
+      doc.setFontSize(12);
+      doc.setTextColor(156, 163, 175);
+      doc.text('Nessun goal', 90, y);
+      y += 26;
+    } else {
+      goals.forEach(g => {
+        const isOpponent = g.description?.includes('avversario');
+        doc.setFillColor(isOpponent ? 254 : 220, isOpponent ? 202 : 232, isOpponent ? 202 : 232);
+        doc.setDrawColor(isOpponent ? 252 : 187, isOpponent ? 165 : 247, isOpponent ? 165 : 208);
+        doc.roundedRect(90, y - 10, 36, 24, 12, 12, 'FD');
+        doc.setFont('helvetica', 'bold');
+        doc.setFontSize(13);
+        doc.setTextColor(isOpponent ? 220 : 22, isOpponent ? 38 : 163, isOpponent ? 38 : 74);
+        doc.text(`${g.minute}${g.second !== undefined ? ':' + g.second.toString().padStart(2, '0') : ''}`, 108, y + 6, { align: 'center' });
+        doc.setFont('helvetica', 'normal');
+        doc.setFontSize(13);
+        doc.setTextColor(30, 41, 59);
+        doc.text(g.description ?? '', 134, y + 6);
+        y += 36;
+      });
+    }
+    y += 8;
+
+    // --- Ammonizioni / Espulsioni ---
+    doc.setFont('helvetica', 'bold');
+    doc.setFontSize(16);
+    doc.setTextColor(202, 138, 4);
+    doc.text('Ammonizioni / Espulsioni', 70, y);
+    y += 12;
+    doc.setDrawColor(254, 243, 199);
+    doc.setLineWidth(0.7);
+    doc.line(70, y + 4, pageWidth - 70, y + 4);
+    y += 20;
+    if (cards.length === 0) {
+      doc.setFont('helvetica', 'normal');
+      doc.setFontSize(12);
+      doc.setTextColor(156, 163, 175);
+      doc.text('Nessuna', 90, y);
+      y += 26;
+    } else {
+      cards.forEach(c => {
+        let color: [number, number, number] = [202, 138, 4];
+        let bg: [number, number, number] = [254, 243, 199];
+        let border: [number, number, number] = [253, 230, 138];
+        if (c.type === 'yellow-card') { color = [202, 138, 4]; bg = [254, 243, 199]; border = [253, 230, 138]; }
+        else if (c.type === 'red-card') { color = [220, 38, 38]; bg = [254, 202, 202]; border = [252, 165, 165]; }
+        else if (c.type === 'second-yellow-card') { color = [251, 146, 60]; bg = [255, 237, 213]; border = [253, 186, 116]; }
+        else if (c.type === 'blue-card') { color = [37, 99, 235]; bg = [191, 219, 254]; border = [147, 197, 253]; }
+        else if (c.type === 'expulsion') { color = [55, 65, 81]; bg = [229, 231, 235]; border = [209, 213, 219]; }
+        else if (c.type === 'warning') { color = [202, 138, 4]; bg = [254, 243, 199]; border = [253, 230, 138]; }
+        doc.setFillColor(...bg);
+        doc.setDrawColor(...border);
+        doc.roundedRect(90, y - 10, 36, 24, 12, 12, 'FD');
+        doc.setFont('helvetica', 'bold');
+        doc.setFontSize(13);
+        doc.setTextColor(...color);
+        doc.text(`${c.minute}${c.second !== undefined ? ':' + c.second.toString().padStart(2, '0') : ''}`, 108, y + 6, { align: 'center' });
+        doc.setFont('helvetica', 'normal');
+        doc.setFontSize(13);
+        doc.setTextColor(30, 41, 59);
+        doc.text(c.description ?? '', 134, y + 6);
+        y += 36;
+      });
+    }
+    y += 8;
+
+    // --- Sostituzioni ---
+    doc.setFont('helvetica', 'bold');
+    doc.setFontSize(16);
+    doc.setTextColor(37, 99, 235);
+    doc.text('Sostituzioni', 70, y);
+    y += 12;
+    doc.setDrawColor(191, 219, 254);
+    doc.setLineWidth(0.7);
+    doc.line(70, y + 4, pageWidth - 70, y + 4);
+    y += 20;
+    if (substitutions.length === 0) {
+      doc.setFont('helvetica', 'normal');
+      doc.setFontSize(12);
+      doc.setTextColor(156, 163, 175);
+      doc.text('Nessuna', 90, y);
+      y += 26;
+    } else {
+      substitutions.forEach((s: any) => {
+        doc.setFillColor(191, 219, 254);
+        doc.setDrawColor(147, 197, 253);
+        doc.roundedRect(90, y - 10, 36, 24, 12, 12, 'FD');
+        doc.setFont('helvetica', 'bold');
+        doc.setFontSize(13);
+        doc.setTextColor(37, 99, 235);
+        doc.text(`${s.minute}${s.second !== undefined ? ':' + s.second.toString().padStart(2, '0') : ''}`, 108, y + 6, { align: 'center' });
+        const out = players.find(p => p.id === s.playerOut);
+        const inP = players.find(p => p.id === s.playerIn);
+        doc.setFont('helvetica', 'normal');
+        doc.setFontSize(13);
+        doc.setTextColor(220, 38, 38);
+        doc.text(`Esce ${out ? out.jerseyNumber + ' ' + out.lastName : s.playerOut}`, 134, y + 6);
+        doc.setTextColor(107, 114, 128);
+        doc.text('-->', 290, y + 6); // Sostituito la freccia con -->
+        doc.setTextColor(22, 163, 74);
+        doc.text(`Entra ${inP ? inP.jerseyNumber + ' ' + inP.lastName : s.playerIn}`, 320, y + 6);
+        y += 36;
+      });
+    }
+    doc.save(`report-partita-${match.date}.pdf`);
+  };
+
+  const handleExport = (format: 'pdf' | 'csv' | 'xlsx') => {
+    setShowExportMenu(false);
+    if (format === 'pdf') exportPDF();
+  };
 
   return (
     <div className="fixed inset-0 bg-black bg-opacity-40 flex items-center justify-center z-50">
@@ -110,7 +317,26 @@ export function ReportMatch({ match, players, onClose }: ReportMatchProps) {
             </ul>
           )}
         </div>
-        <div className="mt-8 text-right">
+        <div className="mt-8 flex justify-end gap-2 items-center">
+          <div className="relative">
+            <button
+              onClick={() => setShowExportMenu(v => !v)}
+              className="flex items-center gap-2 bg-green-600 text-white px-4 py-2 rounded-lg hover:bg-green-700 shadow font-semibold text-lg transition-colors"
+            >
+              <Download className="w-5 h-5" />
+              Esporta
+            </button>
+            {showExportMenu && (
+              <div className="absolute right-0 mt-2 bg-white border border-gray-200 rounded-lg shadow-lg z-10 min-w-[160px]">
+                <button
+                  onClick={() => handleExport('pdf')}
+                  className="flex items-center gap-2 w-full px-4 py-2 hover:bg-blue-50 text-blue-700 text-left"
+                >
+                  <FileText className="w-4 h-4" /> PDF
+                </button>
+              </div>
+            )}
+          </div>
           <button onClick={onClose} className="bg-blue-600 text-white px-6 py-2 rounded-lg hover:bg-blue-700 shadow font-semibold text-lg transition-colors">Chiudi</button>
         </div>
       </div>
