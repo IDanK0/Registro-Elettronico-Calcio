@@ -23,7 +23,34 @@ export function ReportMatch({ match, players, onClose }: ReportMatchProps) {
   const exportPDF = () => {
     const doc = new jsPDF({ unit: 'pt', format: 'a4' });
     const pageWidth = doc.internal.pageSize.getWidth();
-    let y = 48;
+    const pageHeight = doc.internal.pageSize.getHeight();
+    const marginTop = 40;
+    const marginBottom = 40;
+    let y = marginTop;
+    let pageNum = 1;
+
+    // Funzione per disegnare footer con numerazione e timestamp
+    function drawFooter(page: number, totalPages: number) {
+      const footerY = pageHeight - marginBottom + 20;
+      doc.setFont('helvetica', 'normal');
+      doc.setFontSize(10);
+      doc.setTextColor(128);
+      const now = new Date();
+      const timestamp = now.toLocaleString('it-IT');
+      doc.text(`Esportato il ${timestamp}`, 60, footerY);
+      doc.text(`Pagina ${page} di ${totalPages}`, pageWidth - 60, footerY, { align: 'right' });
+    }
+    // Helper per cambio pagina se necessario, senza header
+    function addPageIfNeeded(extraHeight = 0) {
+      if (y + extraHeight > pageHeight - marginBottom) {
+        doc.addPage();
+        pageNum++;
+        y = marginTop; // ripristina y in alto
+      }
+    }
+    // Contenuto PDF come prima, inizio senza header extra
+    y = marginTop;
+
     // Titolo grande e centrato
     doc.setFont('helvetica', 'bold');
     doc.setFontSize(32);
@@ -62,6 +89,7 @@ export function ReportMatch({ match, players, onClose }: ReportMatchProps) {
     doc.text('Risultato:', label2X, row2Y);
     doc.text(`${match.homeAway === 'home' ? match.homeScore : match.awayScore} - ${match.homeAway === 'home' ? match.awayScore : match.homeScore}`, label2X + 65, row2Y);
     y += infoBoxH + 32; // Maggiore distanza tra box e formazione titolare
+    addPageIfNeeded(infoBoxH + 32);
 
     // --- Formazione Titolare ---
     doc.setFont('helvetica', 'bold');
@@ -101,6 +129,7 @@ export function ReportMatch({ match, players, onClose }: ReportMatchProps) {
     if (col === 1) y += 44;
     else y += 12;
     y += 18;
+    addPageIfNeeded(44 + 18);
 
     // --- Goal ---
     doc.setFont('helvetica', 'bold');
@@ -133,9 +162,11 @@ export function ReportMatch({ match, players, onClose }: ReportMatchProps) {
         doc.setTextColor(30, 41, 59);
         doc.text(g.description ?? '', 134, y + 6);
         y += 36;
+        addPageIfNeeded(36);
       });
     }
     y += 8;
+    addPageIfNeeded(8);
 
     // --- Ammonizioni / Espulsioni ---
     doc.setFont('helvetica', 'bold');
@@ -176,9 +207,11 @@ export function ReportMatch({ match, players, onClose }: ReportMatchProps) {
         doc.setTextColor(30, 41, 59);
         doc.text(c.description ?? '', 134, y + 6);
         y += 36;
+        addPageIfNeeded(36);
       });
     }
     y += 8;
+    addPageIfNeeded(8);
 
     // --- Sostituzioni ---
     doc.setFont('helvetica', 'bold');
@@ -216,8 +249,16 @@ export function ReportMatch({ match, players, onClose }: ReportMatchProps) {
         doc.setTextColor(22, 163, 74);
         doc.text(`Entra ${inP ? inP.jerseyNumber + ' ' + inP.lastName : s.playerIn}`, 320, y + 6);
         y += 36;
+        addPageIfNeeded(36);
       });
     }
+    const totalPages = doc.getNumberOfPages();
+    for (let i = 1; i <= totalPages; i++) {
+      doc.setPage(i);
+      drawFooter(i, totalPages);
+    }
+
+    // Salva PDF
     doc.save(`report-partita-${match.date}.pdf`);
   };
 
