@@ -30,6 +30,7 @@ import {
 } from 'lucide-react';
 import { AmmonitionModal } from './components/AmmonitionModal';
 import { ReportMatch } from './components/ReportMatch';
+import { ExportStatsButton } from './components/ExportStatsButton';
 
 type Tab = 'players' | 'trainings' | 'matches' | 'stats';
 type View = 'list' | 'form' | 'manage';
@@ -1014,19 +1015,13 @@ function App() {
                   </p>
                 </div>
               </div>
-              
-              {currentView === 'list' && activeTab !== 'stats' && (
-                <button
-                  onClick={() => setCurrentView('form')}
-                  className="flex items-center gap-2 bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 transition-colors font-medium"
-                >
-                  <Plus className="w-4 h-4" />
-                  Aggiungi {
-                    activeTab === 'players' ? 'Giocatore' :
-                    activeTab === 'trainings' ? 'Allenamento' :
-                    'Partita'
-                  }
-                </button>
+              {/* Pulsante esporta statistiche solo su tab Statistiche */}
+              {currentView === 'list' && activeTab === 'stats' && (
+                <div className="flex-shrink-0">
+                  <ExportStatsButton
+                    playerStats={calculatePlayerStats()}
+                  />
+                </div>
               )}
             </div>
 

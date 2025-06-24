@@ -1,6 +1,19 @@
-import React, { useMemo } from 'react';
+import { useMemo, useState } from 'react';
 import { Player, Match, Training, PlayerStats } from '../types';
-import { Trophy, Target, Users, Calendar, TrendingUp, Award, Clock, BarChart3, BarChart2, FileText, Shield, Repeat, UserCheck } from 'lucide-react';
+import { Trophy, Target, Users, Calendar, TrendingUp, Award, BarChart3, BarChart2, FileText, Shield, Repeat, UserCheck, Info } from 'lucide-react';
+import { Line } from 'react-chartjs-2';
+import {
+  Chart as ChartJS,
+  CategoryScale,
+  LinearScale,
+  PointElement,
+  LineElement,
+  Title,
+  Tooltip,
+  Legend
+} from 'chart.js';
+import { Tooltip as ReactTooltip } from 'react-tooltip';
+import 'react-tooltip/dist/react-tooltip.css';
 
 interface StatsOverviewProps {
   players: Player[];
@@ -8,6 +21,8 @@ interface StatsOverviewProps {
   trainings: Training[];
   playerStats: PlayerStats[];
 }
+
+ChartJS.register(CategoryScale, LinearScale, PointElement, LineElement, Title, Tooltip, Legend);
 
 export function StatsOverview({ players, matches, trainings, playerStats }: StatsOverviewProps) {
   const finishedMatches = matches.filter(m => m.status === 'finished');
@@ -117,6 +132,85 @@ export function StatsOverview({ players, matches, trainings, playerStats }: Stat
     return roles;
   }, [players, playerStats]);
 
+  // --- Trend stagionale: risultati, gol, ammonizioni per partita ---
+  const trendData = useMemo(() => {
+    const sorted = [...finishedMatches].sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime());
+    const labels = sorted.map(m => m.date.replace(/\d{4}-/g, ''));
+    const goalsFor = sorted.map(m => (m.homeAway === 'home' ? m.homeScore : m.awayScore));
+    const goalsAgainst = sorted.map(m => (m.homeAway === 'home' ? m.awayScore : m.homeScore));
+    const cardsPerMatch = sorted.map(m => (m.events ? m.events.filter(e => cardTypes.includes(e.type)).length : 0));
+    const results = sorted.map(m => {
+      const our = m.homeAway === 'home' ? m.homeScore : m.awayScore;
+      const their = m.homeAway === 'home' ? m.awayScore : m.homeScore;
+      if (our > their) return 3;
+      if (our === their) return 1;
+      return 0;
+    });
+    return { labels, goalsFor, goalsAgainst, cardsPerMatch, results };
+  }, [finishedMatches]);
+
+  // Chart.js data
+  const lineChartData = {
+    labels: trendData.labels,
+    datasets: [
+      {
+        label: 'Gol Fatti',
+        data: trendData.goalsFor,
+        borderColor: 'rgb(37, 99, 235)',
+        backgroundColor: 'rgba(37, 99, 235, 0.2)',
+        tension: 0.3,
+      },
+      {
+        label: 'Gol Subiti',
+        data: trendData.goalsAgainst,
+        borderColor: 'rgb(220, 38, 38)',
+        backgroundColor: 'rgba(220, 38, 38, 0.2)',
+        tension: 0.3,
+      },
+      {
+        label: 'Ammonizioni/Partita',
+        data: trendData.cardsPerMatch,
+        borderColor: 'rgb(202, 138, 4)',
+        backgroundColor: 'rgba(202, 138, 4, 0.2)',
+        yAxisID: 'y2',
+        tension: 0.3,
+      },
+      {
+        label: 'Risultato (3=V,1=P,0=S)',
+        data: trendData.results,
+        borderColor: 'rgb(16, 185, 129)',
+        backgroundColor: 'rgba(16, 185, 129, 0.2)',
+        yAxisID: 'y3',
+        tension: 0.1,
+        pointStyle: 'rectRounded',
+      },
+    ],
+  };
+  // Fix Chart.js interaction.mode type (all values must be valid union types)
+  const lineChartOptions = {
+    responsive: true,
+    plugins: {
+      legend: { position: 'top' as const },
+      title: { display: true, text: 'Andamento Stagionale' },
+      tooltip: { mode: 'index' as const, intersect: false },
+    },
+    interaction: { mode: 'nearest' as const, axis: 'x' as const, intersect: false },
+    scales: {
+      y: { beginAtZero: true, title: { display: true, text: 'Gol' } },
+      y2: { beginAtZero: true, position: 'right' as const, grid: { drawOnChartArea: false }, title: { display: true, text: 'Ammonizioni' } },
+      y3: { beginAtZero: true, position: 'right' as const, grid: { drawOnChartArea: false }, min: 0, max: 3, title: { display: true, text: 'Risultato' } },
+    },
+  } as const;
+
+  // --- Esportazione globale ---
+  const [showExport, setShowExport] = useState(false);
+  const handleExportStats = (format: 'pdf' | 'csv' | 'xlsx') => {
+    setShowExport(false);
+    // TODO: implementare esportazione globale delle statistiche (riassunto, trend, tabelle)
+    // Puoi riutilizzare la logica di ReportMatch per esportazione, adattando i dati globali
+    alert('Esportazione '+format+' delle statistiche non ancora implementata.');
+  };
+
   const StatCard = ({ icon: Icon, title, value, subtitle, color }: {
     icon: any;
     title: string;
@@ -138,8 +232,58 @@ export function StatsOverview({ players, matches, trainings, playerStats }: Stat
     </div>
   );
 
+  // --- GRAFICO GOAL PER PARTITA (ORDINE CRONOLOGICO NELL'ANNO SELEZIONATO) ---
+  // Trova l'anno più recente con almeno una partita
+  const allYears = Array.from(new Set(finishedMatches.map(m => new Date(m.date).getFullYear()))).sort((a, b) => b - a);
+  const selectedYear = allYears[0]?.toString();
+  const matchesOfYear = finishedMatches
+    .filter(m => new Date(m.date).getFullYear().toString() === selectedYear)
+    .sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime());
+  const matchLabels = matchesOfYear.map((_, i) => `Partita ${i + 1}`);
+  const goalsForEachMatch = matchesOfYear.map(m => m.homeAway === 'home' ? m.homeScore : m.awayScore);
+  const goalsAgainstEachMatch = matchesOfYear.map(m => m.homeAway === 'home' ? m.awayScore : m.homeScore);
+  const goalsChartDataSingle = {
+    labels: matchLabels,
+    datasets: [
+      {
+        label: 'Goal Fatti',
+        data: goalsForEachMatch,
+        borderColor: 'rgb(37, 99, 235)',
+        backgroundColor: 'rgba(37, 99, 235, 0.2)',
+        tension: 0.3,
+        fill: true,
+        pointRadius: 5,
+        pointBackgroundColor: 'rgb(37, 99, 235)',
+      },
+      {
+        label: 'Goal Subiti',
+        data: goalsAgainstEachMatch,
+        borderColor: 'rgb(220, 38, 38)',
+        backgroundColor: 'rgba(220, 38, 38, 0.2)',
+        tension: 0.3,
+        fill: true,
+        pointRadius: 5,
+        pointBackgroundColor: 'rgb(220, 38, 38)',
+      },
+    ],
+  };
+  const goalsChartOptionsSingle = {
+    responsive: true,
+    plugins: {
+      legend: { position: 'top' as const },
+      title: { display: false },
+      tooltip: { mode: 'index' as const, intersect: false },
+    },
+    interaction: { mode: 'nearest' as const, axis: 'x' as const, intersect: false },
+    scales: {
+      y: { beginAtZero: true, title: { display: true, text: 'Goal' } },
+    },
+  } as const;
+
   return (
     <div className="space-y-8">
+      {/* Pulsante esportazione globale: rimosso per spostamento nell'header */}
+
       {/* Statistiche Generali */}
       <div>
         <h2 className="text-2xl font-bold text-gray-800 mb-6 flex items-center gap-2">
@@ -243,6 +387,17 @@ export function StatsOverview({ players, matches, trainings, playerStats }: Stat
               </div>
             </div>
           </div>
+          {/* Grafico goal segnati e subiti per partita */}
+          {matchesOfYear.length > 0 && (
+            <div className="bg-white rounded-xl shadow-md p-8 mt-8 relative">
+              <div className="flex items-center gap-2 mb-2">
+                <span className="font-bold text-blue-700 text-lg">Goal segnati e subiti per partita ({selectedYear})</span>
+                <span data-tooltip-id="goals-tip" className="ml-1 cursor-pointer"><Info className="w-4 h-4 text-gray-400" /></span>
+                <ReactTooltip id="goals-tip" place="top" content="Numero di goal segnati e subiti per ciascuna partita, asse X = ordine cronologico delle partite." />
+              </div>
+              <Line data={goalsChartDataSingle} options={goalsChartOptionsSingle} height={120} />
+            </div>
+          )}
         </div>
       )}
 
