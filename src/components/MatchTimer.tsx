@@ -9,6 +9,7 @@ interface MatchTimerProps {
   onPause: () => void;
   onEndFirstHalf: () => void;
   onStartSecondHalf: () => void;
+  onContinueFirstHalf: () => void;
   onFinish: () => void;
   formatTime: (seconds: number) => string;
 }
@@ -21,6 +22,7 @@ export function MatchTimer({
   onPause,
   onEndFirstHalf,
   onStartSecondHalf,
+  onContinueFirstHalf,
   onFinish,
   formatTime
 }: MatchTimerProps) {
@@ -105,13 +107,22 @@ export function MatchTimer({
         )}
 
         {status === 'half-time' && (
-          <button
-            onClick={onStartSecondHalf}
-            className="flex items-center gap-2 bg-green-600 text-white px-6 py-3 rounded-lg hover:bg-green-700 transition-colors font-medium"
-          >
-            <Play className="w-5 h-5" />
-            Inizia 2° Tempo
-          </button>
+          <div className="flex flex-wrap gap-3 justify-center">
+            <button
+              onClick={onStartSecondHalf}
+              className="flex items-center gap-2 bg-green-600 text-white px-6 py-3 rounded-lg hover:bg-green-700 transition-colors font-medium"
+            >
+              <Play className="w-5 h-5" />
+              Inizia 2° Tempo
+            </button>
+            <button
+              onClick={onContinueFirstHalf}
+              className="flex items-center gap-2 bg-blue-600 text-white px-6 py-3 rounded-lg hover:bg-blue-700 transition-colors font-medium"
+            >
+              <RotateCcw className="w-5 h-5" />
+              Continua 1° Tempo
+            </button>
+          </div>
         )}
 
         {status === 'second-half' && (

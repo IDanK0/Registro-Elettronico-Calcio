@@ -288,6 +288,25 @@ function App() {
     }
   };
 
+  // Continue first half if ended by mistake
+  const handleContinueFirstHalf = () => {
+    if (!managingMatch) return;
+    // Set status back to first-half
+    const now = Date.now();
+    const updatedMatch: any = {
+      ...managingMatch,
+      status: 'first-half',
+      isRunning: true,
+      lastTimestamp: now
+    };
+    setManagingMatch(updatedMatch);
+    database.updateMatch(managingMatch.id, updatedMatch);
+    loadData();
+    // Reset timer to stored firstHalfDuration and start
+    timer.resetTo(managingMatch.firstHalfDuration);
+    timer.start();
+  };
+
   // Match timer functions
   const updateMatchStatus = (status: Match['status']) => {
     if (!managingMatch) return;
@@ -352,6 +371,7 @@ function App() {
   };
 
   const handleFinishMatch = () => {
+    if (!window.confirm('Sei sicuro di voler terminare la partita?')) return;
     timer.pause();
     if (managingMatch) {
       const updatedMatch = { 
@@ -654,6 +674,7 @@ function App() {
             onEndFirstHalf={handleEndFirstHalf}
             onStartSecondHalf={handleStartSecondHalf}
             onFinish={handleFinishMatch}
+            onContinueFirstHalf={handleContinueFirstHalf}
             formatTime={timer.formatTime}
           />
 
@@ -1077,14 +1098,14 @@ function App() {
                     onClick={() => {
                       // Persist timer state if coming from an active match
                       if (managingMatch) {
-                        let fhd = managingMatch.firstHalfDuration;
-                        let shd = managingMatch.secondHalfDuration;
+                        const now = Date.now();
+                        const common: any = { lastTimestamp: now, isRunning: timer.isRunning };
                         if (managingMatch.status === 'first-half') {
-                          fhd = timer.time;
+                          common.firstHalfDuration = timer.time;
                         } else if (managingMatch.status === 'second-half') {
-                          shd = timer.time - managingMatch.firstHalfDuration;
+                          common.secondHalfDuration = timer.time - managingMatch.firstHalfDuration;
                         }
-                        const updated = { ...managingMatch, firstHalfDuration: fhd, secondHalfDuration: shd };
+                        const updated = { ...managingMatch, ...common };
                         database.updateMatch(managingMatch.id, updated);
                         loadData();
                       }
