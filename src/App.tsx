@@ -1063,6 +1063,19 @@ function App() {
                   <button
                     key={tab.id}
                     onClick={() => {
+                      // Persist timer state if coming from an active match
+                      if (managingMatch) {
+                        let fhd = managingMatch.firstHalfDuration;
+                        let shd = managingMatch.secondHalfDuration;
+                        if (managingMatch.status === 'first-half') {
+                          fhd = timer.time;
+                        } else if (managingMatch.status === 'second-half') {
+                          shd = timer.time - managingMatch.firstHalfDuration;
+                        }
+                        const updated = { ...managingMatch, firstHalfDuration: fhd, secondHalfDuration: shd };
+                        database.updateMatch(managingMatch.id, updated);
+                        loadData();
+                      }
                       setActiveTab(tab.id);
                       setCurrentView('list');
                       setEditingItem(null);
