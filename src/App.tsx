@@ -64,6 +64,57 @@ function App() {
   // Timer for match management
   const timer = useTimer();
 
+  // Auto-save timer state to DB on each tick when running
+  useEffect(() => {
+    if (currentView === 'manage' && managingMatch && timer.isRunning) {
+      const now = Date.now();
+      // compute durations
+      let fhd = managingMatch.firstHalfDuration;
+      let shd = managingMatch.secondHalfDuration;
+      if (managingMatch.status === 'first-half') {
+        fhd = timer.time;
+      } else if (managingMatch.status === 'second-half') {
+        shd = timer.time - managingMatch.firstHalfDuration;
+      }
+      const updated: any = {
+        ...managingMatch,
+        firstHalfDuration: fhd,
+        secondHalfDuration: shd,
+        isRunning: true,
+        lastTimestamp: now
+      };
+      setManagingMatch(updated);
+      database.updateMatch(managingMatch.id, updated);
+      // no need to reload all data here
+    }
+  }, [timer.time]);
+
+  // Persist timer state on page unload or navigation
+  useEffect(() => {
+    const handler = () => {
+      if (managingMatch) {
+        const now = Date.now();
+        let fhd = managingMatch.firstHalfDuration;
+        let shd = managingMatch.secondHalfDuration;
+        if (managingMatch.status === 'first-half') {
+          fhd = timer.time;
+        } else if (managingMatch.status === 'second-half') {
+          shd = timer.time - managingMatch.firstHalfDuration;
+        }
+        const updated: any = {
+          ...managingMatch,
+          firstHalfDuration: fhd,
+          secondHalfDuration: shd,
+          isRunning: timer.isRunning,
+          lastTimestamp: now
+        };
+        database.updateMatch(managingMatch.id, updated);
+      }
+    };
+    window.addEventListener('beforeunload', handler);
+    return () => window.removeEventListener('beforeunload', handler);
+  }, [managingMatch, timer.time, timer.isRunning]);
+
   // Load data when database is ready
   useEffect(() => {
     if (!database.isLoading && !database.error) {
