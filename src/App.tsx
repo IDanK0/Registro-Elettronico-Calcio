@@ -1030,7 +1030,8 @@ function App() {
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex justify-between items-center h-16">
             <div className="flex items-center gap-3">
-              {/* Logo rimosso */}
+              {/* Logo inserito */}
+              <img src="/img/logo.png" alt="Logo Pietra Ligure Calcio" className="h-12 w-auto mr-3 hidden sm:block" />
               <div>
                 <h1 className="text-xl font-bold text-gray-800">ASD Pietra Ligure Calcio</h1>
                 <p className="text-sm text-gray-600">Registro Elettronico</p>
