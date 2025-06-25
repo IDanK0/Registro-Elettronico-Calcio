@@ -14,6 +14,7 @@ import {
 } from 'chart.js';
 import { Tooltip as ReactTooltip } from 'react-tooltip';
 import 'react-tooltip/dist/react-tooltip.css';
+import useIsMobile from '../hooks/useIsMobile';
 
 interface StatsOverviewProps {
   players: Player[];
@@ -25,6 +26,9 @@ interface StatsOverviewProps {
 ChartJS.register(CategoryScale, LinearScale, PointElement, LineElement, Title, Tooltip, Legend);
 
 export function StatsOverview({ players, matches, trainings, playerStats }: StatsOverviewProps) {
+  const isMobile = useIsMobile();
+  const [openAccordion, setOpenAccordion] = useState<string | null>(null);
+
   const finishedMatches = matches.filter(m => m.status === 'finished');
   const wins = finishedMatches.filter(m => {
     const ourScore = m.homeAway === 'home' ? m.homeScore : m.awayScore;
@@ -94,6 +98,7 @@ export function StatsOverview({ players, matches, trainings, playerStats }: Stat
   const totalReds = teamCards.filter(e => e.type === 'red-card' || e.type === 'expulsion').length;
   const totalYellows = teamCards.filter(e => e.type === 'yellow-card' || e.type === 'second-yellow-card').length;
   const avgCardsPerMatch = finishedMatches.length > 0 ? (teamCards.length / finishedMatches.length).toFixed(2) : '0.00';
+  const avgYellowCardsPerMatch = finishedMatches.length > 0 ? (totalYellows / finishedMatches.length).toFixed(2) : '0.00';
 
   // Sostituzioni
   const totalSubs = allSubs.length;
@@ -202,15 +207,6 @@ export function StatsOverview({ players, matches, trainings, playerStats }: Stat
     },
   } as const;
 
-  // --- Esportazione globale ---
-  const [showExport, setShowExport] = useState(false);
-  const handleExportStats = (format: 'pdf' | 'csv' | 'xlsx') => {
-    setShowExport(false);
-    // TODO: implementare esportazione globale delle statistiche (riassunto, trend, tabelle)
-    // Puoi riutilizzare la logica di ReportMatch per esportazione, adattando i dati globali
-    alert('Esportazione '+format+' delle statistiche non ancora implementata.');
-  };
-
   const StatCard = ({ icon: Icon, title, value, subtitle, color }: {
     icon: any;
     title: string;
@@ -289,6 +285,156 @@ export function StatsOverview({ players, matches, trainings, playerStats }: Stat
       y: { beginAtZero: true, title: { display: true, text: 'Goal' } },
     },
   } as const;
+
+  if (isMobile) {
+    // Mobile specific components for better UI
+    const StatCardMobile = ({ icon: Icon, label, value, colorClass }: { icon: React.ElementType, label: string, value: string | number, colorClass: string }) => (
+      <div className="bg-white p-3 rounded-lg shadow flex items-center gap-3">
+        <div className={`w-10 h-10 rounded-md flex items-center justify-center ${colorClass}`}>
+          <Icon className="w-5 h-5 text-white" />
+        </div>
+        <div>
+          <p className="text-sm text-gray-600">{label}</p>
+          <p className="text-xl font-bold text-gray-800">{value}</p>
+        </div>
+      </div>
+    );
+
+    const LeaderboardItem = ({ rank, player, stat, colorClass }: { rank: number, player: Player | undefined, stat: string | number, colorClass: string }) => (
+      <li className="flex items-center justify-between p-2 bg-gray-50 rounded-md">
+        <div className="flex items-center gap-2">
+          <span className={`w-6 h-6 flex items-center justify-center rounded-full text-xs font-bold text-white ${colorClass}`}>{rank}</span>
+          <span className="text-sm font-medium">{player?.firstName} {player?.lastName}</span>
+        </div>
+        <span className="text-sm font-bold">{stat}</span>
+      </li>
+    );
+
+    return (
+      <div className="p-2 bg-gray-50 min-h-screen font-sans">
+        <div className="space-y-4">
+
+          {/* General Overview */}
+          <div className="bg-white p-4 rounded-xl shadow-sm">
+            <h3 className="font-bold text-lg mb-3 flex items-center gap-2"><BarChart3 className="w-5 h-5 text-blue-600"/>Panoramica</h3>
+            <div className="grid grid-cols-2 gap-3">
+              <StatCardMobile icon={Users} label="Giocatori" value={players.filter(p => p.isActive).length} colorClass="bg-blue-500" />
+              <StatCardMobile icon={Target} label="Partite" value={finishedMatches.length} colorClass="bg-green-500" />
+              <StatCardMobile icon={Calendar} label="Allenamenti" value={trainings.length} colorClass="bg-purple-500" />
+              <StatCardMobile icon={Trophy} label="Vittorie" value={wins} colorClass="bg-yellow-500" />
+            </div>
+          </div>
+
+          {/* Match Stats */}
+          <div className="bg-white p-4 rounded-xl shadow-sm">
+            <h3 className="font-bold text-lg mb-3 flex items-center gap-2"><Target className="w-5 h-5 text-red-600"/>Statistiche Partite</h3>
+            <div className="grid grid-cols-3 gap-2 text-center mb-3">
+              <div className="bg-green-100 text-green-800 p-2 rounded-md">
+                <p className="font-bold text-xl">{wins}</p><p className="text-xs">Vittorie</p>
+              </div>
+              <div className="bg-yellow-100 text-yellow-800 p-2 rounded-md">
+                <p className="font-bold text-xl">{draws}</p><p className="text-xs">Pareggi</p>
+              </div>
+              <div className="bg-red-100 text-red-800 p-2 rounded-md">
+                <p className="font-bold text-xl">{losses}</p><p className="text-xs">Sconfitte</p>
+              </div>
+            </div>
+            <div className="space-y-2">
+                <div className="flex justify-between items-center text-sm p-2 bg-gray-50 rounded-md">
+                    <span className="font-medium text-gray-700">Gol Fatti / Subiti</span>
+                    <span className="font-bold"><span className="text-blue-600">{totalGoalsFor}</span> / <span className="text-red-600">{totalGoalsAgainst}</span></span>
+                </div>
+                 <div className="flex justify-between items-center text-sm p-2 bg-gray-50 rounded-md">
+                    <span className="font-medium text-gray-700">Differenza Reti</span>
+                    <span className={`font-bold ${totalGoalsFor - totalGoalsAgainst >= 0 ? 'text-green-600' : 'text-red-600'}`}>{totalGoalsFor - totalGoalsAgainst > 0 ? '+' : ''}{totalGoalsFor - totalGoalsAgainst}</span>
+                </div>
+            </div>
+          </div>
+
+          {/* Leaderboards */}
+          <div className="bg-white p-4 rounded-xl shadow-sm">
+            <h3 className="font-bold text-lg mb-3 flex items-center gap-2"><Award className="w-5 h-5 text-yellow-600"/>Leaderboard</h3>
+            <div className="space-y-4">
+              <div>
+                <h4 className="font-semibold text-md text-gray-800 mb-2">Capocannonieri</h4>
+                <ul className="space-y-1.5">
+                  {topScorers.map((item, index) => (
+                    <LeaderboardItem key={item.playerId} rank={index + 1} player={item.player} stat={`${item.goals} Gol`} colorClass="bg-yellow-500" />
+                  ))}
+                </ul>
+              </div>
+              <div>
+                <h4 className="font-semibold text-md text-gray-800 mb-2">Più Presenti</h4>
+                <ul className="space-y-1.5">
+                  {mostActivePlaybers.map((item, index) => (
+                     <LeaderboardItem key={item.playerId} rank={index + 1} player={item.player} stat={`${item.matchesPlayed} Pres.`} colorClass="bg-green-500" />
+                  ))}
+                </ul>
+              </div>
+            </div>
+          </div>
+          
+          {/* Fair Play & Subs */}
+          <div className="bg-white p-4 rounded-xl shadow-sm">
+            <h3 className="font-bold text-lg mb-3 flex items-center gap-2"><Shield className="w-5 h-5 text-orange-500"/>Fair Play & Sostituzioni</h3>
+            <div className="grid grid-cols-2 gap-3 mb-4">
+                <div className="bg-yellow-100 text-yellow-800 p-3 rounded-lg text-center">
+                    <p className="text-2xl font-bold">{totalYellows}</p>
+                    <p className="text-xs font-medium">Gialli</p>
+                </div>
+                 <div className="bg-red-100 text-red-800 p-3 rounded-lg text-center">
+                    <p className="text-2xl font-bold">{totalReds}</p>
+                    <p className="text-xs font-medium">Rossi</p>
+                </div>
+            </div>
+             <div className="space-y-3">
+                <div>
+                    <h4 className="font-semibold text-md text-gray-800 mb-2">Sostituzioni</h4>
+                     <div className="flex justify-between items-center text-sm p-2 bg-gray-50 rounded-md">
+                        <span className="font-medium text-gray-700">Più Sostituiti</span>
+                        <span className="font-bold">{mostSubbedOut[0]?.player?.lastName || '-'} ({mostSubbedOut[0]?.count || 0})</span>
+                    </div>
+                     <div className="flex justify-between items-center text-sm p-2 bg-gray-50 rounded-md mt-1">
+                        <span className="font-medium text-gray-700">Più Subentrati</span>
+                        <span className="font-bold">{mostSubbedIn[0]?.player?.lastName || '-'} ({mostSubbedIn[0]?.count || 0})</span>
+                    </div>
+                </div>
+            </div>
+          </div>
+
+          {/* Role Stats */}
+          <div className="bg-white p-4 rounded-xl shadow-sm">
+            <h3 className="font-bold text-lg mb-3 flex items-center gap-2"><BarChart2 className="w-5 h-5 text-purple-600"/>Statistiche per Ruolo</h3>
+            <div className="overflow-x-auto">
+              <table className="min-w-full text-sm">
+                <thead className="bg-gray-100">
+                  <tr>
+                    <th className="px-3 py-2 text-left font-semibold text-gray-600">Ruolo</th>
+                    <th className="px-3 py-2 text-center font-semibold text-gray-600">Goal</th>
+                    <th className="px-3 py-2 text-center font-semibold text-gray-600">Pres.</th>
+                    <th className="px-3 py-2 text-center font-semibold text-gray-600">G</th>
+                    <th className="px-3 py-2 text-center font-semibold text-gray-600">R</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {Object.entries(roleStats).map(([role, stats], idx) => (
+                    <tr key={role} className={idx % 2 === 0 ? "bg-white" : "bg-gray-50"}>
+                      <td className="px-3 py-2 font-medium text-gray-800">{role}</td>
+                      <td className="px-3 py-2 text-center font-bold text-blue-600">{stats.goals}</td>
+                      <td className="px-3 py-2 text-center">{stats.matches}</td>
+                      <td className="px-3 py-2 text-center text-yellow-600">{stats.yellows}</td>
+                      <td className="px-3 py-2 text-center text-red-600">{stats.reds}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </div>
+
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-10">
