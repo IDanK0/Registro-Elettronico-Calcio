@@ -28,6 +28,11 @@ export function useTimer() {
     setTime(0);
     setIsRunning(false);
   };
+  // Reset timer to a specific time and pause
+  const resetTo = (seconds: number) => {
+    setTime(seconds);
+    setIsRunning(false);
+  };
 
   const formatTime = (seconds: number) => {
     const mins = Math.floor(seconds / 60);
@@ -41,6 +46,7 @@ export function useTimer() {
     start,
     pause,
     reset,
+    resetTo,
     formatTime
   };
 }

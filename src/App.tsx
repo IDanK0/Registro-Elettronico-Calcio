@@ -211,7 +211,26 @@ function App() {
     setManagingMatch(match);
     setInitialLineup(match.lineup); // salva la formazione iniziale
     setCurrentView('manage');
-    timer.reset();
+    // Restore timer based on match status
+    if (match.status === 'scheduled') {
+      // New match
+      timer.reset();
+    } else if (match.status === 'first-half') {
+      // Resume first half
+      timer.resetTo(match.firstHalfDuration);
+      timer.pause();
+    } else if (match.status === 'half-time') {
+      // Between halves, show first half duration
+      timer.resetTo(match.firstHalfDuration);
+      timer.pause();
+    } else if (match.status === 'second-half') {
+      // Resume second half cumulative
+      timer.resetTo(match.firstHalfDuration + match.secondHalfDuration);
+      timer.pause();
+    } else {
+      // Finished or other, reset
+      timer.reset();
+    }
   };
 
   // Match timer functions
@@ -232,7 +251,22 @@ function App() {
   };
 
   const handleMatchPause = () => {
+    // Pause timer and persist current time to database
     timer.pause();
+    if (managingMatch) {
+      if (managingMatch.status === 'first-half') {
+        const updatedMatch = { ...managingMatch, firstHalfDuration: timer.time };
+        setManagingMatch(updatedMatch);
+        database.updateMatch(managingMatch.id, updatedMatch);
+        loadData();
+      } else if (managingMatch.status === 'second-half') {
+        const secondDuration = timer.time - managingMatch.firstHalfDuration;
+        const updatedMatch = { ...managingMatch, secondHalfDuration: secondDuration };
+        setManagingMatch(updatedMatch);
+        database.updateMatch(managingMatch.id, updatedMatch);
+        loadData();
+      }
+    }
   };
 
   const handleEndFirstHalf = () => {
@@ -313,6 +347,18 @@ function App() {
 
   // Navigation
   const handleBackToList = () => {
+    // Persist timer before exiting manage view
+    if (managingMatch) {
+      if (managingMatch.status === 'first-half') {
+        const updatedMatch = { ...managingMatch, firstHalfDuration: timer.time };
+        database.updateMatch(managingMatch.id, updatedMatch);
+      } else if (managingMatch.status === 'second-half') {
+        const secDur = timer.time - managingMatch.firstHalfDuration;
+        const updatedMatch = { ...managingMatch, secondHalfDuration: secDur };
+        database.updateMatch(managingMatch.id, updatedMatch);
+      }
+      loadData();
+    }
     setCurrentView('list');
     setEditingItem(null);
     setManagingMatch(null);
