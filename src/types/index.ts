@@ -31,6 +31,9 @@ export interface Match {
   opponentLineup: number[]; // numeri maglia avversari
   substitutions: Substitution[];
   events: MatchEvent[];
+  // Timestamp (ms) when timer was last persisted (to compute elapsed time when returning)
+  lastTimestamp?: number;
+  isRunning?: boolean;
 }
 
 export interface Substitution {

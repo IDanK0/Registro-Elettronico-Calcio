@@ -260,26 +260,30 @@ function App() {
 
   const handleMatchManage = (match: Match) => {
     setManagingMatch(match);
-    setInitialLineup(match.lineup); // salva la formazione iniziale
+    setInitialLineup(match.lineup);
     setCurrentView('manage');
-    // Restore timer based on match status
-    if (match.status === 'scheduled') {
-      // New match
-      timer.reset();
-    } else if (match.status === 'first-half') {
-      // Resume first half
-      timer.resetTo(match.firstHalfDuration);
-      timer.pause();
+    // Restore timer based on match status and lastTimestamp
+    const now = Date.now();
+    const computeTime = (base: number) => {
+      if (match.isRunning && match.lastTimestamp) {
+        const elapsed = Math.floor((now - match.lastTimestamp) / 1000);
+        return base + elapsed;
+      }
+      return base;
+    };
+    if (match.status === 'first-half') {
+      const secs = computeTime(match.firstHalfDuration);
+      timer.resetTo(secs);
+      if (match.isRunning) timer.start(); else timer.pause();
     } else if (match.status === 'half-time') {
-      // Between halves, show first half duration
       timer.resetTo(match.firstHalfDuration);
       timer.pause();
     } else if (match.status === 'second-half') {
-      // Resume second half cumulative
-      timer.resetTo(match.firstHalfDuration + match.secondHalfDuration);
-      timer.pause();
+      const base = match.firstHalfDuration + match.secondHalfDuration;
+      const secs = computeTime(base);
+      timer.resetTo(secs);
+      if (match.isRunning) timer.start(); else timer.pause();
     } else {
-      // Finished or other, reset
       timer.reset();
     }
   };
@@ -295,8 +299,18 @@ function App() {
   };
 
   const handleMatchStart = () => {
-    if (managingMatch?.status === 'scheduled') {
-      updateMatchStatus('first-half');
+    if (managingMatch) {
+      const now = Date.now();
+      const newStatus = managingMatch.status === 'scheduled' ? 'first-half' : managingMatch.status;
+      const updatedMatch: any = {
+        ...managingMatch,
+        status: newStatus,
+        isRunning: true,
+        lastTimestamp: now
+      };
+      setManagingMatch(updatedMatch);
+      database.updateMatch(managingMatch.id, updatedMatch);
+      loadData();
     }
     timer.start();
   };
@@ -305,18 +319,16 @@ function App() {
     // Pause timer and persist current time to database
     timer.pause();
     if (managingMatch) {
+      const common: any = { lastTimestamp: Date.now(), isRunning: false };
       if (managingMatch.status === 'first-half') {
-        const updatedMatch = { ...managingMatch, firstHalfDuration: timer.time };
-        setManagingMatch(updatedMatch);
-        database.updateMatch(managingMatch.id, updatedMatch);
-        loadData();
+        common.firstHalfDuration = timer.time;
       } else if (managingMatch.status === 'second-half') {
-        const secondDuration = timer.time - managingMatch.firstHalfDuration;
-        const updatedMatch = { ...managingMatch, secondHalfDuration: secondDuration };
-        setManagingMatch(updatedMatch);
-        database.updateMatch(managingMatch.id, updatedMatch);
-        loadData();
+        common.secondHalfDuration = timer.time - managingMatch.firstHalfDuration;
       }
+      const updatedMatch = { ...managingMatch, ...common };
+      setManagingMatch(updatedMatch);
+      database.updateMatch(managingMatch.id, updatedMatch);
+      loadData();
     }
   };
 

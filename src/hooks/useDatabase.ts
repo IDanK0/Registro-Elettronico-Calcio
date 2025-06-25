@@ -58,6 +58,20 @@ export function useDatabase() {
         // Se fallisce, probabilmente la tabella è già aggiornata
       }
 
+      // Migrazione: aggiungi la colonna 'lastTimestamp' a matches se non esiste
+      try {
+        database.run("ALTER TABLE matches ADD COLUMN lastTimestamp INTEGER");
+      } catch (e) {
+        // ignore if exists
+      }
+
+      // Migrazione: aggiungi la colonna 'isRunning' a matches se non esiste
+      try {
+        database.run("ALTER TABLE matches ADD COLUMN isRunning BOOLEAN DEFAULT 0");
+      } catch (e) {
+        // ignore
+      }
+
       setDb(database);
       setError(null);
     } catch (err) {
@@ -119,6 +133,8 @@ export function useDatabase() {
         secondHalfDuration INTEGER DEFAULT 0,
         homeScore INTEGER DEFAULT 0,
         awayScore INTEGER DEFAULT 0,
+        lastTimestamp INTEGER,
+        isRunning BOOLEAN DEFAULT 0,
         createdAt DATETIME DEFAULT CURRENT_TIMESTAMP
       )
     `);
@@ -324,7 +340,7 @@ export function useDatabase() {
   const getMatches = (): Match[] => {
     if (!db) return [];
     
-    const stmt = db.prepare('SELECT * FROM matches ORDER BY date DESC');
+    const stmt = db.prepare('SELECT * FROM matches ORDER BY date');
     const matches: Match[] = [];
     
     while (stmt.step()) {
@@ -398,7 +414,9 @@ export function useDatabase() {
         lineup,
         opponentLineup,
         substitutions,
-        events
+        events,
+        lastTimestamp: row.lastTimestamp as number | undefined,
+        isRunning: !!row.isRunning,
       });
     }
     
@@ -413,8 +431,8 @@ export function useDatabase() {
     
     // Inserisci partita
     db.run(
-      'INSERT INTO matches (id, date, opponent, homeAway, status, startTime, firstHalfDuration, secondHalfDuration, homeScore, awayScore) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)',
-      [id, match.date, match.opponent, match.homeAway, match.status, match.startTime || null, match.firstHalfDuration, match.secondHalfDuration, match.homeScore, match.awayScore]
+      'INSERT INTO matches (id, date, opponent, homeAway, status, startTime, firstHalfDuration, secondHalfDuration, homeScore, awayScore, lastTimestamp, isRunning) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)',
+      [id, match.date, match.opponent, match.homeAway, match.status, match.startTime || null, match.firstHalfDuration, match.secondHalfDuration, match.homeScore, match.awayScore, match.lastTimestamp || null, match.isRunning ? 1 : 0]
     );
     
     // Inserisci formazione
@@ -449,8 +467,8 @@ export function useDatabase() {
     
     // Aggiorna partita
     db.run(
-      'UPDATE matches SET date = ?, opponent = ?, homeAway = ?, status = ?, startTime = ?, firstHalfDuration = ?, secondHalfDuration = ?, homeScore = ?, awayScore = ? WHERE id = ?',
-      [match.date, match.opponent, match.homeAway, match.status, match.startTime || null, match.firstHalfDuration, match.secondHalfDuration, match.homeScore, match.awayScore, id]
+      'UPDATE matches SET date = ?, opponent = ?, homeAway = ?, status = ?, startTime = ?, firstHalfDuration = ?, secondHalfDuration = ?, homeScore = ?, awayScore = ?, lastTimestamp = ?, isRunning = ? WHERE id = ?',
+      [match.date, match.opponent, match.homeAway, match.status, match.startTime || null, match.firstHalfDuration, match.secondHalfDuration, match.homeScore, match.awayScore, (match as any).lastTimestamp || null, (match as any).isRunning ? 1 : 0, id]
     );
     
     // Aggiorna formazione
