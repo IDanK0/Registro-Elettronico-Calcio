@@ -35,6 +35,7 @@ import { ReportMatch } from './components/ReportMatch';
 import { ExportStatsButton } from './components/ExportStatsButton';
 import Header from './components/Header';
 import Sidebar from './components/Sidebar';
+import useIsMobile from './hooks/useIsMobile';
 
 type Tab = 'players' | 'trainings' | 'matches' | 'stats';
 type View = 'list' | 'form' | 'manage';
@@ -67,6 +68,7 @@ function App() {
 
   // Timer for match management
   const timer = useTimer();
+  const isMobile = useIsMobile();
 
   // Auto-save timer state to DB on each tick when running
   useEffect(() => {
@@ -1030,14 +1032,16 @@ function App() {
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex justify-between items-center h-16">
             <div className="flex items-center gap-3">
-              {/* Logo inserito */}
+              {/* Logo */}
+              {/* Desktop logo */}
               <img src="/img/logo.png" alt="Logo Pietra Ligure Calcio" className="h-12 w-auto mr-3 hidden sm:block" />
+              {/* Mobile logo */}
+              <img src="/img/logo.png" alt="Logo Pietra Ligure Calcio" className="h-8 w-auto mr-2 sm:hidden" />
               <div>
                 <h1 className="text-xl font-bold text-gray-800">ASD Pietra Ligure Calcio</h1>
                 <p className="text-sm text-gray-600">Registro Elettronico</p>
               </div>
             </div>
-            
             <button
               onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
               className="lg:hidden p-2 rounded-lg hover:bg-gray-100 transition-colors"
@@ -1048,10 +1052,14 @@ function App() {
         </div>
       </header>
 
+      {/* Mobile sidebar backdrop */}
+      {isMobile && mobileMenuOpen && (
+        <div className="fixed inset-0 bg-black opacity-50 z-30" onClick={() => setMobileMenuOpen(false)} />
+      )}
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
         <div className="flex flex-col lg:flex-row gap-8">
-          {/* Sidebar Navigation */}
-          <aside className={`lg:w-64 ${mobileMenuOpen ? 'block' : 'hidden lg:block'}`}>
+           {/* Sidebar Navigation */}
+          <aside className={`lg:w-64 ${mobileMenuOpen ? 'block fixed top-0 left-0 h-full z-40 bg-white p-4' : 'hidden lg:block'}`}>
             <nav className="space-y-2">
               {tabs.map(tab => {
                 const Icon = tab.icon;
@@ -1094,9 +1102,9 @@ function App() {
           </aside>
 
           {/* Main Content */}
-          <main className="flex-1">
-            {/* Page Header */}
-            <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-8">
+          <main className={`flex-1 ${isMobile && mobileMenuOpen ? 'ml-64' : ''}`}>  {/* apply margin-left only on mobile when sidebar is open */}
+             {/* Page Header */}
+             <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-8">
               <div className="flex items-center gap-4">
                 {(currentView === 'form' || currentView === 'manage') && (
                   <button

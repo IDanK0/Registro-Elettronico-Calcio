@@ -1,6 +1,6 @@
-import React from 'react';
+import { Clock, Users, Edit2, Trash2, UserCheck, UserX } from 'lucide-react';
+import useIsMobile from '../hooks/useIsMobile';
 import { Training, Player } from '../types';
-import { Calendar, Clock, Users, Edit2, Trash2, UserCheck, UserX } from 'lucide-react';
 
 interface TrainingListProps {
   trainings: Training[];
@@ -10,6 +10,8 @@ interface TrainingListProps {
 }
 
 export function TrainingList({ trainings, players, onEdit, onDelete }: TrainingListProps) {
+  const isMobile = useIsMobile();
+
   const formatDate = (dateString: string) => {
     const date = new Date(dateString);
     return date.toLocaleDateString('it-IT', {
@@ -25,6 +27,40 @@ export function TrainingList({ trainings, players, onEdit, onDelete }: TrainingL
   const sortedTrainings = [...trainings].sort((a, b) => 
     new Date(b.date + ' ' + b.time).getTime() - new Date(a.date + ' ' + a.time).getTime()
   );
+
+  // Mobile card view
+  if (isMobile) {
+    return (
+      <div className="space-y-4">
+        {sortedTrainings.map(training => {
+          const presentCount = Object.values(training.attendances).filter(v => v).length;
+          const totalCount = Object.keys(training.attendances).length;
+          const attendanceRate = totalCount > 0 ? Math.round((presentCount / totalCount) * 100) : 0;
+          return (
+            <div key={training.id} className="bg-white rounded-xl shadow-md p-4">
+              <div className="flex justify-between items-center mb-2">
+                <div>
+                  <h3 className="text-lg font-semibold text-gray-800">{formatDate(training.date)}</h3>
+                  <p className="text-sm text-gray-600">{training.time}</p>
+                </div>
+                <div className="text-sm font-medium text-gray-700">
+                  {presentCount}/{totalCount} ({attendanceRate}%)
+                </div>
+              </div>
+              <div className="flex justify-end gap-2">
+                <button onClick={() => onEdit(training)} className="p-2 text-blue-600 hover:bg-blue-100 rounded-lg">
+                  <Edit2 className="w-5 h-5" />
+                </button>
+                <button onClick={() => onDelete(training.id)} className="p-2 text-red-600 hover:bg-red-100 rounded-lg">
+                  <Trash2 className="w-5 h-5" />
+                </button>
+              </div>
+            </div>
+          );
+        })}
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-4">

@@ -1,6 +1,7 @@
 import { Player } from '../types';
 import { Edit2, Trash2, User, ShieldCheck, ShieldOff, ChevronDown, Filter } from 'lucide-react';
 import { useState, useMemo } from 'react';
+import useIsMobile from '../hooks/useIsMobile';
 
 interface PlayerListProps {
   players: Player[];
@@ -11,6 +12,7 @@ interface PlayerListProps {
 export function PlayerList({ players, onEdit, onDelete }: PlayerListProps) {
   const [sortBy, setSortBy] = useState('lastName');
   const [filterStatus, setFilterStatus] = useState('all');
+  const isMobile = useIsMobile();
 
   const calculateAge = (birthDate: string) => {
     const today = new Date();
@@ -47,6 +49,30 @@ export function PlayerList({ players, onEdit, onDelete }: PlayerListProps) {
       }
     });
   }, [players, sortBy, filterStatus]);
+
+  // Mobile view: render cards
+  if (isMobile) {
+    return (
+      <div className="space-y-4">
+        {processedPlayers.map(player => (
+          <div key={player.id} className="bg-white rounded-xl shadow-md p-4 flex justify-between items-center">
+            <div>
+              <div className="text-base font-semibold text-gray-900">{player.firstName} {player.lastName}</div>
+              <div className="text-sm text-gray-500">#{player.jerseyNumber} &bull; {player.position} &bull; {calculateAge(player.birthDate)} anni</div>
+            </div>
+            <div className="flex items-center gap-2">
+              <button onClick={() => onEdit(player)} className="p-2 text-blue-600 hover:bg-blue-100 rounded-lg transition-colors" title="Modifica">
+                <Edit2 className="w-4 h-4" />
+              </button>
+              <button onClick={() => onDelete(player.id)} className="p-2 text-red-600 hover:bg-red-100 rounded-lg transition-colors" title="Elimina">
+                <Trash2 className="w-4 h-4" />
+              </button>
+            </div>
+          </div>
+        ))}
+      </div>
+    );
+  }
 
   return (
     <div className="bg-white rounded-xl shadow-lg overflow-hidden">

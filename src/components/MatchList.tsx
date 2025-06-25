@@ -1,6 +1,7 @@
 import React from 'react';
 import { Match, Player } from '../types';
 import { Calendar, MapPin, Clock, Edit2, Trash2, Home, Plane, Trophy, Target } from 'lucide-react';
+import useIsMobile from '../hooks/useIsMobile';
 
 interface MatchListProps {
   matches: Match[];
@@ -12,6 +13,8 @@ interface MatchListProps {
 }
 
 export function MatchList({ matches, players, onEdit, onDelete, onManage, onReport }: MatchListProps) {
+  const isMobile = useIsMobile();
+
   const formatDate = (dateString: string) => {
     const date = new Date(dateString);
     return date.toLocaleDateString('it-IT', {
@@ -69,6 +72,50 @@ export function MatchList({ matches, players, onEdit, onDelete, onManage, onRepo
   const sortedMatches = [...matches].sort((a, b) => 
     new Date(b.date).getTime() - new Date(a.date).getTime()
   );
+
+  if (isMobile) {
+    return (
+      <div className="space-y-4">
+        {sortedMatches.map(match => {
+          const statusText = getStatusText(match.status);
+          const statusColor = getStatusColor(match.status);
+          return (
+            <div key={match.id} className="bg-white rounded-xl shadow-md p-4">
+              <div className="flex justify-between items-center mb-2">
+                <div>
+                  <h3 className="text-lg font-semibold text-gray-800">vs {match.opponent}</h3>
+                  <p className="text-sm text-gray-600">{formatDate(match.date)}</p>
+                </div>
+                <div className={`px-2 py-1 text-xs font-medium rounded-full text-white ${statusColor}`}>{statusText}</div>
+              </div>
+              <div className="flex justify-between items-center text-sm text-gray-600 mb-2">
+                <span>Formazione: {match.lineup.length}/11</span>
+                {match.substitutions.length > 0 && <span>Sostituzioni: {match.substitutions.length}</span>}
+              </div>
+              <div className="flex justify-end gap-2">
+                {match.status !== 'finished' && (
+                  <button onClick={() => onManage(match)} className="p-2 text-green-600 hover:bg-green-100 rounded-lg">
+                    <Clock className="w-5 h-5" />
+                  </button>
+                )}
+                {match.status === 'finished' && onReport && (
+                  <button onClick={() => onReport(match)} className="p-2 text-purple-600 hover:bg-purple-100 rounded-lg">
+                    <Trophy className="w-5 h-5" />
+                  </button>
+                )}
+                <button onClick={() => onEdit(match)} className="p-2 text-blue-600 hover:bg-blue-100 rounded-lg">
+                  <Edit2 className="w-5 h-5" />
+                </button>
+                <button onClick={() => onDelete(match.id)} className="p-2 text-red-600 hover:bg-red-100 rounded-lg">
+                  <Trash2 className="w-5 h-5" />
+                </button>
+              </div>
+            </div>
+          );
+        })}
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-4">
