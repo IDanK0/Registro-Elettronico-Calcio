@@ -1,7 +1,9 @@
+import React from 'react';
 import { useState, useEffect } from 'react';
 import { useDatabase } from './hooks/useDatabase';
 import { useTimer } from './hooks/useTimer';
-import { Player, Training, Match, PlayerStats, Substitution } from './types';
+import { Player, Training, Match, Substitution } from './types';
+import { usePlayerStats } from './hooks/usePlayerStats';
 import { PlayerForm } from './components/PlayerForm';
 import { PlayerList } from './components/PlayerList';
 import { TrainingForm } from './components/TrainingForm';
@@ -31,6 +33,8 @@ import {
 import { AmmonitionModal } from './components/AmmonitionModal';
 import { ReportMatch } from './components/ReportMatch';
 import { ExportStatsButton } from './components/ExportStatsButton';
+import Header from './components/Header';
+import Sidebar from './components/Sidebar';
 
 type Tab = 'players' | 'trainings' | 'matches' | 'stats';
 type View = 'list' | 'form' | 'manage';
@@ -130,50 +134,8 @@ function App() {
 
   // Helper functions
   const generateId = () => Date.now().toString();
-
-  const calculatePlayerStats = (): PlayerStats[] => {
-    return players.map(player => {
-      const playerMatches = matches.filter(m => 
-        m.lineup.includes(player.id) && m.status === 'finished'
-      );
-      
-      const goals = matches.reduce((sum, match) => {
-        return sum + match.events.filter(e => 
-          e.type === 'goal' && e.playerId === player.id
-        ).length;
-      }, 0);
-
-      const yellowCards = matches.reduce((sum, match) => {
-        return sum + match.events.filter(e => 
-          e.type === 'yellow-card' && e.playerId === player.id
-        ).length;
-      }, 0);
-
-      const redCards = matches.reduce((sum, match) => {
-        return sum + match.events.filter(e => 
-          e.type === 'red-card' && e.playerId === player.id
-        ).length;
-      }, 0);
-
-      const trainingAttendance = trainings.reduce((sum, training) => {
-        return sum + (training.attendances[player.id] ? 1 : 0);
-      }, 0);
-
-      const totalTrainings = trainings.filter(t => 
-        t.attendances.hasOwnProperty(player.id)
-      ).length;
-
-      return {
-        playerId: player.id,
-        matchesPlayed: playerMatches.length,
-        goals,
-        yellowCards,
-        redCards,
-        trainingAttendance,
-        totalTrainings
-      };
-    });
-  };
+  // Player stats extracted to hook
+  const playerStats = usePlayerStats(players, matches);
 
   // Player management
   const handlePlayerSubmit = (playerData: Omit<Player, 'id'>) => {
@@ -936,7 +898,7 @@ function App() {
             players={players}
             matches={matches}
             trainings={trainings}
-            playerStats={calculatePlayerStats()}
+            playerStats={playerStats}
           />
         );
       default:
@@ -1164,7 +1126,7 @@ function App() {
                       players={players}
                       matches={matches}
                       trainings={trainings}
-                      playerStats={calculatePlayerStats()}
+                      playerStats={playerStats}
                     />
                   </div>
                 ) : (
