@@ -786,6 +786,7 @@ function App() {
           return (
             <MatchForm
               players={players}
+              users={users}
               onSubmit={handleMatchSubmit}
               initialData={editingItem}
               onCancel={handleBackToList}
@@ -1110,11 +1111,11 @@ function App() {
               onDelete={handleMatchDelete}
               onManage={handleMatchManage}
               onReport={match => setShowReportMatch(match)}
-            />
-            {showReportMatch && (
+            />            {showReportMatch && (
               <ReportMatch
                 match={showReportMatch}
                 players={players}
+                users={users}
                 onClose={() => setShowReportMatch(null)}
               />
             )}

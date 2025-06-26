@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Match, Player } from '../types';
+import { Match, Player, UserWithGroup } from '../types';
 import { Download, FileText } from 'lucide-react';
 import { jsPDF } from 'jspdf';
 import * as XLSX from 'xlsx';
@@ -7,17 +7,25 @@ import * as XLSX from 'xlsx';
 interface ReportMatchProps {
   match: Match;
   players: Player[];
+  users: UserWithGroup[];
   onClose: () => void;
 }
 
-export function ReportMatch({ match, players, onClose }: ReportMatchProps) {
+export function ReportMatch({ match, players, users, onClose }: ReportMatchProps) {
   const [showExportMenu, setShowExportMenu] = useState(false);
-  const lineupPlayers = players.filter(p => match.lineup.includes(p.id));
+  const lineupPlayers = players.filter(p => match.lineup.find(lp => lp.playerId === p.id));
   const goals = match.events.filter(e => e.type === 'goal');
   const cards = match.events.filter(e => [
     'yellow-card','red-card','second-yellow-card','blue-card','expulsion','warning'
-  ].includes(e.type));
-  const substitutions = match.substitutions;
+  ].includes(e.type));  const substitutions = match.substitutions;
+
+  // Get staff members by ID
+  const getStaffNames = (userIds: string[]) => {
+    return userIds.map(id => {
+      const user = users.find(u => u.id === id);
+      return user ? `${user.firstName} ${user.lastName}` : 'Utente non trovato';
+    });
+  };
 
   // --- PDF ---
   const exportPDF = () => {
@@ -425,12 +433,20 @@ export function ReportMatch({ match, players, onClose }: ReportMatchProps) {
         <h2 className="text-3xl font-extrabold text-blue-700 mb-2 flex items-center gap-2">
           <span className="text-2xl font-bold">⚽</span>
           Report Partita
-        </h2>
-        <div className="mb-4 text-gray-600 flex flex-wrap gap-6">
+        </h2>        <div className="mb-4 text-gray-600 flex flex-wrap gap-6">
           <div>
-            <span className="font-semibold">Data:</span> {match.date} <br />
+            <span className="font-semibold">Data:</span> {match.date}
+            {match.time && <span className="ml-2">alle {match.time}</span>}
+            <br />
             <span className="font-semibold">Avversario:</span> {match.opponent} <br />
             <span className="font-semibold">Tipo:</span> {match.homeAway === 'home' ? 'Casa' : 'Trasferta'}
+            {match.homeAway === 'away' && match.location && (
+              <>
+                <br />
+                <span className="font-semibold">Luogo:</span> {match.location}
+                {match.field && <span> - Campo: {match.field}</span>}
+              </>
+            )}
           </div>
           <div className="bg-blue-50 rounded-xl px-6 py-2 flex flex-col items-center shadow-sm border border-blue-200">
             <span className="text-xs text-gray-500 font-semibold">Risultato finale</span>
@@ -509,6 +525,95 @@ export function ReportMatch({ match, players, onClose }: ReportMatchProps) {
               })}
             </ul>
           )}
+        </div>
+        
+        {/* Staff Section */}
+        {((match.coaches && match.coaches.length > 0) || (match.managers && match.managers.length > 0)) && (
+          <div className="mb-6">
+            <h3 className="text-lg font-semibold mb-2 text-gray-800 border-b pb-1 border-gray-200 flex items-center gap-2">
+              <span className="inline-block w-4 h-4 bg-green-100 rounded-full"></span>
+              Staff Tecnico
+            </h3>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              {match.coaches && match.coaches.length > 0 && (
+                <div>                  <h4 className="font-medium text-gray-700 mb-2">Allenatori:</h4>
+                  <ul className="space-y-1">
+                    {getStaffNames(match.coaches).map((coachName, index) => (
+                      <li key={index} className="text-gray-600">• {coachName}</li>
+                    ))}
+                  </ul>
+                </div>
+              )}
+              {match.managers && match.managers.length > 0 && (
+                <div>                  <h4 className="font-medium text-gray-700 mb-2">Dirigenti:</h4>
+                  <ul className="space-y-1">
+                    {getStaffNames(match.managers).map((managerName, index) => (
+                      <li key={index} className="text-gray-600">• {managerName}</li>
+                    ))}
+                  </ul>
+                </div>
+              )}
+            </div>
+          </div>
+        )}
+        
+        <div className="mb-6">
+          <h3 className="text-lg font-semibold mb-2 text-gray-800 border-b pb-1 border-gray-200 flex items-center gap-2">
+            <span className="inline-block w-4 h-4 bg-gray-100 rounded-full"></span>
+            Riepilogo Statistiche
+          </h3>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div className="bg-gray-50 rounded-lg p-4 shadow-sm border border-gray-200">
+              <h4 className="font-semibold text-gray-800 mb-2">Statistiche Squadra</h4>
+              <div className="flex flex-wrap gap-4">
+                <div className="flex-1">
+                  <span className="text-xs text-gray-500 font-semibold">Possesso Palla</span>
+                  <div className="h-2.5 bg-blue-600 rounded-full" style={{ width: `${match.possessionHome ?? 0}%` }}></div>
+                  <span className="text-xs text-gray-500 font-semibold block mt-1">{match.possessionHome}%</span>
+                </div>
+                <div className="flex-1">
+                  <span className="text-xs text-gray-500 font-semibold">Tiri Totali</span>
+                  <div className="h-2.5 bg-blue-600 rounded-full" style={{ width: `${match.totalShotsHome ?? 0}%` }}></div>
+                  <span className="text-xs text-gray-500 font-semibold block mt-1">{match.totalShotsHome}</span>
+                </div>
+                <div className="flex-1">
+                  <span className="text-xs text-gray-500 font-semibold">Tiri in Porta</span>
+                  <div className="h-2.5 bg-blue-600 rounded-full" style={{ width: `${match.shotsOnTargetHome ?? 0}%` }}></div>
+                  <span className="text-xs text-gray-500 font-semibold block mt-1">{match.shotsOnTargetHome}</span>
+                </div>
+                <div className="flex-1">
+                  <span className="text-xs text-gray-500 font-semibold">Falli Commessi</span>
+                  <div className="h-2.5 bg-red-600 rounded-full" style={{ width: `${match.foulsCommittedHome ?? 0}%` }}></div>
+                  <span className="text-xs text-gray-500 font-semibold block mt-1">{match.foulsCommittedHome}</span>
+                </div>
+              </div>
+            </div>
+            <div className="bg-gray-50 rounded-lg p-4 shadow-sm border border-gray-200">
+              <h4 className="font-semibold text-gray-800 mb-2">Statistiche Avversario</h4>
+              <div className="flex flex-wrap gap-4">
+                <div className="flex-1">
+                  <span className="text-xs text-gray-500 font-semibold">Possesso Palla</span>
+                  <div className="h-2.5 bg-red-600 rounded-full" style={{ width: `${match.possessionAway ?? 0}%` }}></div>
+                  <span className="text-xs text-gray-500 font-semibold block mt-1">{match.possessionAway}%</span>
+                </div>
+                <div className="flex-1">
+                  <span className="text-xs text-gray-500 font-semibold">Tiri Totali</span>
+                  <div className="h-2.5 bg-red-600 rounded-full" style={{ width: `${match.totalShotsAway ?? 0}%` }}></div>
+                  <span className="text-xs text-gray-500 font-semibold block mt-1">{match.totalShotsAway}</span>
+                </div>
+                <div className="flex-1">
+                  <span className="text-xs text-gray-500 font-semibold">Tiri in Porta</span>
+                  <div className="h-2.5 bg-red-600 rounded-full" style={{ width: `${match.shotsOnTargetAway ?? 0}%` }}></div>
+                  <span className="text-xs text-gray-500 font-semibold block mt-1">{match.shotsOnTargetAway}</span>
+                </div>
+                <div className="flex-1">
+                  <span className="text-xs text-gray-500 font-semibold">Falli Commessi</span>
+                  <div className="h-2.5 bg-red-600 rounded-full" style={{ width: `${match.foulsCommittedAway ?? 0}%` }}></div>
+                  <span className="text-xs text-gray-500 font-semibold block mt-1">{match.foulsCommittedAway}</span>
+                </div>
+              </div>
+            </div>
+          </div>
         </div>
         <div className="mt-8 flex justify-end gap-2 items-center">
           <div className="relative">

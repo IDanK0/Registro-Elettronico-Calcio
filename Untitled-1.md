@@ -15,13 +15,7 @@
     - Partire dai presenti come predefinito invece degli assenti
     - Possibilità di esportare riepilogo assenze in csv
 
-Aggiungere scheda "Staff" sopra a quella "Giocatori" (simile a quella giocatori ma per lo staff):
-    - Nome e cognome, data di nascita, Numero tessera (matricola)
-    - Propri recapiti (numero e email)
-    - Ruoli: Allenatore, Dirigente, Massaggiatore e Altro (campo libero)
-    - Possibilità di allegare documenti o file per ogni persona e di visualizzarli e scaricarli tramite un tasto nella lista staff
-
-Partite:
+[X] Partite:
     - Aggiungere orario nel form
     - Aggiungere luogo e campo con una textbox nel form (se in trasferta)
     - Aggiungere allenatori e dirigenti nel form
@@ -34,6 +28,8 @@ Gestione Partita in corso:
     - Rimuovere il limite di 2 tempi rendendolo dinamico, facendo in modo che si possano aggiungere illimitati tempi e si possa passare ai supplementari o terminare la partita a piacimento
 
 Report partita:
+    - Rimuovere l'esportazione in PDF
     - Suddividere i goal, le ammonizioni e le sostituzioni per tempo.
-    - Aggiungere le nuove informazioni 
+    - Aggiungere le nuove informazioni
+    - Migliorare l'esportazione in CSV e xlsx
 

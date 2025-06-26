@@ -190,12 +190,44 @@ export function useDatabase() {
         `);
       } catch (e) {
         // ignore if exists
-      }
-
-      // Migrazione: aggiungi position e jerseyNumber alle formazioni
+      }      // Migrazione: aggiungi position e jerseyNumber alle formazioni
       try {
         database.run("ALTER TABLE match_lineups ADD COLUMN position TEXT");
         database.run("ALTER TABLE match_lineups ADD COLUMN jerseyNumber INTEGER");
+      } catch (e) {
+        // ignore if exists
+      }
+
+      // Migrazione: aggiungi nuovi campi alle partite
+      try {
+        database.run("ALTER TABLE matches ADD COLUMN time TEXT DEFAULT '15:00'");
+        database.run("ALTER TABLE matches ADD COLUMN location TEXT");
+        database.run("ALTER TABLE matches ADD COLUMN field TEXT");
+      } catch (e) {
+        // ignore if exists
+      }
+
+      // Migrazione: crea tabelle per staff partita
+      try {
+        database.run(`
+          CREATE TABLE IF NOT EXISTS match_coaches (
+            id TEXT PRIMARY KEY,
+            matchId TEXT NOT NULL,
+            userId TEXT NOT NULL,
+            FOREIGN KEY (matchId) REFERENCES matches(id) ON DELETE CASCADE,
+            FOREIGN KEY (userId) REFERENCES users(id) ON DELETE CASCADE
+          )
+        `);
+
+        database.run(`
+          CREATE TABLE IF NOT EXISTS match_managers (
+            id TEXT PRIMARY KEY,
+            matchId TEXT NOT NULL,
+            userId TEXT NOT NULL,
+            FOREIGN KEY (matchId) REFERENCES matches(id) ON DELETE CASCADE,
+            FOREIGN KEY (userId) REFERENCES users(id) ON DELETE CASCADE
+          )
+        `);
       } catch (e) {
         // ignore if exists
       }
@@ -637,8 +669,7 @@ export function useDatabase() {
         });
       }
       eventsStmt.free();
-      
-      // Ottieni numeri maglia avversari
+        // Ottieni numeri maglia avversari
       const opponentLineupStmt = db.prepare('SELECT jerseyNumber FROM match_opponent_lineup WHERE matchId = ?');
       opponentLineupStmt.bind([matchId]);
       const opponentLineup: number[] = [];
@@ -648,11 +679,36 @@ export function useDatabase() {
       }
       opponentLineupStmt.free();
       
+      // Ottieni allenatori
+      const coachesStmt = db.prepare('SELECT userId FROM match_coaches WHERE matchId = ?');
+      coachesStmt.bind([matchId]);
+      const coaches: string[] = [];
+      while (coachesStmt.step()) {
+        const row = coachesStmt.getAsObject();
+        coaches.push(row.userId as string);
+      }
+      coachesStmt.free();
+      
+      // Ottieni dirigenti
+      const managersStmt = db.prepare('SELECT userId FROM match_managers WHERE matchId = ?');
+      managersStmt.bind([matchId]);
+      const managers: string[] = [];
+      while (managersStmt.step()) {
+        const row = managersStmt.getAsObject();
+        managers.push(row.userId as string);
+      }
+      managersStmt.free();
+      
       matches.push({
         id: row.id as string,
         date: row.date as string,
+        time: row.time as string || '15:00',
         opponent: row.opponent as string,
         homeAway: row.homeAway as 'home' | 'away',
+        location: row.location as string || '',
+        field: row.field as string || '',
+        coaches,
+        managers,
         status: row.status as Match['status'],
         startTime: row.startTime as number | undefined,
         firstHalfDuration: row.firstHalfDuration as number,
@@ -671,7 +727,6 @@ export function useDatabase() {
     stmt.free();
     return matches;
   };
-
   const addMatch = (match: Omit<Match, 'id'>) => {
     if (!db) return;
     
@@ -679,14 +734,30 @@ export function useDatabase() {
     
     // Inserisci partita
     db.run(
-      'INSERT INTO matches (id, date, opponent, homeAway, status, startTime, firstHalfDuration, secondHalfDuration, homeScore, awayScore, lastTimestamp, isRunning) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)',
-      [id, match.date, match.opponent, match.homeAway, match.status, match.startTime || null, match.firstHalfDuration, match.secondHalfDuration, match.homeScore, match.awayScore, match.lastTimestamp || null, match.isRunning ? 1 : 0]
+      'INSERT INTO matches (id, date, time, opponent, homeAway, location, field, status, startTime, firstHalfDuration, secondHalfDuration, homeScore, awayScore, lastTimestamp, isRunning) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)',
+      [id, match.date, match.time, match.opponent, match.homeAway, match.location || null, match.field || null, match.status, match.startTime || null, match.firstHalfDuration, match.secondHalfDuration, match.homeScore, match.awayScore, match.lastTimestamp || null, match.isRunning ? 1 : 0]
     );
       // Inserisci formazione con posizione e numero maglia
     match.lineup.forEach(matchPlayer => {
       const lineupId = `${id}_${matchPlayer.playerId}`;
       db.run('INSERT INTO match_lineups (id, matchId, playerId, position, jerseyNumber) VALUES (?, ?, ?, ?, ?)', [lineupId, id, matchPlayer.playerId, matchPlayer.position, matchPlayer.jerseyNumber]);
     });
+    
+    // Inserisci allenatori
+    if (Array.isArray(match.coaches)) {
+      match.coaches.forEach(userId => {
+        const coachId = `${id}_coach_${userId}`;
+        db.run('INSERT INTO match_coaches (id, matchId, userId) VALUES (?, ?, ?)', [coachId, id, userId]);
+      });
+    }
+    
+    // Inserisci dirigenti
+    if (Array.isArray(match.managers)) {
+      match.managers.forEach(userId => {
+        const managerId = `${id}_manager_${userId}`;
+        db.run('INSERT INTO match_managers (id, matchId, userId) VALUES (?, ?, ?)', [managerId, id, userId]);
+      });
+    }
     
     // Inserisci numeri maglia avversari
     if (Array.isArray(match.opponentLineup)) {
@@ -708,14 +779,13 @@ export function useDatabase() {
     saveDatabase();
     return id;
   };
-
   const updateMatch = (id: string, match: Omit<Match, 'id'>) => {
     if (!db) return;
     
     // Aggiorna partita
     db.run(
-      'UPDATE matches SET date = ?, opponent = ?, homeAway = ?, status = ?, startTime = ?, firstHalfDuration = ?, secondHalfDuration = ?, homeScore = ?, awayScore = ?, lastTimestamp = ?, isRunning = ? WHERE id = ?',
-      [match.date, match.opponent, match.homeAway, match.status, match.startTime || null, match.firstHalfDuration, match.secondHalfDuration, match.homeScore, match.awayScore, (match as any).lastTimestamp || null, (match as any).isRunning ? 1 : 0, id]
+      'UPDATE matches SET date = ?, time = ?, opponent = ?, homeAway = ?, location = ?, field = ?, status = ?, startTime = ?, firstHalfDuration = ?, secondHalfDuration = ?, homeScore = ?, awayScore = ?, lastTimestamp = ?, isRunning = ? WHERE id = ?',
+      [match.date, match.time, match.opponent, match.homeAway, match.location || null, match.field || null, match.status, match.startTime || null, match.firstHalfDuration, match.secondHalfDuration, match.homeScore, match.awayScore, (match as any).lastTimestamp || null, (match as any).isRunning ? 1 : 0, id]
     );
       // Aggiorna formazione
     db.run('DELETE FROM match_lineups WHERE matchId = ?', [id]);
@@ -723,6 +793,24 @@ export function useDatabase() {
       const lineupId = `${id}_${matchPlayer.playerId}`;
       db.run('INSERT INTO match_lineups (id, matchId, playerId, position, jerseyNumber) VALUES (?, ?, ?, ?, ?)', [lineupId, id, matchPlayer.playerId, matchPlayer.position, matchPlayer.jerseyNumber]);
     });
+    
+    // Aggiorna allenatori
+    db.run('DELETE FROM match_coaches WHERE matchId = ?', [id]);
+    if (Array.isArray(match.coaches)) {
+      match.coaches.forEach(userId => {
+        const coachId = `${id}_coach_${userId}`;
+        db.run('INSERT INTO match_coaches (id, matchId, userId) VALUES (?, ?, ?)', [coachId, id, userId]);
+      });
+    }
+    
+    // Aggiorna dirigenti
+    db.run('DELETE FROM match_managers WHERE matchId = ?', [id]);
+    if (Array.isArray(match.managers)) {
+      match.managers.forEach(userId => {
+        const managerId = `${id}_manager_${userId}`;
+        db.run('INSERT INTO match_managers (id, matchId, userId) VALUES (?, ?, ?)', [managerId, id, userId]);
+      });
+    }
     
     // Aggiorna sostituzioni
     db.run('DELETE FROM substitutions WHERE matchId = ?', [id]);

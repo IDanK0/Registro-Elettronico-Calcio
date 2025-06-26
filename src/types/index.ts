@@ -35,8 +35,13 @@ export interface Training {
 export interface Match {
   id: string;
   date: string;
+  time: string; // Added time field
   opponent: string;
   homeAway: 'home' | 'away';
+  location?: string; // Added location field (for away matches)
+  field?: string; // Added field field (for away matches)
+  coaches: string[]; // Array of user IDs for coaches
+  managers: string[]; // Array of user IDs for managers
   status: 'scheduled' | 'first-half' | 'half-time' | 'second-half' | 'finished';
   startTime?: number;
   firstHalfDuration: number;

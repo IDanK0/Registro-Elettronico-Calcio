@@ -84,12 +84,20 @@ export function MatchList({ matches, players, onEdit, onDelete, onManage, onRepo
               <div className="flex justify-between items-center mb-2">
                 <div>
                   <h3 className="text-lg font-semibold text-gray-800">vs {match.opponent}</h3>
-                  <p className="text-sm text-gray-600">{formatDate(match.date)}</p>
+                  <p className="text-sm text-gray-600">
+                    {formatDate(match.date)}
+                    {match.time && (
+                      <span className="ml-2 inline-flex items-center gap-1">
+                        <Clock className="w-3 h-3" />
+                        {match.time}
+                      </span>
+                    )}
+                  </p>
                 </div>
                 <div className={`px-2 py-1 text-xs font-medium rounded-full text-white ${statusColor}`}>{statusText}</div>
               </div>
               <div className="flex justify-between items-center text-sm text-gray-600 mb-2">
-                <span>Formazione: {match.lineup.length}/11</span>
+                <span>Formazione: {match.lineup.length} giocator{match.lineup.length === 1 ? 'e' : 'i'}</span>
                 {match.substitutions.length > 0 && <span>Sostituzioni: {match.substitutions.length}</span>}
               </div>
               <div className="flex justify-end gap-2">
@@ -152,6 +160,12 @@ export function MatchList({ matches, players, onEdit, onDelete, onManage, onRepo
                       <p className="text-sm text-gray-600 flex items-center gap-1">
                         <Calendar className="w-4 h-4" />
                         {formatDate(match.date)}
+                        {match.time && (
+                          <span className="ml-2 inline-flex items-center gap-1">
+                            <Clock className="w-3 h-3" />
+                            {match.time}
+                          </span>
+                        )}
                       </p>
                     </div>
                   </div>
@@ -197,7 +211,7 @@ export function MatchList({ matches, players, onEdit, onDelete, onManage, onRepo
                         </>
                       )}
                     </span>
-                    <span>Formazione: {match.lineup.length}/11</span>
+                    <span>Formazione: {match.lineup.length} giocator{match.lineup.length === 1 ? 'e' : 'i'}</span>
                     {match.substitutions.length > 0 && (
                       <span>Sostituzioni: {match.substitutions.length}</span>
                     )}
