@@ -1,6 +1,7 @@
 import { Clock, Users, Edit2, Trash2, UserCheck, UserX } from 'lucide-react';
 import useIsMobile from '../hooks/useIsMobile';
 import { Training, Player } from '../types';
+import { ExportTrainingAttendanceButton } from './ExportTrainingAttendanceButton';
 
 interface TrainingListProps {
   trainings: Training[];
@@ -32,38 +33,60 @@ export function TrainingList({ trainings, players, onEdit, onDelete }: TrainingL
   if (isMobile) {
     return (
       <div className="space-y-4">
-        {sortedTrainings.map(training => {
-          const presentCount = Object.values(training.attendances).filter(v => v).length;
-          const totalCount = Object.keys(training.attendances).length;
-          const attendanceRate = totalCount > 0 ? Math.round((presentCount / totalCount) * 100) : 0;
-          return (
-            <div key={training.id} className="bg-white rounded-xl shadow-md p-4">
-              <div className="flex justify-between items-center mb-2">
-                <div>
-                  <h3 className="text-lg font-semibold text-gray-800">{formatDate(training.date)}</h3>
-                  <p className="text-sm text-gray-600">{training.time}</p>
+        {/* Export button - only show when there are trainings */}
+        {sortedTrainings.length > 0 && (
+          <div className="flex justify-end">
+            <ExportTrainingAttendanceButton trainings={trainings} players={players} />
+          </div>
+        )}
+        
+        {sortedTrainings.length === 0 ? (
+          <div className="text-center py-12">
+            <Users className="w-16 h-16 text-gray-300 mx-auto mb-4" />
+            <p className="text-gray-500 text-lg">Nessun allenamento registrato</p>
+            <p className="text-gray-400">Aggiungi il primo allenamento per iniziare</p>
+          </div>
+        ) : (
+          sortedTrainings.map(training => {
+            const presentCount = Object.values(training.attendances).filter(v => v).length;
+            const totalCount = Object.keys(training.attendances).length;
+            const attendanceRate = totalCount > 0 ? Math.round((presentCount / totalCount) * 100) : 0;
+            return (
+              <div key={training.id} className="bg-white rounded-xl shadow-md p-4">
+                <div className="flex justify-between items-center mb-2">
+                  <div>
+                    <h3 className="text-lg font-semibold text-gray-800">{formatDate(training.date)}</h3>
+                    <p className="text-sm text-gray-600">{training.time}</p>
+                  </div>
+                  <div className="text-sm font-medium text-gray-700">
+                    {presentCount}/{totalCount} ({attendanceRate}%)
+                  </div>
                 </div>
-                <div className="text-sm font-medium text-gray-700">
-                  {presentCount}/{totalCount} ({attendanceRate}%)
+                <div className="flex justify-end gap-2">
+                  <button onClick={() => onEdit(training)} className="p-2 text-blue-600 hover:bg-blue-100 rounded-lg">
+                    <Edit2 className="w-5 h-5" />
+                  </button>
+                  <button onClick={() => onDelete(training.id)} className="p-2 text-red-600 hover:bg-red-100 rounded-lg">
+                    <Trash2 className="w-5 h-5" />
+                  </button>
                 </div>
               </div>
-              <div className="flex justify-end gap-2">
-                <button onClick={() => onEdit(training)} className="p-2 text-blue-600 hover:bg-blue-100 rounded-lg">
-                  <Edit2 className="w-5 h-5" />
-                </button>
-                <button onClick={() => onDelete(training.id)} className="p-2 text-red-600 hover:bg-red-100 rounded-lg">
-                  <Trash2 className="w-5 h-5" />
-                </button>
-              </div>
-            </div>
-          );
-        })}
+            );
+          })
+        )}
       </div>
     );
   }
 
   return (
     <div className="space-y-4">
+      {/* Export button - only show when there are trainings */}
+      {sortedTrainings.length > 0 && (
+        <div className="flex justify-end">
+          <ExportTrainingAttendanceButton trainings={trainings} players={players} />
+        </div>
+      )}
+      
       {sortedTrainings.length === 0 ? (
         <div className="text-center py-12">
           <Users className="w-16 h-16 text-gray-300 mx-auto mb-4" />

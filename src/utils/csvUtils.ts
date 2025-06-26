@@ -1,4 +1,4 @@
-import { User, Group, UserWithGroup, Player, PlayerDocument } from '../types';
+import { User, Group, UserWithGroup, Player, Training } from '../types';
 
 // CSV Export functions
 export const exportGroupsToCSV = (groups: Group[]): void => {
@@ -105,6 +105,76 @@ export const exportPlayersToCSV = (players: Player[]): void => {
     .join('\n');
 
   downloadCSV(csvContent, 'giocatori.csv');
+};
+
+export const exportTrainingAttendanceToCSV = (trainings: Training[], players: Player[]): void => {
+  if (trainings.length === 0) {
+    alert('Nessun allenamento disponibile per l\'esportazione');
+    return;
+  }
+
+  const activePlayersMap = new Map(players.filter(p => p.isActive).map(p => [p.id, p]));
+  
+  // Sort trainings by date (most recent first)
+  const sortedTrainings = [...trainings].sort((a, b) => 
+    new Date(b.date + ' ' + b.time).getTime() - new Date(a.date + ' ' + a.time).getTime()
+  );
+
+  // Create headers: Player info + training dates
+  const headers = [
+    'Nome',
+    'Cognome',
+    'Totale Presenze',
+    'Totale Allenamenti',
+    'Percentuale Presenze',
+    'Assenze Totali',
+    ...sortedTrainings.map(t => `${new Date(t.date).toLocaleDateString('it-IT')} ${t.time}`)
+  ];
+
+  // Generate data for each active player
+  const csvData = Array.from(activePlayersMap.values()).map(player => {
+    let totalPresences = 0;
+    let totalTrainings = 0;
+
+    // Calculate attendance for each training
+    const attendanceData = sortedTrainings.map(training => {
+      const isPresent = training.attendances[player.id];
+      if (isPresent !== undefined) {
+        totalTrainings++;
+        if (isPresent) totalPresences++;
+        return isPresent ? 'Presente' : 'Assente';
+      }
+      return 'N/A';
+    });
+
+    const attendancePercentage = totalTrainings > 0 ? 
+      Math.round((totalPresences / totalTrainings) * 100) : 0;
+    const totalAbsences = totalTrainings - totalPresences;
+
+    return [
+      player.firstName,
+      player.lastName,
+      totalPresences.toString(),
+      totalTrainings.toString(),
+      `${attendancePercentage}%`,
+      totalAbsences.toString(),
+      ...attendanceData
+    ];
+  });
+
+  // Sort players by attendance percentage (descending)
+  csvData.sort((a, b) => {
+    const percentageA = parseInt(a[4].replace('%', ''));
+    const percentageB = parseInt(b[4].replace('%', ''));
+    return percentageB - percentageA;
+  });
+
+  const csvContent = [headers, ...csvData]
+    .map(row => row.map(field => `"${field}"`).join(','))
+    .join('\n');
+
+  const currentDate = new Date().toLocaleDateString('it-IT').replace(/\//g, '-');
+  downloadCSV(csvContent, `riepilogo_presenze_allenamenti_${currentDate}.csv`);
 };
 
 // CSV Import functions

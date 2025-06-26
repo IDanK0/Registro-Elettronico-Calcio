@@ -5,13 +5,13 @@
     - Nome, Cognome, Stato (Attivo/Disatto), data scadenza, Gruppo di appartenenza, Login, Password, E-mail, Cellulare, Matricola
     - Predisporre Import/Export tramite CSV sia per i gruppi con i permessi, sia degli utenti.
 
-Giocatori:
+[X] Giocatori:
     - Aggiungere Recapiti: Numero, email e nome di un genitore
     - Rimozione assegnazione fissa di ruolo e numero di maglia per giocatore (varierà per ogni partita)
     - Aggiungere possibilità di allegare documenti o file per ogni persona (come certificati medici, ecc..) e di visualizzarli e scaricarli tramite un tasto nella lista giocatori
     - Aggiungere Import/Export tramite CSV dei giocatori.
 
-Allenamenti:
+[X] Allenamenti:
     - Partire dai presenti come predefinito invece degli assenti
     - Possibilità di esportare riepilogo assenze in csv
 

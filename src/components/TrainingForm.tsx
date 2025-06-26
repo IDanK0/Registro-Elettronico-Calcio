@@ -12,10 +12,10 @@ interface TrainingFormProps {
 export function TrainingForm({ players, onSubmit, initialData, onCancel }: TrainingFormProps) {
   // Compute active players
   const activePlayers = players.filter(p => p.isActive);
-  // Default attendances: for new training, mark all absent (false)
+  // Default attendances: for new training, mark all present (true)
   const defaultAttendances: Record<string, boolean> = {};
-  activePlayers.forEach(p => { defaultAttendances[p.id] = false; });
-  // Initialize form data, using existing attendances or default absent
+  activePlayers.forEach(p => { defaultAttendances[p.id] = true; });
+  // Initialize form data, using existing attendances or default present
   const [formData, setFormData] = useState({
     date: initialData?.date || new Date().toISOString().split('T')[0],
     time: initialData?.time || '18:00',
