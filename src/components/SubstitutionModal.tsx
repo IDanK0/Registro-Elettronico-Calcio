@@ -1,14 +1,15 @@
-import React, { useState } from 'react';
-import { Player } from '../types';
+import { useState } from 'react';
+import { Player, MatchPlayer } from '../types';
 import { ArrowLeftRight, X } from 'lucide-react';
 
 interface SubstitutionModalProps {
   isOpen: boolean;
   onClose: () => void;
-  playersOnField: Player[];
+  playersOnField: (Player & { matchPlayer: MatchPlayer })[];
   playersOnBench: Player[];
-  onSubstitute: (playerOutId: string, playerInId: string) => void;
+  onSubstitute: (playerOutId: string, playerInId: string, jerseyNumber: number) => void;
   currentMinute: number;
+  playerJerseyNumbers?: Record<string, number>; // Mappa dei numeri di maglia assegnati
 }
 
 export function SubstitutionModal({
@@ -17,21 +18,48 @@ export function SubstitutionModal({
   playersOnField,
   playersOnBench,
   onSubstitute,
-  currentMinute
+  currentMinute,
+  playerJerseyNumbers = {}
 }: SubstitutionModalProps) {
   const [playerOut, setPlayerOut] = useState('');
   const [playerIn, setPlayerIn] = useState('');
+  const [jerseyNumber, setJerseyNumber] = useState<number | ''>('');
 
   if (!isOpen) return null;
 
+  // Controlla se il giocatore selezionato ha già un numero di maglia
+  const selectedPlayerInHasJersey = playerIn && playerJerseyNumbers[playerIn];
+  const existingJerseyNumber = selectedPlayerInHasJersey ? playerJerseyNumbers[playerIn] : null;
+
   const handleSubstitute = () => {
     if (playerOut && playerIn) {
-      onSubstitute(playerOut, playerIn);
-      setPlayerOut('');
-      setPlayerIn('');
-      onClose();
+      const finalJerseyNumber = existingJerseyNumber || Number(jerseyNumber);
+      if (finalJerseyNumber) {
+        onSubstitute(playerOut, playerIn, finalJerseyNumber);
+        setPlayerOut('');
+        setPlayerIn('');
+        setJerseyNumber('');
+        onClose();
+      }
     }
   };
+
+  const resetForm = () => {
+    setPlayerOut('');
+    setPlayerIn('');
+    setJerseyNumber('');
+  };
+
+  const handleClose = () => {
+    resetForm();
+    onClose();
+  };
+
+  // Ottieni i numeri di maglia già utilizzati
+  const usedJerseyNumbers = playersOnField.map(p => p.matchPlayer.jerseyNumber);
+
+  // Controlla se il numero di maglia esistente è già utilizzato da un altro giocatore in campo
+  const existingJerseyConflict = existingJerseyNumber && usedJerseyNumbers.includes(existingJerseyNumber);
 
   return (
     <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
@@ -42,7 +70,7 @@ export function SubstitutionModal({
             Sostituzione - {currentMinute}'
           </h3>
           <button
-            onClick={onClose}
+            onClick={handleClose}
             className="p-2 hover:bg-gray-100 rounded-lg transition-colors"
           >
             <X className="w-5 h-5" />
@@ -60,9 +88,9 @@ export function SubstitutionModal({
               className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
             >
               <option value="">Seleziona giocatore</option>
-              {playersOnField.map(player => (
-                <option key={player.id} value={player.id}>
-                  #{player.jerseyNumber} {player.firstName} {player.lastName}
+              {playersOnField.map(playerWithMatch => (
+                <option key={playerWithMatch.id} value={playerWithMatch.id}>
+                  #{playerWithMatch.matchPlayer.jerseyNumber} {playerWithMatch.firstName} {playerWithMatch.lastName}
                 </option>
               ))}
             </select>
@@ -82,25 +110,54 @@ export function SubstitutionModal({
               className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
             >
               <option value="">Seleziona giocatore</option>
-              {playersOnBench.map(player => (
-                <option key={player.id} value={player.id}>
-                  #{player.jerseyNumber} {player.firstName} {player.lastName}
-                </option>
-              ))}
+              {playersOnBench.map(player => {
+                const hasJersey = playerJerseyNumbers[player.id];
+                return (
+                  <option key={player.id} value={player.id}>
+                    {hasJersey ? `#${hasJersey}` : '#'} {player.firstName} {player.lastName}
+                  </option>
+                );
+              })}
             </select>
           </div>
+
+          {playerIn && !existingJerseyNumber && (
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">
+                Numero di maglia per il giocatore che entra
+              </label>
+              <input
+                type="number"
+                min="1"
+                max="99"
+                value={jerseyNumber}
+                onChange={(e) => setJerseyNumber(e.target.value === '' ? '' : Number(e.target.value))}
+                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                placeholder="Numero maglia (1-99)"
+              />
+              {jerseyNumber !== '' && usedJerseyNumbers.includes(Number(jerseyNumber)) && (
+                <p className="text-red-600 text-sm mt-1">
+                  Questo numero di maglia è già utilizzato da un giocatore in campo
+                </p>
+              )}
+            </div>
+          )}
         </div>
 
         <div className="flex gap-3 mt-6">
           <button
             onClick={handleSubstitute}
-            disabled={!playerOut || !playerIn}
+            disabled={
+              !playerOut || 
+              !playerIn || 
+              (existingJerseyNumber ? !!existingJerseyConflict : (jerseyNumber === '' || usedJerseyNumbers.includes(Number(jerseyNumber))))
+            }
             className="flex-1 bg-blue-600 text-white py-2 px-4 rounded-lg hover:bg-blue-700 disabled:bg-gray-300 disabled:cursor-not-allowed transition-colors font-medium"
           >
             Conferma Sostituzione
           </button>
           <button
-            onClick={onClose}
+            onClick={handleClose}
             className="flex-1 bg-gray-500 text-white py-2 px-4 rounded-lg hover:bg-gray-600 transition-colors font-medium"
           >
             Annulla

@@ -190,10 +190,10 @@ export function ReportMatch({ match, players, users, onClose }: ReportMatchProps
         events.substitutions.forEach(s => {
           const timeStr = `${s.minute}${s.second !== undefined ? ':' + s.second.toString().padStart(2, '0') : ''}`;
           const out = players.find(p => p.id === s.playerOut);
-          const outMatchPlayer = out ? match.lineup.find(lp => lp.playerId === out.id) : null;
           const inP = players.find(p => p.id === s.playerIn);
-          const inMatchPlayer = inP ? match.lineup.find(lp => lp.playerId === inP.id) : null;
-          csvRows.push(`${timeStr},"${out ? `${outMatchPlayer?.jerseyNumber || ''} ${out.lastName}` : s.playerOut}","${inP ? `${inMatchPlayer?.jerseyNumber || ''} ${inP.lastName}` : s.playerIn}"`);
+          const outDisplay = `${s.playerOutJerseyNumber ? `#${s.playerOutJerseyNumber}` : '#'} ${out ? out.lastName : s.playerOut}`;
+          const inDisplay = `${s.playerInJerseyNumber ? `#${s.playerInJerseyNumber}` : '#'} ${inP ? inP.lastName : s.playerIn}`;
+          csvRows.push(`${timeStr},"${outDisplay}","${inDisplay}"`);
         });
         csvRows.push('');
       }
@@ -297,10 +297,10 @@ export function ReportMatch({ match, players, users, onClose }: ReportMatchProps
         events.substitutions.forEach(s => {
           const timeStr = `${s.minute}${s.second !== undefined ? ':' + s.second.toString().padStart(2, '0') : ''}`;
           const out = players.find(p => p.id === s.playerOut);
-          const outMatchPlayer = out ? match.lineup.find(lp => lp.playerId === out.id) : null;
           const inP = players.find(p => p.id === s.playerIn);
-          const inMatchPlayer = inP ? match.lineup.find(lp => lp.playerId === inP.id) : null;
-          eventsData.push([timeStr, out ? `${outMatchPlayer?.jerseyNumber || ''} ${out.lastName}` : s.playerOut, inP ? `${inMatchPlayer?.jerseyNumber || ''} ${inP.lastName}` : s.playerIn]);
+          const outDisplay = `${s.playerOutJerseyNumber ? `#${s.playerOutJerseyNumber}` : '#'} ${out ? out.lastName : s.playerOut}`;
+          const inDisplay = `${s.playerInJerseyNumber ? `#${s.playerInJerseyNumber}` : '#'} ${inP ? inP.lastName : s.playerIn}`;
+          eventsData.push([timeStr, outDisplay, inDisplay]);
         });
         eventsData.push([]);
       }
@@ -530,9 +530,7 @@ export function ReportMatch({ match, players, users, onClose }: ReportMatchProps
                             <div className="space-y-1">
                               {events.substitutions.map(s => {
                                 const out = players.find(p => p.id === s.playerOut);
-                                const outMatchPlayer = out ? match.lineup.find(lp => lp.playerId === out.id) : null;
                                 const inP = players.find(p => p.id === s.playerIn);
-                                const inMatchPlayer = inP ? match.lineup.find(lp => lp.playerId === inP.id) : null;
                                 return (
                                   <div key={s.id} className="p-2 rounded border bg-blue-50 border-blue-200">
                                     <div className="flex items-center gap-1 mb-1">
@@ -543,11 +541,15 @@ export function ReportMatch({ match, players, users, onClose }: ReportMatchProps
                                     <div className="text-xs space-y-0.5">
                                       <div className="flex items-center gap-1">
                                         <span className="text-red-600 font-medium">Esce:</span>
-                                        <span className="text-gray-700">{out ? `${outMatchPlayer?.jerseyNumber || ''} ${out.lastName}` : s.playerOut}</span>
+                                        <span className="text-gray-700">
+                                          {s.playerOutJerseyNumber ? `#${s.playerOutJerseyNumber}` : '#'} {out ? out.lastName : s.playerOut}
+                                        </span>
                                       </div>
                                       <div className="flex items-center gap-1">
                                         <span className="text-green-600 font-medium">Entra:</span>
-                                        <span className="text-gray-700">{inP ? `${inMatchPlayer?.jerseyNumber || ''} ${inP.lastName}` : s.playerIn}</span>
+                                        <span className="text-gray-700">
+                                          {s.playerInJerseyNumber ? `#${s.playerInJerseyNumber}` : '#'} {inP ? inP.lastName : s.playerIn}
+                                        </span>
                                       </div>
                                     </div>
                                   </div>

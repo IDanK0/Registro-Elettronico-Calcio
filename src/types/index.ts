@@ -64,6 +64,8 @@ export interface Match {
   // Nuova struttura per periodi dinamici
   periods: MatchPeriod[];
   currentPeriodIndex: number;
+  // Mappa per tenere traccia dei numeri di maglia assegnati ai giocatori
+  playerJerseyNumbers?: Record<string, number>; // playerId -> jerseyNumber
   // Statistiche dettagliate della partita
   possessionHome?: number;
   possessionAway?: number;
@@ -91,6 +93,8 @@ export interface Substitution {
   second?: number;
   playerOut: string;
   playerIn: string;
+  playerOutJerseyNumber?: number; // Numero di maglia del giocatore che esce
+  playerInJerseyNumber?: number; // Numero di maglia del giocatore che entra
   periodIndex?: number; // Indice del periodo in cui è avvenuta la sostituzione
 }
 

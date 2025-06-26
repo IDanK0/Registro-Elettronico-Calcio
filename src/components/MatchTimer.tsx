@@ -63,9 +63,11 @@ export function MatchTimer({
         <div className="text-6xl font-bold text-gray-800 font-mono">
           {formatTime(getCurrentTime())}
         </div>
-        <p className="text-gray-500 mt-2">
-          {isRunning ? 'Timer in corso' : 'Timer in pausa'}
-        </p>
+        {hasMatchStarted && (
+          <p className="text-gray-500 mt-2">
+            {isRunning ? 'Timer in corso' : 'Timer in pausa'}
+          </p>
+        )}
       </div>      {/* Periodi Overview - Mostra solo dopo che la partita è iniziata */}
       {hasMatchStarted && (
         <div className="mb-6">

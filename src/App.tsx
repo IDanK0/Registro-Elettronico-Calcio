@@ -271,14 +271,29 @@ function App() {
     }
   };
   const handleMatchManage = (match: Match) => {
-    setManagingMatch(match);
+    // Inizializza la mappa dei numeri di maglia se non esiste
+    const playerJerseyNumbers = match.playerJerseyNumbers || {};
+    
+    // Popola la mappa con i numeri di maglia dei giocatori attualmente in formazione
+    match.lineup.forEach(matchPlayer => {
+      if (!playerJerseyNumbers[matchPlayer.playerId]) {
+        playerJerseyNumbers[matchPlayer.playerId] = matchPlayer.jerseyNumber;
+      }
+    });
+
+    const matchWithJerseyNumbers = {
+      ...match,
+      playerJerseyNumbers
+    };
+
+    setManagingMatch(matchWithJerseyNumbers);
     setInitialLineup(match.lineup);
     setCurrentView('manage');
     
     // Inizializza i periodi se non esistono
     if (!match.periods || match.periods.length === 0) {
       const updatedMatch = { 
-        ...match, 
+        ...matchWithJerseyNumbers, 
         periods: defaultPeriods,
         currentPeriodIndex: 0 
       };
@@ -287,6 +302,10 @@ function App() {
       setCurrentPeriodIndex(0);
     } else {
       setCurrentPeriodIndex(match.currentPeriodIndex || 0);
+      // Aggiorna il database con la mappa dei numeri di maglia se necessario
+      if (!match.playerJerseyNumbers) {
+        database.updateMatch(match.id, matchWithJerseyNumbers);
+      }
     }
     
     // Restore timer based on current period and lastTimestamp
@@ -312,8 +331,19 @@ function App() {
     }  };
 
   // Substitution functions
-  const handleSubstitution = (playerOutId: string, playerInId: string) => {
+  const handleSubstitution = (playerOutId: string, playerInId: string, jerseyNumber: number) => {
     if (!managingMatch) return;
+
+    // Trova il numero di maglia del giocatore che esce
+    const playerOutMatch = managingMatch.lineup.find(mp => mp.playerId === playerOutId);
+    const playerOutJerseyNumber = playerOutMatch?.jerseyNumber;
+
+    // Aggiorna la mappa dei numeri di maglia per conservare il numero del giocatore che esce
+    const updatedPlayerJerseyNumbers = {
+      ...managingMatch.playerJerseyNumbers,
+      [playerOutId]: playerOutJerseyNumber || 0,
+      [playerInId]: jerseyNumber
+    };
 
     const nowSeconds = timer.time;
     const substitution: Substitution = {
@@ -321,14 +351,21 @@ function App() {
       minute: Math.floor(nowSeconds / 60),
       second: nowSeconds % 60,
       playerOut: playerOutId,
-      playerIn: playerInId
-    };    const updatedLineup = managingMatch.lineup.map(matchPlayer => 
-      matchPlayer.playerId === playerOutId ? { ...matchPlayer, playerId: playerInId } : matchPlayer
+      playerIn: playerInId,
+      playerOutJerseyNumber: playerOutJerseyNumber,
+      playerInJerseyNumber: jerseyNumber
+    };
+
+    const updatedLineup = managingMatch.lineup.map(matchPlayer => 
+      matchPlayer.playerId === playerOutId 
+        ? { ...matchPlayer, playerId: playerInId, jerseyNumber: jerseyNumber } 
+        : matchPlayer
     );
 
     const updatedMatch = {
       ...managingMatch,
       lineup: updatedLineup,
+      playerJerseyNumbers: updatedPlayerJerseyNumbers,
       substitutions: [...managingMatch.substitutions, substitution]
     };
 
@@ -338,7 +375,11 @@ function App() {
   };
   const getPlayersOnField = () => {
     if (!managingMatch) return [];
-    return managingMatch.lineup.map(matchPlayer => players.find(p => p.id === matchPlayer.playerId)).filter(Boolean) as Player[];
+    return managingMatch.lineup.map(matchPlayer => {
+      const player = players.find(p => p.id === matchPlayer.playerId);
+      if (!player) return null;
+      return { ...player, matchPlayer };
+    }).filter(Boolean) as (Player & { matchPlayer: MatchPlayer })[];
   };
 
   const getPlayersOnBench = () => {
@@ -346,6 +387,18 @@ function App() {
     const activePlayerIds = players.filter(p => p.isActive).map(p => p.id);
     const onFieldIds = managingMatch.lineup.map(mp => mp.playerId);
     return players.filter(p => activePlayerIds.includes(p.id) && !onFieldIds.includes(p.id));
+  };
+
+  // Funzione per ottenere il numero di maglia di un giocatore
+  const getPlayerJerseyNumber = (playerId: string): number | null => {
+    if (!managingMatch) return null;
+    
+    // Prima controlla se il giocatore è attualmente in campo
+    const inLineup = managingMatch.lineup.find(mp => mp.playerId === playerId);
+    if (inLineup) return inLineup.jerseyNumber;
+    
+    // Se non è in campo, controlla la mappa dei numeri di maglia
+    return managingMatch.playerJerseyNumbers?.[playerId] || null;
   };
 
   // Navigation
@@ -799,14 +852,20 @@ function App() {
               <h3 className="text-lg font-semibold text-gray-800 mb-2">In panchina</h3>
               <div className="bg-white rounded-xl shadow p-4 mb-4 min-h-[60px]">
                 {getPlayersOnBench().length === 0 ? (
-                  <span className="text-gray-400">Nessun giocatore in panchina</span>                ) : (
+                  <span className="text-gray-400">Nessun giocatore in panchina</span>
+                ) : (
                   <ul className="space-y-1">
-                    {getPlayersOnBench().map(player => (
-                      <li key={player.id} className="flex items-center gap-2">
-                        <span className="font-bold text-green-700">{player.firstName.charAt(0)}{player.lastName.charAt(0)}</span>
-                        <span>{player.firstName} {player.lastName}</span>
-                      </li>
-                    ))}
+                    {getPlayersOnBench().map(player => {
+                      const jerseyNumber = getPlayerJerseyNumber(player.id);
+                      return (
+                        <li key={player.id} className="flex items-center gap-2">
+                          <span className="font-bold text-green-700">
+                            {jerseyNumber ? `#${jerseyNumber}` : '#'}
+                          </span>
+                          <span>{player.firstName} {player.lastName}</span>
+                        </li>
+                      );
+                    })}
                   </ul>
                 )}
               </div>
@@ -979,6 +1038,7 @@ function App() {
             playersOnBench={getPlayersOnBench()}
             onSubstitute={handleSubstitution}
             currentMinute={Math.floor(timer.time / 60)}
+            playerJerseyNumbers={managingMatch.playerJerseyNumbers}
           />
 
           <AmmonitionModal
