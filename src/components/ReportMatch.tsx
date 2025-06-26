@@ -20,19 +20,54 @@ export function ReportMatch({ match, players, users, onClose }: ReportMatchProps
     return match.periods[periodIndex].label;
   };
 
-  // Raggruppa eventi per periodo
+  // Raggruppa eventi per periodo basandosi sui tempi
   const getEventsByPeriod = () => {
     const eventsByPeriod: { [key: number]: { goals: any[], cards: any[], substitutions: any[] } } = {};
     
+    // Se non ci sono periodi, usa un periodo di default
+    const periods = match.periods || [{ type: 'regular', label: '1° Tempo', duration: 0 }];
+    
     // Inizializza tutti i periodi
-    match.periods?.forEach((_, index) => {
+    periods.forEach((_, index) => {
       eventsByPeriod[index] = { goals: [], cards: [], substitutions: [] };
     });
+
+    // Funzione per determinare in quale periodo appartiene un evento basandosi sul tempo
+    const getEventPeriodIndex = (eventTimeInSeconds: number) => {
+      let cumulativeTime = 0;
+      
+      for (let i = 0; i < periods.length; i++) {
+        const period = periods[i];
+        const periodDuration = period.duration;
+        
+        // Se l'evento è avvenuto durante questo periodo
+        if (eventTimeInSeconds >= cumulativeTime && eventTimeInSeconds < cumulativeTime + periodDuration) {
+          return i;
+        }
+        
+        // Solo i periodi regolari e supplementari contribuiscono al tempo cumulativo
+        // Gli intervalli non "consumano" tempo di gioco
+        if (period.type !== 'interval') {
+          cumulativeTime += periodDuration;
+        }
+      }
+      
+      // Se non trovato, assegna all'ultimo periodo non-intervallo
+      for (let i = periods.length - 1; i >= 0; i--) {
+        if (periods[i].type !== 'interval') {
+          return i;
+        }
+      }
+      
+      return 0; // Fallback al primo periodo
+    };
 
     // Raggruppa goal per periodo
     const goals = match.events.filter(e => e.type === 'goal');
     goals.forEach(goal => {
-      const periodIndex = goal.periodIndex ?? 0;
+      const eventTimeInSeconds = (goal.minute * 60) + (goal.second || 0);
+      const periodIndex = goal.periodIndex !== undefined ? goal.periodIndex : getEventPeriodIndex(eventTimeInSeconds);
+      
       if (!eventsByPeriod[periodIndex]) {
         eventsByPeriod[periodIndex] = { goals: [], cards: [], substitutions: [] };
       }
@@ -44,7 +79,9 @@ export function ReportMatch({ match, players, users, onClose }: ReportMatchProps
       'yellow-card','red-card','second-yellow-card','blue-card','expulsion','warning'
     ].includes(e.type));
     cards.forEach(card => {
-      const periodIndex = card.periodIndex ?? 0;
+      const eventTimeInSeconds = (card.minute * 60) + (card.second || 0);
+      const periodIndex = card.periodIndex !== undefined ? card.periodIndex : getEventPeriodIndex(eventTimeInSeconds);
+      
       if (!eventsByPeriod[periodIndex]) {
         eventsByPeriod[periodIndex] = { goals: [], cards: [], substitutions: [] };
       }
@@ -53,7 +90,9 @@ export function ReportMatch({ match, players, users, onClose }: ReportMatchProps
 
     // Raggruppa sostituzioni per periodo
     match.substitutions.forEach(substitution => {
-      const periodIndex = substitution.periodIndex ?? 0;
+      const eventTimeInSeconds = (substitution.minute * 60) + (substitution.second || 0);
+      const periodIndex = substitution.periodIndex !== undefined ? substitution.periodIndex : getEventPeriodIndex(eventTimeInSeconds);
+      
       if (!eventsByPeriod[periodIndex]) {
         eventsByPeriod[periodIndex] = { goals: [], cards: [], substitutions: [] };
       }
@@ -385,120 +424,140 @@ export function ReportMatch({ match, players, users, onClose }: ReportMatchProps
               Eventi per Periodo
             </h3>
             
-            {Object.entries(eventsByPeriod).map(([periodIndex, events]) => {
-              const periodName = getPeriodName(parseInt(periodIndex));
+            {(match.periods || [{ type: 'regular', label: '1° Tempo', duration: 0 }]).map((period, periodIndex) => {
+              const events = eventsByPeriod[periodIndex] || { goals: [], cards: [], substitutions: [] };
               const hasEvents = events.goals.length > 0 || events.cards.length > 0 || events.substitutions.length > 0;
               
-              if (!hasEvents) return null;
+              // Mostra il periodo se ha eventi o se è un periodo di gioco (non intervallo)
+              if (!hasEvents && period.type === 'interval') return null;
+              
+              // Determina il colore del header in base al tipo di periodo
+              let headerColorClass = '';
+              if (period.type === 'regular') {
+                headerColorClass = 'bg-green-50 border-green-200';
+              } else if (period.type === 'interval') {
+                headerColorClass = 'bg-orange-50 border-orange-200';
+              } else if (period.type === 'extra') {
+                headerColorClass = 'bg-purple-50 border-purple-200';
+              }
               
               return (
-                <div key={periodIndex} className="mb-4 bg-white rounded-lg p-4 border border-gray-200 shadow-sm">
-                  <h4 className="text-sm font-bold text-gray-800 mb-3 pb-2 border-b border-gray-200">
-                    {periodName}
-                  </h4>
-                  
-                  <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
-                    {/* Goal del periodo */}
-                    <div>
-                      <h5 className="text-xs font-semibold mb-2 text-green-700 flex items-center gap-1">
-                        <Target className="w-3 h-3" />
-                        Goal ({events.goals.length})
-                      </h5>
-                      {events.goals.length === 0 ? (
-                        <p className="text-gray-400 text-xs italic">Nessun goal</p>
-                      ) : (
-                        <div className="space-y-1">
-                          {events.goals.map(g => {
-                            const isOpponent = g.description?.includes('avversario');
-                            return (
-                              <div key={g.id} className={`p-2 rounded border ${isOpponent ? 'bg-red-50 border-red-200' : 'bg-green-50 border-green-200'}`}>
-                                <div className="flex items-center gap-1">
-                                  <span className={`text-xs font-bold px-1 py-0.5 rounded ${isOpponent ? 'bg-red-100 text-red-700' : 'bg-green-100 text-green-700'}`}>
-                                    {g.minute}{g.second !== undefined ? `:${g.second.toString().padStart(2, '0')}` : ''}
-                                  </span>
-                                  <span className="text-gray-700 text-xs">{g.description}</span>
-                                </div>
-                              </div>
-                            );
-                          })}
-                        </div>
-                      )}
-                    </div>
-
-                    {/* Ammonizioni del periodo */}
-                    <div>
-                      <h5 className="text-xs font-semibold mb-2 text-yellow-700 flex items-center gap-1">
-                        <AlertTriangle className="w-3 h-3" />
-                        Ammonizioni ({events.cards.length})
-                      </h5>
-                      {events.cards.length === 0 ? (
-                        <p className="text-gray-400 text-xs italic">Nessuna ammonizione</p>
-                      ) : (
-                        <div className="space-y-1">
-                          {events.cards.map(c => {
-                            let colorClass = 'bg-yellow-50 border-yellow-200';
-                            let badgeClass = 'bg-yellow-100 text-yellow-700';
-                            if (c.type === 'red-card' || c.type === 'expulsion') {
-                              colorClass = 'bg-red-50 border-red-200';
-                              badgeClass = 'bg-red-100 text-red-700';
-                            } else if (c.type === 'blue-card') {
-                              colorClass = 'bg-blue-50 border-blue-200';
-                              badgeClass = 'bg-blue-100 text-blue-700';
-                            }
-                            
-                            return (
-                              <div key={c.id} className={`p-2 rounded border ${colorClass}`}>
-                                <div className="flex items-center gap-1">
-                                  <span className={`text-xs font-bold px-1 py-0.5 rounded ${badgeClass}`}>
-                                    {c.minute}{c.second !== undefined ? `:${c.second.toString().padStart(2, '0')}` : ''}
-                                  </span>
-                                  <span className="text-gray-700 text-xs">{c.description}</span>
-                                </div>
-                              </div>
-                            );
-                          })}
-                        </div>
-                      )}
-                    </div>
-
-                    {/* Sostituzioni del periodo */}
-                    <div>
-                      <h5 className="text-xs font-semibold mb-2 text-blue-700 flex items-center gap-1">
-                        <RotateCcw className="w-3 h-3" />
-                        Sostituzioni ({events.substitutions.length})
-                      </h5>
-                      {events.substitutions.length === 0 ? (
-                        <p className="text-gray-400 text-xs italic">Nessuna sostituzione</p>
-                      ) : (
-                        <div className="space-y-1">
-                          {events.substitutions.map(s => {
-                            const out = players.find(p => p.id === s.playerOut);
-                            const outMatchPlayer = out ? match.lineup.find(lp => lp.playerId === out.id) : null;
-                            const inP = players.find(p => p.id === s.playerIn);
-                            const inMatchPlayer = inP ? match.lineup.find(lp => lp.playerId === inP.id) : null;
-                            return (
-                              <div key={s.id} className="p-2 rounded border bg-blue-50 border-blue-200">
-                                <div className="flex items-center gap-1 mb-1">
-                                  <span className="text-xs font-bold px-1 py-0.5 rounded bg-blue-100 text-blue-700">
-                                    {s.minute}{s.second !== undefined ? `:${s.second.toString().padStart(2, '0')}` : ''}
-                                  </span>
-                                </div>
-                                <div className="text-xs space-y-0.5">
-                                  <div className="flex items-center gap-1">
-                                    <span className="text-red-600 font-medium">Esce:</span>
-                                    <span className="text-gray-700">{out ? `${outMatchPlayer?.jerseyNumber || ''} ${out.lastName}` : s.playerOut}</span>
+                <div key={periodIndex} className={`mb-4 bg-white rounded-lg border shadow-sm ${headerColorClass}`}>
+                  <div className="p-4">
+                    <h4 className="text-sm font-bold text-gray-800 mb-3 pb-2 border-b border-gray-200 flex items-center justify-between">
+                      <span>{period.label}</span>
+                      <span className="text-xs text-gray-500 font-normal">
+                        Durata: {Math.floor(period.duration / 60)}:{(period.duration % 60).toString().padStart(2, '0')}
+                      </span>
+                    </h4>
+                    
+                    {!hasEvents && period.type !== 'interval' ? (
+                      <p className="text-gray-400 text-sm italic text-center py-4">Nessun evento registrato in questo periodo</p>
+                    ) : (
+                      <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
+                        {/* Goal del periodo */}
+                        <div>
+                          <h5 className="text-xs font-semibold mb-2 text-green-700 flex items-center gap-1">
+                            <Target className="w-3 h-3" />
+                            Goal ({events.goals.length})
+                          </h5>
+                          {events.goals.length === 0 ? (
+                            <p className="text-gray-400 text-xs italic">Nessun goal</p>
+                          ) : (
+                            <div className="space-y-1">
+                              {events.goals.map(g => {
+                                const isOpponent = g.description?.includes('avversario');
+                                return (
+                                  <div key={g.id} className={`p-2 rounded border ${isOpponent ? 'bg-red-50 border-red-200' : 'bg-green-50 border-green-200'}`}>
+                                    <div className="flex items-center gap-1">
+                                      <span className={`text-xs font-bold px-1 py-0.5 rounded ${isOpponent ? 'bg-red-100 text-red-700' : 'bg-green-100 text-green-700'}`}>
+                                        {g.minute}{g.second !== undefined ? `:${g.second.toString().padStart(2, '0')}` : ''}
+                                      </span>
+                                      <span className="text-gray-700 text-xs">{g.description}</span>
+                                    </div>
                                   </div>
-                                  <div className="flex items-center gap-1">
-                                    <span className="text-green-600 font-medium">Entra:</span>
-                                    <span className="text-gray-700">{inP ? `${inMatchPlayer?.jerseyNumber || ''} ${inP.lastName}` : s.playerIn}</span>
-                                  </div>
-                                </div>
-                              </div>
-                            );
-                          })}
+                                );
+                              })}
+                            </div>
+                          )}
                         </div>
-                      )}
-                    </div>
+
+                        {/* Ammonizioni del periodo */}
+                        <div>
+                          <h5 className="text-xs font-semibold mb-2 text-yellow-700 flex items-center gap-1">
+                            <AlertTriangle className="w-3 h-3" />
+                            Ammonizioni ({events.cards.length})
+                          </h5>
+                          {events.cards.length === 0 ? (
+                            <p className="text-gray-400 text-xs italic">Nessuna ammonizione</p>
+                          ) : (
+                            <div className="space-y-1">
+                              {events.cards.map(c => {
+                                let colorClass = 'bg-yellow-50 border-yellow-200';
+                                let badgeClass = 'bg-yellow-100 text-yellow-700';
+                                if (c.type === 'red-card' || c.type === 'expulsion') {
+                                  colorClass = 'bg-red-50 border-red-200';
+                                  badgeClass = 'bg-red-100 text-red-700';
+                                } else if (c.type === 'blue-card') {
+                                  colorClass = 'bg-blue-50 border-blue-200';
+                                  badgeClass = 'bg-blue-100 text-blue-700';
+                                }
+                                
+                                return (
+                                  <div key={c.id} className={`p-2 rounded border ${colorClass}`}>
+                                    <div className="flex items-center gap-1">
+                                      <span className={`text-xs font-bold px-1 py-0.5 rounded ${badgeClass}`}>
+                                        {c.minute}{c.second !== undefined ? `:${c.second.toString().padStart(2, '0')}` : ''}
+                                      </span>
+                                      <span className="text-gray-700 text-xs">{c.description}</span>
+                                    </div>
+                                  </div>
+                                );
+                              })}
+                            </div>
+                          )}
+                        </div>
+
+                        {/* Sostituzioni del periodo */}
+                        <div>
+                          <h5 className="text-xs font-semibold mb-2 text-blue-700 flex items-center gap-1">
+                            <RotateCcw className="w-3 h-3" />
+                            Sostituzioni ({events.substitutions.length})
+                          </h5>
+                          {events.substitutions.length === 0 ? (
+                            <p className="text-gray-400 text-xs italic">Nessuna sostituzione</p>
+                          ) : (
+                            <div className="space-y-1">
+                              {events.substitutions.map(s => {
+                                const out = players.find(p => p.id === s.playerOut);
+                                const outMatchPlayer = out ? match.lineup.find(lp => lp.playerId === out.id) : null;
+                                const inP = players.find(p => p.id === s.playerIn);
+                                const inMatchPlayer = inP ? match.lineup.find(lp => lp.playerId === inP.id) : null;
+                                return (
+                                  <div key={s.id} className="p-2 rounded border bg-blue-50 border-blue-200">
+                                    <div className="flex items-center gap-1 mb-1">
+                                      <span className="text-xs font-bold px-1 py-0.5 rounded bg-blue-100 text-blue-700">
+                                        {s.minute}{s.second !== undefined ? `:${s.second.toString().padStart(2, '0')}` : ''}
+                                      </span>
+                                    </div>
+                                    <div className="text-xs space-y-0.5">
+                                      <div className="flex items-center gap-1">
+                                        <span className="text-red-600 font-medium">Esce:</span>
+                                        <span className="text-gray-700">{out ? `${outMatchPlayer?.jerseyNumber || ''} ${out.lastName}` : s.playerOut}</span>
+                                      </div>
+                                      <div className="flex items-center gap-1">
+                                        <span className="text-green-600 font-medium">Entra:</span>
+                                        <span className="text-gray-700">{inP ? `${inMatchPlayer?.jerseyNumber || ''} ${inP.lastName}` : s.playerIn}</span>
+                                      </div>
+                                    </div>
+                                  </div>
+                                );
+                              })}
+                            </div>
+                          )}
+                        </div>
+                      </div>
+                    )}
                   </div>
                 </div>
               );
