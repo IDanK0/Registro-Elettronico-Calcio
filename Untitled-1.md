@@ -25,7 +25,7 @@
 
 Gestione Partita in corso:
     - Aggiungere supplementari
-    - Rimuovere il limite di 2 tempi rendendolo dinamico, facendo in modo che si possano aggiungere illimitati tempi e si possa passare ai supplementari o terminare la partita a piacimento
+    - Rimuovere il limite di 2 tempi rendendolo dinamico e illimitato, facendo in modo che si possano aggiungere illimitati tempi e si possa passare ai supplementari (anch'essi illimitati) o terminare la partita a piacimento
 
 Report partita:
     - Rimuovere l'esportazione in PDF

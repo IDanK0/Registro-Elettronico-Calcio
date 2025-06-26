@@ -61,14 +61,99 @@ export function useDatabase() {
         database.run("ALTER TABLE matches ADD COLUMN lastTimestamp INTEGER");
       } catch (e) {
         // ignore if exists
-      }
-
-      // Migrazione: aggiungi la colonna 'isRunning' a matches se non esiste
+      }      // Migrazione: aggiungi la colonna 'isRunning' a matches se non esiste
       try {
         database.run("ALTER TABLE matches ADD COLUMN isRunning BOOLEAN DEFAULT 0");
       } catch (e) {
         // ignore
-      }      // Migrazione: crea tabelle per gestione utenti se non esistono
+      }
+
+      // Migrazione: aggiungi colonna currentPeriodIndex a matches se non esiste
+      try {
+        database.run("ALTER TABLE matches ADD COLUMN currentPeriodIndex INTEGER DEFAULT 0");
+      } catch (e) {
+        // ignore if exists
+      }
+
+      // Migrazione: crea tabella match_periods se non esiste
+      try {
+        database.run(`
+          CREATE TABLE IF NOT EXISTS match_periods (
+            id TEXT PRIMARY KEY,
+            matchId TEXT NOT NULL,
+            type TEXT NOT NULL CHECK (type IN ('regular', 'extra', 'interval')),
+            label TEXT NOT NULL,
+            duration INTEGER NOT NULL DEFAULT 0,
+            isFinished BOOLEAN NOT NULL DEFAULT 0,
+            periodIndex INTEGER NOT NULL,
+            FOREIGN KEY (matchId) REFERENCES matches(id) ON DELETE CASCADE
+          )
+        `);
+
+        // Migrazione: converti le partite esistenti al nuovo formato con periodi
+        const matchesStmt = database.prepare('SELECT id, firstHalfDuration, secondHalfDuration FROM matches');
+        while (matchesStmt.step()) {
+          const match = matchesStmt.getAsObject();
+          const matchId = match.id as string;
+          const firstHalfDuration = match.firstHalfDuration as number || 0;
+          const secondHalfDuration = match.secondHalfDuration as number || 0;
+          
+          // Controlla se i periodi esistono già per questa partita
+          const checkStmt = database.prepare('SELECT COUNT(*) as count FROM match_periods WHERE matchId = ?');
+          checkStmt.bind([matchId]);
+          checkStmt.step();
+          const existingPeriods = checkStmt.getAsObject();
+          const count = existingPeriods.count as number;
+          checkStmt.free();
+          
+          if (count === 0) {
+            // Aggiungi i due periodi di default basati sui tempi esistenti
+            const firstPeriodId = `${matchId}_period_0`;
+            const secondPeriodId = `${matchId}_period_1`;
+            
+            database.run(
+              'INSERT INTO match_periods (id, matchId, type, label, duration, isFinished, periodIndex) VALUES (?, ?, ?, ?, ?, ?, ?)',
+              [firstPeriodId, matchId, 'regular', '1° Tempo', firstHalfDuration, firstHalfDuration > 0 ? 1 : 0, 0]
+            );
+            
+            database.run(
+              'INSERT INTO match_periods (id, matchId, type, label, duration, isFinished, periodIndex) VALUES (?, ?, ?, ?, ?, ?, ?)',
+              [secondPeriodId, matchId, 'regular', '2° Tempo', secondHalfDuration, secondHalfDuration > 0 ? 1 : 0, 1]
+            );
+          }        }
+        matchesStmt.free();
+      } catch (e) {
+        // ignore if migration already done
+      }
+
+      // Migrazione: aggiorna constraint CHECK per supportare 'interval' nei periodi
+      try {
+        // Ricrea la tabella con il nuovo constraint
+        database.run(`
+          CREATE TABLE IF NOT EXISTS match_periods_new (
+            id TEXT PRIMARY KEY,
+            matchId TEXT NOT NULL,
+            type TEXT NOT NULL CHECK (type IN ('regular', 'extra', 'interval')),
+            label TEXT NOT NULL,
+            duration INTEGER NOT NULL DEFAULT 0,
+            isFinished BOOLEAN NOT NULL DEFAULT 0,
+            periodIndex INTEGER NOT NULL,
+            FOREIGN KEY (matchId) REFERENCES matches(id) ON DELETE CASCADE
+          )
+        `);
+        
+        // Copia i dati esistenti
+        database.run(`
+          INSERT INTO match_periods_new (id, matchId, type, label, duration, isFinished, periodIndex)
+          SELECT id, matchId, type, label, duration, isFinished, periodIndex FROM match_periods
+        `);
+        
+        // Elimina la vecchia tabella e rinomina quella nuova
+        database.run("DROP TABLE IF EXISTS match_periods");
+        database.run("ALTER TABLE match_periods_new RENAME TO match_periods");
+      } catch (e) {
+        // ignore if migration already done
+      }// Migrazione: crea tabelle per gestione utenti se non esistono
       try {
         database.run(`
           CREATE TABLE IF NOT EXISTS groups (
@@ -690,14 +775,33 @@ export function useDatabase() {
       coachesStmt.free();
       
       // Ottieni dirigenti
-      const managersStmt = db.prepare('SELECT userId FROM match_managers WHERE matchId = ?');
-      managersStmt.bind([matchId]);
+      const managersStmt = db.prepare('SELECT userId FROM match_managers WHERE matchId = ?');      managersStmt.bind([matchId]);
       const managers: string[] = [];
       while (managersStmt.step()) {
         const row = managersStmt.getAsObject();
         managers.push(row.userId as string);
       }
       managersStmt.free();
+      
+      // Ottieni periodi
+      const periodsStmt = db.prepare('SELECT * FROM match_periods WHERE matchId = ? ORDER BY periodIndex');
+      periodsStmt.bind([matchId]);
+      const periods: any[] = [];
+      while (periodsStmt.step()) {
+        const periodRow = periodsStmt.getAsObject();        periods.push({
+          type: periodRow.type as 'regular' | 'extra' | 'interval',
+          label: periodRow.label as string,
+          duration: periodRow.duration as number,
+          isFinished: Boolean(periodRow.isFinished)
+        });
+      }
+      periodsStmt.free();
+      
+      // Se non ci sono periodi, creane di default
+      const finalPeriods = periods.length > 0 ? periods : [
+        { type: 'regular', label: '1° Tempo', duration: row.firstHalfDuration as number || 0, isFinished: (row.firstHalfDuration as number || 0) > 0 },
+        { type: 'regular', label: '2° Tempo', duration: row.secondHalfDuration as number || 0, isFinished: (row.secondHalfDuration as number || 0) > 0 }
+      ];
       
       matches.push({
         id: row.id as string,
@@ -721,6 +825,8 @@ export function useDatabase() {
         events,
         lastTimestamp: row.lastTimestamp as number | undefined,
         isRunning: !!row.isRunning,
+        periods: finalPeriods,
+        currentPeriodIndex: row.currentPeriodIndex as number || 0,
       });
     }
     
@@ -731,11 +837,10 @@ export function useDatabase() {
     if (!db) return;
     
     const id = Date.now().toString();
-    
-    // Inserisci partita
+      // Inserisci partita
     db.run(
-      'INSERT INTO matches (id, date, time, opponent, homeAway, location, field, status, startTime, firstHalfDuration, secondHalfDuration, homeScore, awayScore, lastTimestamp, isRunning) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)',
-      [id, match.date, match.time, match.opponent, match.homeAway, match.location || null, match.field || null, match.status, match.startTime || null, match.firstHalfDuration, match.secondHalfDuration, match.homeScore, match.awayScore, match.lastTimestamp || null, match.isRunning ? 1 : 0]
+      'INSERT INTO matches (id, date, time, opponent, homeAway, location, field, status, startTime, firstHalfDuration, secondHalfDuration, homeScore, awayScore, lastTimestamp, isRunning, currentPeriodIndex) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)',
+      [id, match.date, match.time, match.opponent, match.homeAway, match.location || null, match.field || null, match.status, match.startTime || null, match.firstHalfDuration, match.secondHalfDuration, match.homeScore, match.awayScore, (match as any).lastTimestamp || null, (match as any).isRunning ? 1 : 0, (match as any).currentPeriodIndex || 0]
     );
       // Inserisci formazione con posizione e numero maglia
     match.lineup.forEach(matchPlayer => {
@@ -765,8 +870,7 @@ export function useDatabase() {
         db.run('INSERT INTO match_opponent_lineup (matchId, jerseyNumber) VALUES (?, ?)', [id, jerseyNumber]);
       });
     }
-    
-    // Inserisci eventi goal
+      // Inserisci eventi goal
     if (Array.isArray(match.events)) {
       match.events.forEach(event => {
         db.run(
@@ -776,16 +880,26 @@ export function useDatabase() {
       });
     }
     
+    // Inserisci periodi
+    if (Array.isArray((match as any).periods)) {
+      (match as any).periods.forEach((period: any, index: number) => {
+        const periodId = `${id}_period_${index}`;
+        db.run(
+          'INSERT INTO match_periods (id, matchId, type, label, duration, isFinished, periodIndex) VALUES (?, ?, ?, ?, ?, ?, ?)',
+          [periodId, id, period.type, period.label, period.duration, period.isFinished ? 1 : 0, index]
+        );
+      });
+    }
+    
     saveDatabase();
     return id;
   };
   const updateMatch = (id: string, match: Omit<Match, 'id'>) => {
     if (!db) return;
-    
-    // Aggiorna partita
+      // Aggiorna partita
     db.run(
-      'UPDATE matches SET date = ?, time = ?, opponent = ?, homeAway = ?, location = ?, field = ?, status = ?, startTime = ?, firstHalfDuration = ?, secondHalfDuration = ?, homeScore = ?, awayScore = ?, lastTimestamp = ?, isRunning = ? WHERE id = ?',
-      [match.date, match.time, match.opponent, match.homeAway, match.location || null, match.field || null, match.status, match.startTime || null, match.firstHalfDuration, match.secondHalfDuration, match.homeScore, match.awayScore, (match as any).lastTimestamp || null, (match as any).isRunning ? 1 : 0, id]
+      'UPDATE matches SET date = ?, time = ?, opponent = ?, homeAway = ?, location = ?, field = ?, status = ?, startTime = ?, firstHalfDuration = ?, secondHalfDuration = ?, homeScore = ?, awayScore = ?, lastTimestamp = ?, isRunning = ?, currentPeriodIndex = ? WHERE id = ?',
+      [match.date, match.time, match.opponent, match.homeAway, match.location || null, match.field || null, match.status, match.startTime || null, match.firstHalfDuration, match.secondHalfDuration, match.homeScore, match.awayScore, (match as any).lastTimestamp || null, (match as any).isRunning ? 1 : 0, (match as any).currentPeriodIndex || 0, id]
     );
       // Aggiorna formazione
     db.run('DELETE FROM match_lineups WHERE matchId = ?', [id]);
@@ -829,12 +943,23 @@ export function useDatabase() {
         [event.id, id, event.type, event.minute, event.second ?? null, event.playerId, event.description || null]
       );
     });
-    
-    // Aggiorna numeri maglia avversari
+      // Aggiorna numeri maglia avversari
     db.run('DELETE FROM match_opponent_lineup WHERE matchId = ?', [id]);
     if (Array.isArray(match.opponentLineup)) {
       match.opponentLineup.forEach(jerseyNumber => {
         db.run('INSERT INTO match_opponent_lineup (matchId, jerseyNumber) VALUES (?, ?)', [id, jerseyNumber]);
+      });
+    }
+    
+    // Aggiorna periodi
+    db.run('DELETE FROM match_periods WHERE matchId = ?', [id]);
+    if (Array.isArray((match as any).periods)) {
+      (match as any).periods.forEach((period: any, index: number) => {
+        const periodId = `${id}_period_${index}`;
+        db.run(
+          'INSERT INTO match_periods (id, matchId, type, label, duration, isFinished, periodIndex) VALUES (?, ?, ?, ?, ?, ?, ?)',
+          [periodId, id, period.type, period.label, period.duration, period.isFinished ? 1 : 0, index]
+        );
       });
     }
     

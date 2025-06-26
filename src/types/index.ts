@@ -32,6 +32,13 @@ export interface Training {
   attendances: Record<string, boolean>; // playerId -> isPresent
 }
 
+export interface MatchPeriod {
+  type: 'regular' | 'extra' | 'interval';
+  label: string;
+  duration: number;
+  isFinished: boolean;
+}
+
 export interface Match {
   id: string;
   date: string;
@@ -55,6 +62,9 @@ export interface Match {
   // Timestamp (ms) when timer was last persisted (to compute elapsed time when returning)
   lastTimestamp?: number;
   isRunning?: boolean;
+  // Nuova struttura per periodi dinamici
+  periods: MatchPeriod[];
+  currentPeriodIndex: number;
 }
 
 export interface MatchPlayer {

@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react';
 import { useDatabase } from './hooks/useDatabase';
 import { useTimer } from './hooks/useTimer';
 import { useSession } from './hooks/useSession';
-import { Player, Training, Match, MatchPlayer, Substitution, User, Group, UserWithGroup, Permission } from './types';
+import { Player, Training, Match, MatchPlayer, Substitution, User, Group, UserWithGroup, Permission, MatchPeriod } from './types';
 import { usePlayerStats } from './hooks/usePlayerStats';
 import { PlayerForm } from './components/PlayerForm';
 import { PlayerList } from './components/PlayerList';
@@ -80,52 +80,61 @@ function App() {
   const [matches, setMatches] = useState<Match[]>([]);
   const [users, setUsers] = useState<UserWithGroup[]>([]);
   const [groups, setGroups] = useState<Group[]>([]);
-
   // Timer for match management
   const timer = useTimer();
   const isMobile = useIsMobile();
-
+  
+  // State for dynamic periods
+  const defaultPeriods: MatchPeriod[] = [
+    { type: 'regular' as const, label: '1° Tempo', duration: 0, isFinished: false },
+    { type: 'regular' as const, label: '2° Tempo', duration: 0, isFinished: false }
+  ];
+  const [currentPeriodIndex, setCurrentPeriodIndex] = useState(0);
+  
   // Auto-save timer state to DB on each tick when running
   useEffect(() => {
     if (currentView === 'manage' && managingMatch && timer.isRunning) {
       const now = Date.now();
-      // compute durations
-      let fhd = managingMatch.firstHalfDuration;
-      let shd = managingMatch.secondHalfDuration;
-      if (managingMatch.status === 'first-half') {
-        fhd = timer.time;
-      } else if (managingMatch.status === 'second-half') {
-        shd = timer.time - managingMatch.firstHalfDuration;
+      const periods = [...(managingMatch.periods || defaultPeriods)];
+      
+      // Aggiorna la durata del periodo corrente
+      if (periods[currentPeriodIndex] && !periods[currentPeriodIndex].isFinished) {
+        periods[currentPeriodIndex] = {
+          ...periods[currentPeriodIndex],
+          duration: timer.time
+        };
       }
+      
       const updated: any = {
         ...managingMatch,
-        firstHalfDuration: fhd,
-        secondHalfDuration: shd,
+        periods,
+        currentPeriodIndex,
         isRunning: true,
         lastTimestamp: now
       };
       setManagingMatch(updated);
       database.updateMatch(managingMatch.id, updated);
-      // no need to reload all data here
     }
-  }, [timer.time]);
-
+  }, [timer.time, currentPeriodIndex]);
   // Persist timer state on page unload or navigation
   useEffect(() => {
     const handler = () => {
       if (managingMatch) {
         const now = Date.now();
-        let fhd = managingMatch.firstHalfDuration;
-        let shd = managingMatch.secondHalfDuration;
-        if (managingMatch.status === 'first-half') {
-          fhd = timer.time;
-        } else if (managingMatch.status === 'second-half') {
-          shd = timer.time - managingMatch.firstHalfDuration;
+        const periods = [...(managingMatch.periods || defaultPeriods)];
+        
+        // Aggiorna la durata del periodo corrente se in corso
+        if (periods[currentPeriodIndex] && !periods[currentPeriodIndex].isFinished) {
+          periods[currentPeriodIndex] = {
+            ...periods[currentPeriodIndex],
+            duration: timer.time
+          };
         }
+        
         const updated: any = {
           ...managingMatch,
-          firstHalfDuration: fhd,
-          secondHalfDuration: shd,
+          periods,
+          currentPeriodIndex,
           isRunning: timer.isRunning,
           lastTimestamp: now
         };
@@ -134,7 +143,7 @@ function App() {
     };
     window.addEventListener('beforeunload', handler);
     return () => window.removeEventListener('beforeunload', handler);
-  }, [managingMatch, timer.time, timer.isRunning]);
+  }, [managingMatch, timer.time, timer.isRunning, currentPeriodIndex]);
   // Load data when database is ready
   useEffect(() => {
     if (!database.isLoading && !database.error) {
@@ -195,7 +204,6 @@ function App() {
       loadData();
     }
   };
-
   const handleImportPlayers = (importedPlayers: Omit<Player, 'id'>[]) => {
     importedPlayers.forEach(playerData => {
       database.addPlayer(playerData);
@@ -226,7 +234,6 @@ function App() {
       loadData();
     }
   };
-
   // Match management
   const handleMatchSubmit = (matchData: Omit<Match, 'id' | 'status' | 'startTime' | 'firstHalfDuration' | 'secondHalfDuration' | 'substitutions' | 'events'>) => {
     const newMatch: Match = {
@@ -238,6 +245,8 @@ function App() {
       substitutions: editingItem?.substitutions || [],
       events: editingItem?.events || [],
       opponentLineup: matchData.opponentLineup || [],
+      periods: editingItem?.periods || defaultPeriods,
+      currentPeriodIndex: editingItem?.currentPeriodIndex || 0,
     };
 
     if (editingItem) {
@@ -261,136 +270,46 @@ function App() {
       loadData();
     }
   };
-
   const handleMatchManage = (match: Match) => {
     setManagingMatch(match);
     setInitialLineup(match.lineup);
     setCurrentView('manage');
-    // Restore timer based on match status and lastTimestamp
+    
+    // Inizializza i periodi se non esistono
+    if (!match.periods || match.periods.length === 0) {
+      const updatedMatch = { 
+        ...match, 
+        periods: defaultPeriods,
+        currentPeriodIndex: 0 
+      };
+      setManagingMatch(updatedMatch);
+      database.updateMatch(match.id, updatedMatch);
+      setCurrentPeriodIndex(0);
+    } else {
+      setCurrentPeriodIndex(match.currentPeriodIndex || 0);
+    }
+    
+    // Restore timer based on current period and lastTimestamp
     const now = Date.now();
-    const computeTime = (base: number) => {
-      if (match.isRunning && match.lastTimestamp) {
-        const elapsed = Math.floor((now - match.lastTimestamp) / 1000);
-        return base + elapsed;
-      }
-      return base;
-    };
-    if (match.status === 'first-half') {
-      const secs = computeTime(match.firstHalfDuration);
-      timer.resetTo(secs);
-      if (match.isRunning) timer.start(); else timer.pause();
-    } else if (match.status === 'half-time') {
-      timer.resetTo(match.firstHalfDuration);
-      timer.pause();
-    } else if (match.status === 'second-half') {
-      const base = match.firstHalfDuration + match.secondHalfDuration;
-      const secs = computeTime(base);
+    const periods = match.periods || defaultPeriods;
+    const currentPeriod = periods[match.currentPeriodIndex || 0];
+    
+    if (currentPeriod && !currentPeriod.isFinished) {
+      const computeTime = (base: number) => {
+        if (match.isRunning && match.lastTimestamp) {
+          const elapsed = Math.floor((now - match.lastTimestamp) / 1000);
+          return base + elapsed;
+        }
+        return base;
+      };
+      
+      const secs = computeTime(currentPeriod.duration);
       timer.resetTo(secs);
       if (match.isRunning) timer.start(); else timer.pause();
     } else {
-      timer.reset();
-    }
-  };
-
-  // Continue first half if ended by mistake
-  const handleContinueFirstHalf = () => {
-    if (!managingMatch) return;
-    // Set status back to first-half
-    const now = Date.now();
-    const updatedMatch: any = {
-      ...managingMatch,
-      status: 'first-half',
-      isRunning: true,
-      lastTimestamp: now
-    };
-    setManagingMatch(updatedMatch);
-    database.updateMatch(managingMatch.id, updatedMatch);
-    loadData();
-    // Reset timer to stored firstHalfDuration and start
-    timer.resetTo(managingMatch.firstHalfDuration);
-    timer.start();
-  };
-
-  // Match timer functions
-  const updateMatchStatus = (status: Match['status']) => {
-    if (!managingMatch) return;
-
-    const updatedMatch = { ...managingMatch, status };
-    setManagingMatch(updatedMatch);
-    database.updateMatch(managingMatch.id, updatedMatch);
-    loadData();
-  };
-
-  const handleMatchStart = () => {
-    if (managingMatch) {
-      const now = Date.now();
-      const newStatus = managingMatch.status === 'scheduled' ? 'first-half' : managingMatch.status;
-      const updatedMatch: any = {
-        ...managingMatch,
-        status: newStatus,
-        isRunning: true,
-        lastTimestamp: now
-      };
-      setManagingMatch(updatedMatch);
-      database.updateMatch(managingMatch.id, updatedMatch);
-      loadData();
-    }
-    timer.start();
-  };
-
-  const handleMatchPause = () => {
-    // Pause timer and persist current time to database
-    timer.pause();
-    if (managingMatch) {
-      const common: any = { lastTimestamp: Date.now(), isRunning: false };
-      if (managingMatch.status === 'first-half') {
-        common.firstHalfDuration = timer.time;
-      } else if (managingMatch.status === 'second-half') {
-        common.secondHalfDuration = timer.time - managingMatch.firstHalfDuration;
-      }
-      const updatedMatch = { ...managingMatch, ...common };
-      setManagingMatch(updatedMatch);
-      database.updateMatch(managingMatch.id, updatedMatch);
-      loadData();
-    }
-  };
-
-  const handleEndFirstHalf = () => {
-    timer.pause();
-    if (managingMatch) {
-      const updatedMatch = { 
-        ...managingMatch, 
-        status: 'half-time' as const,
-        firstHalfDuration: timer.time 
-      };
-      setManagingMatch(updatedMatch);
-      database.updateMatch(managingMatch.id, updatedMatch);
-      loadData();
-    }
-  };
-
-  const handleStartSecondHalf = () => {
-    updateMatchStatus('second-half');
-    timer.start();
-  };
-
-  const handleFinishMatch = () => {
-    if (!window.confirm('Sei sicuro di voler terminare la partita?')) return;
-    timer.pause();
-    if (managingMatch) {
-      const updatedMatch = { 
-        ...managingMatch, 
-        status: 'finished' as const,
-        secondHalfDuration: timer.time - (managingMatch.firstHalfDuration || 0)
-      };
-      setManagingMatch(updatedMatch);
-      database.updateMatch(managingMatch.id, updatedMatch);
-      loadData();
-      setCurrentView('list');
-      setManagingMatch(null);
-      timer.reset();
-    }
-  };
+      timer.resetTo(0);
+      timer.pause();
+    }  };
 
   // Substitution functions
   const handleSubstitution = (playerOutId: string, playerInId: string) => {
@@ -762,7 +681,6 @@ function App() {
     database.updateMatch(managingMatch.id, updatedMatch);
     loadData();
   }
-
   const renderContent = () => {
     if (currentView === 'form') {
       switch (activeTab) {
@@ -842,18 +760,16 @@ function App() {
                 Ammonizione
               </button>
             </div>
-          </div>
-
-          <MatchTimer
-            time={timer.time}
+          </div>          <MatchTimer
+            periods={managingMatch.periods || defaultPeriods}
+            currentPeriodIndex={currentPeriodIndex}
             isRunning={timer.isRunning}
-            status={managingMatch.status}
-            onStart={handleMatchStart}
-            onPause={handleMatchPause}
-            onEndFirstHalf={handleEndFirstHalf}
-            onStartSecondHalf={handleStartSecondHalf}
-            onFinish={handleFinishMatch}
-            onContinueFirstHalf={handleContinueFirstHalf}
+            onStart={handleStartPeriod}
+            onPause={timer.pause}
+            onInterval={handleInterval}
+            onAddPeriod={handleAddPeriod}
+            onRemoveLastPeriod={handleRemoveLastPeriod}
+            onFinish={handleFinishMatchDynamic}
             formatTime={timer.formatTime}
           />
 
@@ -1266,6 +1182,100 @@ function App() {
     setManagingMatch(updatedMatch);
     database.updateMatch(managingMatch.id, updatedMatch);
     loadData();
+  };  const handleAddPeriod = (type: 'regular' | 'extra') => {
+    if (!managingMatch) return;
+    const periods = [...(managingMatch.periods || defaultPeriods)];
+    const label = type === 'regular'
+      ? `${periods.filter(p => p.type === 'regular').length + 1}° Tempo`
+      : `${periods.filter(p => p.type === 'extra').length + 1}° Supplementare`;
+    periods.push({ type, label, duration: 0, isFinished: false });
+    const updatedMatch = { ...managingMatch, periods };
+    setManagingMatch(updatedMatch);
+    database.updateMatch(managingMatch.id, updatedMatch);
+    setCurrentPeriodIndex(periods.length - 1);
+    loadData();
+  };
+
+  const handleRemoveLastPeriod = () => {
+    if (!managingMatch) return;
+    let periods = [...(managingMatch.periods || defaultPeriods)];
+    if (periods.length <= 1) return;
+    periods.pop();
+    const updatedMatch = { ...managingMatch, periods };
+    setManagingMatch(updatedMatch);
+    database.updateMatch(managingMatch.id, updatedMatch);
+    setCurrentPeriodIndex(Math.max(0, periods.length - 1));
+    loadData();  };  const handleInterval = () => {
+    if (!managingMatch) return;
+    
+    // Aggiorna il periodo corrente con il tempo trascorso ma non lo termina
+    const periods = [...(managingMatch.periods || defaultPeriods)];
+    if (!periods[currentPeriodIndex]) return;
+    periods[currentPeriodIndex] = {
+      ...periods[currentPeriodIndex],
+      duration: timer.time
+    };    // Crea un nuovo periodo di intervallo con numerazione
+    const intervalNumber = periods.filter(p => p.type === 'interval').length + 1;
+    const newPeriod: MatchPeriod = {
+      type: 'interval',
+      label: `${intervalNumber}° Intervallo`,
+      duration: timer.time, // Continua dal tempo corrente
+      isFinished: false
+    };
+    
+    periods.push(newPeriod);
+    const newCurrentPeriodIndex = periods.length - 1;
+    
+    const updatedMatch = { 
+      ...managingMatch, 
+      periods, 
+      currentPeriodIndex: newCurrentPeriodIndex 
+    };
+    
+    setManagingMatch(updatedMatch);
+    setCurrentPeriodIndex(newCurrentPeriodIndex);
+    database.updateMatch(managingMatch.id, updatedMatch);
+    
+    // Il timer continua dal punto in cui era, senza reset
+    // Non chiamiamo timer.reset() né timer.start() perché deve continuare
+    loadData();
+  };
+
+  const handleStartPeriod = () => {
+    const currentPeriod = managingMatch?.periods?.[currentPeriodIndex];
+    if (currentPeriod) {
+      timer.resetTo(currentPeriod.duration || 0);
+    }
+    timer.start();
+  };
+
+  const handleFinishMatchDynamic = () => {
+    if (!window.confirm('Sei sicuro di voler terminare la partita?')) return;
+    timer.pause();
+    if (managingMatch) {
+      const periods = [...(managingMatch.periods || defaultPeriods)];
+      if (periods[currentPeriodIndex] && !periods[currentPeriodIndex].isFinished) {
+        periods[currentPeriodIndex] = {
+          ...periods[currentPeriodIndex],
+          duration: timer.time,
+          isFinished: true
+        };
+      }
+      const updatedMatch = { 
+        ...managingMatch, 
+        status: 'finished' as const,
+        periods,
+        currentPeriodIndex
+      };
+      setManagingMatch(updatedMatch);
+      database.updateMatch(managingMatch.id, updatedMatch);
+      loadData();
+      setCurrentView('list');
+      setEditingItem(null);
+      setManagingMatch(null);
+      setInitialLineup(null);
+      timer.reset();
+    }
   };
 
   return (
