@@ -65,6 +65,19 @@ export interface Match {
   // Nuova struttura per periodi dinamici
   periods: MatchPeriod[];
   currentPeriodIndex: number;
+  // Statistiche dettagliate della partita
+  possessionHome?: number;
+  possessionAway?: number;
+  totalShotsHome?: number;
+  totalShotsAway?: number;
+  shotsOnTargetHome?: number;
+  shotsOnTargetAway?: number;
+  foulsCommittedHome?: number;
+  foulsCommittedAway?: number;
+  cornersHome?: number;
+  cornersAway?: number;
+  offsideHome?: number;
+  offsideAway?: number;
 }
 
 export interface MatchPlayer {
@@ -79,6 +92,7 @@ export interface Substitution {
   second?: number;
   playerOut: string;
   playerIn: string;
+  periodIndex?: number; // Indice del periodo in cui è avvenuta la sostituzione
 }
 
 export interface MatchEvent {
@@ -88,6 +102,7 @@ export interface MatchEvent {
   second?: number;
   playerId: string;
   description?: string;
+  periodIndex?: number; // Indice del periodo in cui è avvenuto l'evento
 }
 
 export interface PlayerStats {
