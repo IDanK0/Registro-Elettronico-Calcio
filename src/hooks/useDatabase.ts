@@ -100,13 +100,28 @@ export function useDatabase() {
             matricola TEXT NOT NULL UNIQUE,
             createdAt DATETIME DEFAULT CURRENT_TIMESTAMP,
             FOREIGN KEY (groupId) REFERENCES groups(id) ON DELETE RESTRICT
-          )
-        `);
+          )        `);
 
         // Inserisci gruppo amministratore di default se non esiste
         database.run(`
           INSERT OR IGNORE INTO groups (id, name, description, teamManagement, matchManagement, resultsView, statisticsView)
           VALUES ('admin', 'Amministratori', 'Gruppo con tutti i permessi', 1, 1, 1, 1)
+        `);
+
+        // Inserisci gruppi di base se non esistono
+        database.run(`
+          INSERT OR IGNORE INTO groups (id, name, description, teamManagement, matchManagement, resultsView, statisticsView)
+          VALUES ('allenatore', 'Allenatore', 'Gestione completa squadra e partite', 1, 1, 1, 1)
+        `);
+
+        database.run(`
+          INSERT OR IGNORE INTO groups (id, name, description, teamManagement, matchManagement, resultsView, statisticsView)
+          VALUES ('dirigente', 'Dirigente', 'Gestione amministrativa e visualizzazione', 0, 1, 1, 1)
+        `);
+
+        database.run(`
+          INSERT OR IGNORE INTO groups (id, name, description, teamManagement, matchManagement, resultsView, statisticsView)
+          VALUES ('massaggiatore', 'Massaggiatore', 'Solo visualizzazione risultati e statistiche', 0, 0, 1, 1)
         `);
 
         // Inserisci utente admin di default se non esiste
@@ -266,12 +281,26 @@ export function useDatabase() {
         createdAt DATETIME DEFAULT CURRENT_TIMESTAMP,
         FOREIGN KEY (groupId) REFERENCES groups(id) ON DELETE RESTRICT
       )
-    `);
-
-    // Inserisci gruppo amministratore di default se non esiste
+    `);    // Inserisci gruppo amministratore di default se non esiste
     database.run(`
       INSERT OR IGNORE INTO groups (id, name, description, teamManagement, matchManagement, resultsView, statisticsView)
       VALUES ('admin', 'Amministratori', 'Gruppo con tutti i permessi', 1, 1, 1, 1)
+    `);
+
+    // Inserisci gruppi di base se non esistono
+    database.run(`
+      INSERT OR IGNORE INTO groups (id, name, description, teamManagement, matchManagement, resultsView, statisticsView)
+      VALUES ('allenatore', 'Allenatore', 'Gestione completa squadra e partite', 1, 1, 1, 1)
+    `);
+
+    database.run(`
+      INSERT OR IGNORE INTO groups (id, name, description, teamManagement, matchManagement, resultsView, statisticsView)
+      VALUES ('dirigente', 'Dirigente', 'Gestione amministrativa e visualizzazione', 0, 1, 1, 1)
+    `);
+
+    database.run(`
+      INSERT OR IGNORE INTO groups (id, name, description, teamManagement, matchManagement, resultsView, statisticsView)
+      VALUES ('massaggiatore', 'Massaggiatore', 'Solo visualizzazione risultati e statistiche', 0, 0, 1, 1)
     `);
 
     // Inserisci utente admin di default se non esiste
