@@ -25,7 +25,23 @@ export function MatchList({ matches, players, onEdit, onDelete, onManage, onRepo
     });
   };
 
-  const getStatusText = (status: Match['status']) => {
+  const getStatusText = (match: Match) => {
+    const { status, periods, currentPeriodIndex } = match;
+    
+    // Se la partita ha periodi dinamici e un indice corrente valido, usa quello
+    if (periods && periods.length > 0 && currentPeriodIndex !== undefined) {
+      const currentPeriod = periods[currentPeriodIndex];
+      if (currentPeriod) {
+        // Se la partita è finita, mostra "Terminata"
+        if (status === 'finished') {
+          return 'Terminata';
+        }
+        // Altrimenti mostra il periodo corrente
+        return currentPeriod.label;
+      }
+    }
+    
+    // Fallback al vecchio sistema
     switch (status) {
       case 'scheduled': return 'Programmata';
       case 'first-half': return '1° Tempo';
@@ -36,11 +52,34 @@ export function MatchList({ matches, players, onEdit, onDelete, onManage, onRepo
     }
   };
 
-  const getStatusColor = (status: Match['status']) => {
+  const getStatusColor = (match: Match) => {
+    const { status, periods, currentPeriodIndex } = match;
+    
+    // Se la partita ha periodi dinamici e un indice corrente valido, usa quello
+    if (periods && periods.length > 0 && currentPeriodIndex !== undefined) {
+      const currentPeriod = periods[currentPeriodIndex];
+      if (currentPeriod) {
+        // Se la partita è finita, usa il colore blu
+        if (status === 'finished') {
+          return 'bg-blue-500';
+        }
+        
+        // Usa i colori in base al tipo di periodo
+        if (currentPeriod.type === 'regular') {
+          return 'bg-green-500'; // Verde per periodi regolari
+        } else if (currentPeriod.type === 'interval') {
+          return 'bg-orange-500'; // Arancione per intervalli
+        } else if (currentPeriod.type === 'extra') {
+          return 'bg-purple-500'; // Viola per tempi supplementari
+        }
+      }
+    }
+    
+    // Fallback al vecchio sistema
     switch (status) {
       case 'scheduled': return 'bg-gray-500';
       case 'first-half': return 'bg-green-500';
-      case 'half-time': return 'bg-yellow-500';
+      case 'half-time': return 'bg-orange-500';
       case 'second-half': return 'bg-green-500';
       case 'finished': return 'bg-blue-500';
       default: return 'bg-gray-500';
@@ -77,8 +116,8 @@ export function MatchList({ matches, players, onEdit, onDelete, onManage, onRepo
     return (
       <div className="space-y-4">
         {sortedMatches.map(match => {
-          const statusText = getStatusText(match.status);
-          const statusColor = getStatusColor(match.status);
+          const statusText = getStatusText(match);
+          const statusColor = getStatusColor(match);
           return (
             <div key={match.id} className="bg-white rounded-xl shadow-md p-4">
               <div className="flex justify-between items-center mb-2">
@@ -170,8 +209,8 @@ export function MatchList({ matches, players, onEdit, onDelete, onManage, onRepo
                     </div>
                   </div>
                   <div className="flex items-center gap-2">
-                    <div className={`px-3 py-1 rounded-full text-white text-sm font-medium ${getStatusColor(match.status)}`}>
-                      {getStatusText(match.status)}
+                    <div className={`px-3 py-1 rounded-full text-white text-sm font-medium ${getStatusColor(match)}`}>
+                      {getStatusText(match)}
                     </div>
                   </div>
                 </div>

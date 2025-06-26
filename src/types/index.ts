@@ -36,7 +36,6 @@ export interface MatchPeriod {
   type: 'regular' | 'extra' | 'interval';
   label: string;
   duration: number;
-  isFinished: boolean;
 }
 
 export interface Match {

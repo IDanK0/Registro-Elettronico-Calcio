@@ -87,7 +87,7 @@ function App() {
   
   // State for dynamic periods
   const defaultPeriods: MatchPeriod[] = [
-    { type: 'regular' as const, label: '1° Tempo', duration: 0, isFinished: false }
+    { type: 'regular' as const, label: '1° Tempo', duration: 0 }
   ];
   const [currentPeriodIndex, setCurrentPeriodIndex] = useState(0);
   
@@ -98,7 +98,7 @@ function App() {
       const periods = [...(managingMatch.periods || defaultPeriods)];
       
       // Aggiorna la durata del periodo corrente
-      if (periods[currentPeriodIndex] && !periods[currentPeriodIndex].isFinished) {
+      if (periods[currentPeriodIndex]) {
         periods[currentPeriodIndex] = {
           ...periods[currentPeriodIndex],
           duration: timer.time
@@ -124,7 +124,7 @@ function App() {
         const periods = [...(managingMatch.periods || defaultPeriods)];
         
         // Aggiorna la durata del periodo corrente se in corso
-        if (periods[currentPeriodIndex] && !periods[currentPeriodIndex].isFinished) {
+        if (periods[currentPeriodIndex]) {
           periods[currentPeriodIndex] = {
             ...periods[currentPeriodIndex],
             duration: timer.time
@@ -294,7 +294,7 @@ function App() {
     const periods = match.periods || defaultPeriods;
     const currentPeriod = periods[match.currentPeriodIndex || 0];
     
-    if (currentPeriod && !currentPeriod.isFinished) {
+    if (currentPeriod) {
       const computeTime = (base: number) => {
         if (match.isRunning && match.lastTimestamp) {
           const elapsed = Math.floor((now - match.lastTimestamp) / 1000);
@@ -745,7 +745,7 @@ function App() {
             <div className="flex gap-2">
               <button
                 onClick={() => setShowSubstitutionModal(true)}
-                disabled={managingMatch.status === 'scheduled' || managingMatch.status === 'finished'}
+                disabled={managingMatch.status === 'scheduled' || managingMatch.status === 'finished' || (managingMatch.periods?.[currentPeriodIndex]?.type === 'interval')}
                 className="flex items-center gap-2 bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 disabled:bg-gray-400 disabled:cursor-not-allowed transition-colors"
               >
                 <ArrowLeftRight className="w-4 h-4" />
@@ -753,7 +753,7 @@ function App() {
               </button>
               <button
                 onClick={() => setShowAmmonitionModal(true)}
-                disabled={managingMatch.status === 'scheduled' || managingMatch.status === 'finished'}
+                disabled={managingMatch.status === 'scheduled' || managingMatch.status === 'finished' || (managingMatch.periods?.[currentPeriodIndex]?.type === 'interval')}
                 className="flex items-center gap-2 bg-yellow-500 text-white px-4 py-2 rounded-lg hover:bg-yellow-600 disabled:bg-gray-400 disabled:cursor-not-allowed transition-colors"
               >
                 <AlertTriangle className="w-4 h-4" />
@@ -765,7 +765,7 @@ function App() {
             currentPeriodIndex={currentPeriodIndex}
             isRunning={timer.isRunning}
             onStart={handleStartPeriod}
-            onPause={timer.pause}
+            onPause={handlePausePeriod}
             onInterval={handleInterval}
             onAddPeriod={handleAddPeriod}
             onRemoveLastPeriod={handleRemoveLastPeriod}
@@ -820,15 +820,16 @@ function App() {
                 score={managingMatch.homeAway === 'home' ? managingMatch.homeScore : managingMatch.awayScore}
                 onIncrement={handleHomeGoal}
                 onDecrement={handleHomeGoalRemove}
-                disabled={managingMatch.status === 'scheduled' || managingMatch.status === 'finished' || !selectedHomeScorer}
+                disabled={managingMatch.status === 'scheduled' || managingMatch.status === 'finished' || !selectedHomeScorer || (managingMatch.periods?.[currentPeriodIndex]?.type === 'interval')}
               />
               <select
                 className="mt-2 w-full px-3 py-2 border border-gray-300 rounded-lg"
                 value={selectedHomeScorer}
                 onChange={e => setSelectedHomeScorer(e.target.value)}
-                disabled={managingMatch.status === 'scheduled' || managingMatch.status === 'finished'}
+                disabled={managingMatch.status === 'scheduled' || managingMatch.status === 'finished' || (managingMatch.periods?.[currentPeriodIndex]?.type === 'interval')}
                 required
-              >                <option value="">Seleziona marcatore</option>
+              >
+                <option value="">Seleziona marcatore</option>
                 {managingMatch.lineup.map(matchPlayer => {
                   const player = players.find(p => p.id === matchPlayer.playerId);
                   if (!player) return null;
@@ -844,13 +845,13 @@ function App() {
                 score={managingMatch.homeAway === 'home' ? managingMatch.awayScore : managingMatch.homeScore}
                 onIncrement={handleAwayGoal}
                 onDecrement={handleAwayGoalRemove}
-                disabled={managingMatch.status === 'scheduled' || managingMatch.status === 'finished' || !selectedAwayScorer}
+                disabled={managingMatch.status === 'scheduled' || managingMatch.status === 'finished' || !selectedAwayScorer || (managingMatch.periods?.[currentPeriodIndex]?.type === 'interval')}
               />
               <select
                 className="mt-2 w-full px-3 py-2 border border-gray-300 rounded-lg"
                 value={selectedAwayScorer}
                 onChange={e => setSelectedAwayScorer(Number(e.target.value))}
-                disabled={managingMatch.status === 'scheduled' || managingMatch.status === 'finished'}
+                disabled={managingMatch.status === 'scheduled' || managingMatch.status === 'finished' || (managingMatch.periods?.[currentPeriodIndex]?.type === 'interval')}
                 required
               >
                 <option value="">Seleziona maglia avversaria</option>
@@ -882,7 +883,8 @@ function App() {
                       </div>
                       <button
                         onClick={() => handleRemoveEvent(goal.id)}
-                        className="ml-auto p-1 text-red-500 hover:bg-red-100 rounded-full opacity-0 group-hover:opacity-100 transition-opacity absolute right-2 top-1/2 -translate-y-1/2"
+                        disabled={managingMatch.periods?.[currentPeriodIndex]?.type === 'interval'}
+                        className="ml-auto p-1 text-red-500 hover:bg-red-100 rounded-full opacity-0 group-hover:opacity-100 transition-opacity absolute right-2 top-1/2 -translate-y-1/2 disabled:text-gray-400 disabled:hover:bg-gray-100"
                         title="Rimuovi goal"
                       >
                         <Trash2 className="w-4 h-4" />
@@ -918,7 +920,8 @@ function App() {
                       </div>
                       <button
                         onClick={() => handleRemoveEvent(ev.id)}
-                        className="ml-auto p-1 text-red-500 hover:bg-red-100 rounded-full opacity-0 group-hover:opacity-100 transition-opacity absolute right-2 top-1/2 -translate-y-1/2"
+                        disabled={managingMatch.periods?.[currentPeriodIndex]?.type === 'interval'}
+                        className="ml-auto p-1 text-red-500 hover:bg-red-100 rounded-full opacity-0 group-hover:opacity-100 transition-opacity absolute right-2 top-1/2 -translate-y-1/2 disabled:text-gray-400 disabled:hover:bg-gray-100"
                         title="Rimuovi ammonizione"
                       >
                         <Trash2 className="w-4 h-4" />
@@ -956,7 +959,8 @@ function App() {
                         </div>
                         <button
                           onClick={() => handleRemoveSubstitution(sub.id)}
-                          className="ml-auto p-1 text-red-500 hover:bg-red-100 rounded-full opacity-0 group-hover:opacity-100 transition-opacity absolute right-2 top-1/2 -translate-y-1/2"
+                          disabled={managingMatch.periods?.[currentPeriodIndex]?.type === 'interval'}
+                          className="ml-auto p-1 text-red-500 hover:bg-red-100 rounded-full opacity-0 group-hover:opacity-100 transition-opacity absolute right-2 top-1/2 -translate-y-1/2 disabled:text-gray-400 disabled:hover:bg-gray-100"
                           title="Rimuovi sostituzione"
                         >
                           <Trash2 className="w-4 h-4" />
@@ -1192,11 +1196,17 @@ function App() {
       ? `${regularPeriodsCount + 1}° Tempo`
       : `${extraPeriodsCount + 1}° Supplementare`;
       
-    periods.push({ type, label, duration: 0, isFinished: false });
-    const updatedMatch = { ...managingMatch, periods };
+    periods.push({ type, label, duration: 0 });
+    const newCurrentPeriodIndex = periods.length - 1;
+    
+    const updatedMatch = { 
+      ...managingMatch, 
+      periods,
+      currentPeriodIndex: newCurrentPeriodIndex 
+    };
     setManagingMatch(updatedMatch);
     database.updateMatch(managingMatch.id, updatedMatch);
-    setCurrentPeriodIndex(periods.length - 1);
+    setCurrentPeriodIndex(newCurrentPeriodIndex);
     loadData();
   };
 
@@ -1209,26 +1219,34 @@ function App() {
     if (!event.shiftKey && !window.confirm('Sei sicuro di voler rimuovere l\'ultimo periodo?')) return;
     
     periods.pop();
-    const updatedMatch = { ...managingMatch, periods };
+    const newCurrentPeriodIndex = Math.max(0, periods.length - 1);
+    
+    const updatedMatch = { 
+      ...managingMatch, 
+      periods,
+      currentPeriodIndex: newCurrentPeriodIndex 
+    };
     setManagingMatch(updatedMatch);
     database.updateMatch(managingMatch.id, updatedMatch);
-    setCurrentPeriodIndex(Math.max(0, periods.length - 1));
-    loadData();  };  const handleInterval = () => {
+    setCurrentPeriodIndex(newCurrentPeriodIndex);
+    loadData();
+  };  const handleInterval = () => {
     if (!managingMatch) return;
     
-    // Aggiorna il periodo corrente con il tempo trascorso ma non lo termina
+    // Aggiorna il periodo corrente con il tempo trascorso
     const periods = [...(managingMatch.periods || defaultPeriods)];
     if (!periods[currentPeriodIndex]) return;
     periods[currentPeriodIndex] = {
       ...periods[currentPeriodIndex],
       duration: timer.time
-    };    // Crea un nuovo periodo di intervallo con numerazione
+    };
+
+    // Crea un nuovo periodo di intervallo con numerazione
     const intervalNumber = periods.filter(p => p.type === 'interval').length + 1;
     const newPeriod: MatchPeriod = {
       type: 'interval',
       label: `${intervalNumber}° Intervallo`,
-      duration: timer.time, // Continua dal tempo corrente
-      isFinished: false
+      duration: timer.time // Continua dal tempo corrente
     };
     
     periods.push(newPeriod);
@@ -1237,7 +1255,10 @@ function App() {
     const updatedMatch = { 
       ...managingMatch, 
       periods, 
-      currentPeriodIndex: newCurrentPeriodIndex 
+      currentPeriodIndex: newCurrentPeriodIndex,
+      status: 'half-time' as const, // Aggiorna lo status per l'intervallo
+      isRunning: true,
+      lastTimestamp: Date.now()
     };
     
     setManagingMatch(updatedMatch);
@@ -1250,11 +1271,69 @@ function App() {
   };
 
   const handleStartPeriod = () => {
+    if (!managingMatch) return;
+    
     const currentPeriod = managingMatch?.periods?.[currentPeriodIndex];
     if (currentPeriod) {
       timer.resetTo(currentPeriod.duration || 0);
     }
+    
+    // Aggiorna lo status della partita quando inizia
+    let newStatus = managingMatch.status;
+    
+    // Se la partita è programmata e non è mai iniziata, imposta il primo tempo
+    if (managingMatch.status === 'scheduled') {
+      newStatus = 'first-half' as const;
+    }
+    // Se il periodo corrente è di tipo regular e la partita non è finita
+    else if (currentPeriod && managingMatch.status !== 'finished') {
+      if (currentPeriod.type === 'regular') {
+        // Determina se è primo o secondo tempo in base all'indice
+        if (currentPeriodIndex === 0) {
+          newStatus = 'first-half' as const;
+        } else if (currentPeriodIndex === 1) {
+          newStatus = 'second-half' as const;
+        } else {
+          // Per periodi regolari successivi, mantieni secondo tempo
+          newStatus = 'second-half' as const;
+        }
+      } else if (currentPeriod.type === 'extra') {
+        // Per tempi supplementari, usa secondo tempo
+        newStatus = 'second-half' as const;
+      } else if (currentPeriod.type === 'interval') {
+        // Per gli intervalli, mantieni lo status precedente o imposta half-time
+        newStatus = 'half-time' as const;
+      }
+    }
+    
+    // Aggiorna la partita con il nuovo status
+    const updatedMatch = {
+      ...managingMatch,
+      status: newStatus,
+      isRunning: true,
+      lastTimestamp: Date.now()
+    };
+    
+    setManagingMatch(updatedMatch);
+    database.updateMatch(managingMatch.id, updatedMatch);
+    
     timer.start();
+  };
+
+  const handlePausePeriod = () => {
+    if (!managingMatch) return;
+    
+    timer.pause();
+    
+    // Aggiorna la partita per indicare che non è più in esecuzione
+    const updatedMatch = {
+      ...managingMatch,
+      isRunning: false,
+      lastTimestamp: Date.now()
+    };
+    
+    setManagingMatch(updatedMatch);
+    database.updateMatch(managingMatch.id, updatedMatch);
   };
 
   const handleFinishMatchDynamic = (event: React.MouseEvent) => {
@@ -1264,18 +1343,22 @@ function App() {
     timer.pause();
     if (managingMatch) {
       const periods = [...(managingMatch.periods || defaultPeriods)];
-      if (periods[currentPeriodIndex] && !periods[currentPeriodIndex].isFinished) {
+      
+      // Aggiorna il periodo corrente con il tempo finale
+      if (periods[currentPeriodIndex]) {
         periods[currentPeriodIndex] = {
           ...periods[currentPeriodIndex],
-          duration: timer.time,
-          isFinished: true
+          duration: timer.time
         };
       }
+      
       const updatedMatch = { 
         ...managingMatch, 
         status: 'finished' as const,
         periods,
-        currentPeriodIndex
+        currentPeriodIndex,
+        isRunning: false,
+        lastTimestamp: Date.now()
       };
       setManagingMatch(updatedMatch);
       database.updateMatch(managingMatch.id, updatedMatch);

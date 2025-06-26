@@ -29,16 +29,17 @@ export function MatchTimer({
   const canRemovePeriod = periods.length > 1;
   
   // Verifica se la partita è mai stata iniziata
-  const hasMatchStarted = periods.some(p => p.duration > 0 || p.isFinished);
+  const hasMatchStarted = periods.some(p => p.duration > 0);
+  
   const getStatusText = () => {
     if (!currentPeriod) return 'Pre-Partita';
     if (!hasMatchStarted) return 'Pre-Partita';
     if (currentPeriod.type === 'interval') return currentPeriod.label;
-    if (currentPeriod.isFinished) return `${currentPeriod.label} - Terminato`;
     return currentPeriod.label;
-  };  const getStatusColor = () => {
+  };
+
+  const getStatusColor = () => {
     if (!currentPeriod || !hasMatchStarted) return 'bg-gray-500';
-    if (currentPeriod.isFinished) return 'bg-blue-500';
     if (currentPeriod.type === 'extra') return 'bg-purple-500';
     if (currentPeriod.type === 'interval') return 'bg-orange-500';
     return isRunning ? 'bg-green-500' : 'bg-yellow-500';
@@ -83,8 +84,8 @@ export function MatchTimer({
                 } else if (period.type === 'extra') {
                   colorClasses = 'bg-purple-100 text-purple-800 border-2 border-purple-400';
                 }
-              } else if (period.isFinished) {
-                // Periodo terminato - colori spenti
+              } else {
+                // Periodo precedente - colori spenti
                 if (period.type === 'regular') {
                   colorClasses = 'bg-green-50 text-green-600';
                 } else if (period.type === 'interval') {
@@ -92,9 +93,6 @@ export function MatchTimer({
                 } else if (period.type === 'extra') {
                   colorClasses = 'bg-purple-50 text-purple-600';
                 }
-              } else {
-                // Periodo non ancora iniziato - colori neutri
-                colorClasses = 'bg-gray-100 text-gray-600';
               }
               
               return (
@@ -121,7 +119,7 @@ export function MatchTimer({
               <Play className="w-5 h-5" />
               Inizia Partita
             </button>
-          ) : !currentPeriod?.isFinished ? (
+          ) : (
             <>
               {isRunning ? (
                 <button
@@ -139,7 +137,9 @@ export function MatchTimer({
                   <Play className="w-5 h-5" />
                   Riprendi
                 </button>
-              )}              <button
+              )}
+
+              <button
                 onClick={onInterval}
                 className="flex items-center gap-2 bg-orange-600 text-white px-6 py-3 rounded-lg hover:bg-orange-700 transition-colors font-medium"
               >
@@ -147,7 +147,7 @@ export function MatchTimer({
                 Intervallo
               </button>
             </>
-          ) : null}
+          )}
         </div>        {/* Period Management Controls - Mostra solo dopo che la partita è iniziata */}
         {hasMatchStarted && (
           <div className="flex flex-wrap gap-3 justify-center">
