@@ -3,10 +3,26 @@ export interface Player {
   firstName: string;
   lastName: string;
   birthDate: string;
-  position: string;
-  jerseyNumber: number;
   licenseNumber: string;
   isActive: boolean;
+  // Contact information
+  phone?: string;
+  email?: string;
+  parentName?: string;
+  parentPhone?: string;
+  parentEmail?: string;
+  // Document attachments
+  documents?: PlayerDocument[];
+}
+
+export interface PlayerDocument {
+  id: string;
+  name: string;
+  fileName: string;
+  mimeType: string;
+  size: number;
+  uploadDate: string;
+  data: string; // Base64 encoded file data
 }
 
 export interface Training {
@@ -27,13 +43,19 @@ export interface Match {
   secondHalfDuration: number;
   homeScore: number;
   awayScore: number;
-  lineup: string[]; // player IDs
+  lineup: MatchPlayer[]; // Updated to include position and jersey number per match
   opponentLineup: number[]; // numeri maglia avversari
   substitutions: Substitution[];
   events: MatchEvent[];
   // Timestamp (ms) when timer was last persisted (to compute elapsed time when returning)
   lastTimestamp?: number;
   isRunning?: boolean;
+}
+
+export interface MatchPlayer {
+  playerId: string;
+  position: string;
+  jerseyNumber: number;
 }
 
 export interface Substitution {

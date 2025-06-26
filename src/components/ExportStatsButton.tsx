@@ -65,26 +65,39 @@ export function ExportStatsButton({ players, matches, trainings, playerStats }: 
     csv += `Fair Play,Espulsioni totali,${totalReds}\n`;
     csv += `Fair Play,Sostituzioni totali,${totalSubs}\n`;
     csv += `Fair Play,Media Sostituzioni/Partita,${avgSubs}\n`;
-    csv += ',\n';
-    // top scorers
-    csv += 'Giocatore,Numero,Goal (Capocannoniere),Presenze,Più Sostituito,Più Subentrato\n';
+    csv += ',\n';    // top scorers
+    csv += 'Giocatore,Goal (Capocannoniere),Presenze,Più Sostituito,Più Subentrato\n';
     const topScorers = playerStats.filter(s => s.goals > 0).sort((a, b) => b.goals - a.goals).slice(0,5);
     topScorers.forEach(s => {
       const p = players.find(pl => pl.id === s.playerId)!;
       const subOut = allSubs.filter(x => x.playerOut === p.id).length;
       const subIn = allSubs.filter(x => x.playerIn === p.id).length;
-      csv += `${p.firstName} ${p.lastName},${p.jerseyNumber},${s.goals},${s.matchesPlayed},${subOut},${subIn}\n`;
+      csv += `${p.firstName} ${p.lastName},${s.goals},${s.matchesPlayed},${subOut},${subIn}\n`;
     });
-    csv += ',\n';
-    // roles
+    csv += ',\n';    // roles - calculated from matches
     csv += 'Ruolo,Goal,Presenze,Gialli,Rossi\n';
-    const roleStats = Object.entries(players.reduce((acc, p) => {
-      const st = playerStats.find(s => s.playerId === p.id)!;
-      if (!acc[p.position]) acc[p.position] = { goals:0, matches:0, yellows:0, reds:0 };
-      acc[p.position].goals += st.goals;
-      acc[p.position].matches += st.matchesPlayed;
-      acc[p.position].yellows += st.yellowCards;
-      acc[p.position].reds += st.redCards;
+    const finishedMatches = matches.filter(m => m.status === 'finished');
+    const roleStats = Object.entries(finishedMatches.reduce((acc, match) => {
+      match.lineup.forEach(matchPlayer => {
+        if (!acc[matchPlayer.position]) acc[matchPlayer.position] = { goals:0, matches:0, yellows:0, reds:0 };
+        acc[matchPlayer.position].matches += 1;
+      });
+      
+      match.events?.forEach(event => {
+        const playerInMatch = match.lineup.find(mp => mp.playerId === event.playerId);
+        if (playerInMatch) {
+          if (event.type === 'goal' && event.description?.includes('(nostro)')) {
+            acc[playerInMatch.position].goals += 1;
+          }
+          if (['yellow-card','second-yellow-card'].includes(event.type)) {
+            acc[playerInMatch.position].yellows += 1;
+          }
+          if (['red-card','expulsion'].includes(event.type)) {
+            acc[playerInMatch.position].reds += 1;
+          }
+        }
+      });
+      
       return acc;
     }, {} as Record<string, any>));
     roleStats.forEach(([role, st]) => {
@@ -145,16 +158,32 @@ export function ExportStatsButton({ players, matches, trainings, playerStats }: 
     allSubs.forEach(s => {
       subOutCount[String(s.playerOut)] = (subOutCount[String(s.playerOut)] || 0) + 1;
       subInCount[String(s.playerIn)] = (subInCount[String(s.playerIn)] || 0) + 1;
-    });
-    const mostSubbedOut = Object.entries(subOutCount).sort((a,b) => b[1]-a[1]).slice(0,3).map(([id,count]) => ({ player: players.find(p=>p.id===id), count }));
+    });    const mostSubbedOut = Object.entries(subOutCount).sort((a,b) => b[1]-a[1]).slice(0,3).map(([id,count]) => ({ player: players.find(p=>p.id===id), count }));
     const mostSubbedIn = Object.entries(subInCount).sort((a,b) => b[1]-a[1]).slice(0,3).map(([id,count]) => ({ player: players.find(p=>p.id===id), count }));
-    const roleStats = Object.entries(players.reduce((acc, p) => {
-      const st = playerStats.find(s => s.playerId === p.id)!;
-      if (!acc[p.position]) acc[p.position] = { goals:0, matches:0, yellows:0, reds:0 };
-      acc[p.position].goals += st.goals;
-      acc[p.position].matches += st.matchesPlayed;
-      acc[p.position].yellows += st.yellowCards;
-      acc[p.position].reds += st.redCards;
+    
+    // Calculate role stats from matches
+    const finishedMatchesForPDF = matches.filter(m => m.status === 'finished');
+    const roleStats = Object.entries(finishedMatchesForPDF.reduce((acc, match) => {
+      match.lineup.forEach(matchPlayer => {
+        if (!acc[matchPlayer.position]) acc[matchPlayer.position] = { goals:0, matches:0, yellows:0, reds:0 };
+        acc[matchPlayer.position].matches += 1;
+      });
+      
+      match.events?.forEach(event => {
+        const playerInMatch = match.lineup.find(mp => mp.playerId === event.playerId);
+        if (playerInMatch) {
+          if (event.type === 'goal' && event.description?.includes('(nostro)')) {
+            acc[playerInMatch.position].goals += 1;
+          }
+          if (['yellow-card','second-yellow-card'].includes(event.type)) {
+            acc[playerInMatch.position].yellows += 1;
+          }
+          if (['red-card','expulsion'].includes(event.type)) {
+            acc[playerInMatch.position].reds += 1;
+          }
+        }
+      });
+      
       return acc;
     }, {} as Record<string, any>));
 
@@ -163,18 +192,7 @@ export function ExportStatsButton({ players, matches, trainings, playerStats }: 
     const pageHeight = doc.internal.pageSize.getHeight();
     const marginTop = 40;
     const marginBottom = 40;
-    let y = marginTop;
-    let pageNum = 1;
-    function drawFooter(page: number, totalPages: number) {
-      const footerY = pageHeight - marginBottom + 20;
-      doc.setFont('helvetica', 'normal');
-      doc.setFontSize(10);
-      doc.setTextColor(128);
-      const now = new Date();
-      const timestamp = now.toLocaleString('it-IT');
-      doc.text(`Esportato il ${timestamp}`, 60, footerY);
-      doc.text(`Pagina ${page} di ${totalPages}`, pageWidth - 60, footerY, { align: 'right' });
-    }
+    let y = marginTop;    let pageNum = 1;
     function addPageIfNeeded(extraHeight = 0) {
       if (y + extraHeight > pageHeight - marginBottom) {
         doc.addPage();
@@ -302,11 +320,10 @@ export function ExportStatsButton({ players, matches, trainings, playerStats }: 
         doc.setFont('helvetica', 'bold');
         doc.setFontSize(13);
         doc.setTextColor(30, 64, 175);
-        doc.text(String(i + 1), 106, y + 6, { align: 'center' });
-        doc.setFont('helvetica', 'normal');
+        doc.text(String(i + 1), 106, y + 6, { align: 'center' });        doc.setFont('helvetica', 'normal');
         doc.setFontSize(13);
         doc.setTextColor(30, 41, 59);
-        doc.text(`${p.firstName} ${p.lastName} (#${p.jerseyNumber})`, 134, y + 6);
+        doc.text(`${p.firstName} ${p.lastName}`, 134, y + 6);
         doc.setTextColor(22, 163, 74);
         doc.text(`${s.goals} goal`, 420, y + 6, { align: 'right' }); // più spazio tra nome e goal
         y += 28;
@@ -343,10 +360,9 @@ export function ExportStatsButton({ players, matches, trainings, playerStats }: 
         doc.setFontSize(13);
         doc.setTextColor(30, 64, 175);
         doc.text(String(i + 1), 106, y + 6, { align: 'center' });
-        doc.setFont('helvetica', 'normal');
-        doc.setFontSize(13);
+        doc.setFont('helvetica', 'normal');        doc.setFontSize(13);
         doc.setTextColor(30, 41, 59);
-        doc.text(`${p.firstName} ${p.lastName} (#${p.jerseyNumber})`, 134, y + 6);
+        doc.text(`${p.firstName} ${p.lastName}`, 134, y + 6);
         doc.setTextColor(16, 185, 129);
         doc.text(`${s.matchesPlayed} presenze`, 420, y + 6, { align: 'right' }); // più spazio tra nome e presenze
         y += 28;
@@ -371,9 +387,8 @@ export function ExportStatsButton({ players, matches, trainings, playerStats }: 
     doc.setTextColor(220, 38, 38);
     doc.text('Più sostituiti:', 90, y);
     let yStart = y;
-    mostSubbedOut.forEach(({player, count}, i) => {
-      if (!player) return;
-      doc.text(`${player.firstName} ${player.lastName} (#${player.jerseyNumber})`, 180, yStart + i * 18);
+    mostSubbedOut.forEach(({player, count}, i) => {      if (!player) return;
+      doc.text(`${player.firstName} ${player.lastName}`, 180, yStart + i * 18);
       doc.text(String(count), 420, yStart + i * 18, { align: 'right' }); // più spazio tra nome e numero
     });
     y += 18 * Math.max(1, mostSubbedOut.length);
@@ -382,7 +397,7 @@ export function ExportStatsButton({ players, matches, trainings, playerStats }: 
     yStart = y;
     mostSubbedIn.forEach(({player, count}, i) => {
       if (!player) return;
-      doc.text(`${player.firstName} ${player.lastName} (#${player.jerseyNumber})`, 180, yStart + i * 18);
+      doc.text(`${player.firstName} ${player.lastName}`, 180, yStart + i * 18);
       doc.text(String(count), 420, yStart + i * 18, { align: 'right' }); // più spazio tra nome e numero
     });
     y += 18 * Math.max(1, mostSubbedIn.length);

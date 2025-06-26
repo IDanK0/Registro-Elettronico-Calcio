@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react';
 import { useDatabase } from './hooks/useDatabase';
 import { useTimer } from './hooks/useTimer';
 import { useSession } from './hooks/useSession';
-import { Player, Training, Match, Substitution, User, Group, UserWithGroup, Permission } from './types';
+import { Player, Training, Match, MatchPlayer, Substitution, User, Group, UserWithGroup, Permission } from './types';
 import { usePlayerStats } from './hooks/usePlayerStats';
 import { PlayerForm } from './components/PlayerForm';
 import { PlayerList } from './components/PlayerList';
@@ -58,7 +58,7 @@ function App() {
   const [currentView, setCurrentView] = useState<View>('list');
   const [editingItem, setEditingItem] = useState<any>(null);
   const [managingMatch, setManagingMatch] = useState<Match | null>(null);
-  const [initialLineup, setInitialLineup] = useState<string[] | null>(null);
+  const [initialLineup, setInitialLineup] = useState<MatchPlayer[] | null>(null);
   const [showSubstitutionModal, setShowSubstitutionModal] = useState(false);
   const [showAmmonitionModal, setShowAmmonitionModal] = useState(false);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
@@ -189,12 +189,18 @@ function App() {
     setEditingItem(player);
     setCurrentView('form');
   };
-
   const handlePlayerDelete = (playerId: string) => {
     if (confirm('Sei sicuro di voler eliminare questo giocatore?')) {
       database.deletePlayer(playerId);
       loadData();
     }
+  };
+
+  const handleImportPlayers = (importedPlayers: Omit<Player, 'id'>[]) => {
+    importedPlayers.forEach(playerData => {
+      database.addPlayer(playerData);
+    });
+    loadData();
   };
 
   // Training management
@@ -397,10 +403,8 @@ function App() {
       second: nowSeconds % 60,
       playerOut: playerOutId,
       playerIn: playerInId
-    };
-
-    const updatedLineup = managingMatch.lineup.map(id => 
-      id === playerOutId ? playerInId : id
+    };    const updatedLineup = managingMatch.lineup.map(matchPlayer => 
+      matchPlayer.playerId === playerOutId ? { ...matchPlayer, playerId: playerInId } : matchPlayer
     );
 
     const updatedMatch = {
@@ -413,16 +417,15 @@ function App() {
     database.updateMatch(managingMatch.id, updatedMatch);
     loadData();
   };
-
   const getPlayersOnField = () => {
     if (!managingMatch) return [];
-    return managingMatch.lineup.map(id => players.find(p => p.id === id)).filter(Boolean) as Player[];
+    return managingMatch.lineup.map(matchPlayer => players.find(p => p.id === matchPlayer.playerId)).filter(Boolean) as Player[];
   };
 
   const getPlayersOnBench = () => {
     if (!managingMatch) return [];
     const activePlayerIds = players.filter(p => p.isActive).map(p => p.id);
-    const onFieldIds = managingMatch.lineup;
+    const onFieldIds = managingMatch.lineup.map(mp => mp.playerId);
     return players.filter(p => activePlayerIds.includes(p.id) && !onFieldIds.includes(p.id));
   };
 
@@ -713,8 +716,7 @@ function App() {
   function handleRemoveSubstitution(subId: string) {
     if (!managingMatch || !initialLineup) return;
     // Rimuovi la sostituzione
-    const updatedSubs = managingMatch.substitutions.filter(s => s.id !== subId);
-    // Ricostruisci la lineup a partire dalla formazione iniziale e dalle sostituzioni rimaste
+    const updatedSubs = managingMatch.substitutions.filter(s => s.id !== subId);    // Ricostruisci la lineup a partire dalla formazione iniziale e dalle sostituzioni rimaste
     let lineup = [...initialLineup];
     let error = null;
     // Trova la lista delle sostituzioni rimaste ordinate per tempo
@@ -724,18 +726,32 @@ function App() {
     });
     // Applica ogni sostituzione solo se valida
     for (const sub of orderedSubs) {
-      if (!lineup.includes(sub.playerOut)) {
-        error = `Impossibile applicare la sostituzione: il giocatore che esce (#${players.find(p=>p.id===sub.playerOut)?.jerseyNumber||''}) non è in campo.`;
+      const playerOutInLineup = lineup.find(mp => mp.playerId === sub.playerOut);
+      const playerInInLineup = lineup.find(mp => mp.playerId === sub.playerIn);
+      
+      if (!playerOutInLineup) {
+        const playerOut = players.find(p => p.id === sub.playerOut);
+        error = `Impossibile applicare la sostituzione: il giocatore che esce (${playerOut?.firstName} ${playerOut?.lastName}) non è in campo.`;
         break;
       }
-      if (lineup.includes(sub.playerIn)) {
-        error = `Impossibile applicare la sostituzione: il giocatore che entra (#${players.find(p=>p.id===sub.playerIn)?.jerseyNumber||''}) è già in campo.`;
+      if (playerInInLineup) {
+        const playerIn = players.find(p => p.id === sub.playerIn);
+        error = `Impossibile applicare la sostituzione: il giocatore che entra (${playerIn?.firstName} ${playerIn?.lastName}) è già in campo.`;
         break;
       }
-      lineup = lineup.map(id => id === sub.playerOut ? sub.playerIn : id);
+      lineup = lineup.map(mp => mp.playerId === sub.playerOut ? { ...mp, playerId: sub.playerIn } : mp);
     }
-    // Rimuovi eventuali duplicati (ulteriore sicurezza)
-    lineup = Array.from(new Set(lineup));
+    
+    // Rimuovi eventuali duplicati basati su playerId
+    const uniquePlayerIds = new Set();
+    lineup = lineup.filter(mp => {
+      if (uniquePlayerIds.has(mp.playerId)) {
+        return false;
+      }
+      uniquePlayerIds.add(mp.playerId);
+      return true;
+    });
+    
     if (error) {
       setManageError(error);
       return;
@@ -846,15 +862,18 @@ function App() {
               <div className="bg-white rounded-xl shadow p-4 mb-4 min-h-[60px]">
                 {getPlayersOnField().length === 0 ? (
                   <span className="text-gray-400">Nessun giocatore in campo</span>
-                ) : (
-                  <ul className="space-y-1">
-                    {getPlayersOnField().map(player => (
-                      <li key={player.id} className="flex items-center gap-2">
-                        <span className="font-bold text-blue-700">#{player.jerseyNumber}</span>
-                        <span>{player.firstName} {player.lastName}</span>
-                        <span className="text-xs text-gray-500">{player.position}</span>
-                      </li>
-                    ))}
+                ) : (                <ul className="space-y-1">
+                    {managingMatch.lineup.map(matchPlayer => {
+                      const player = players.find(p => p.id === matchPlayer.playerId);
+                      if (!player) return null;
+                      return (
+                        <li key={player.id} className="flex items-center gap-2">
+                          <span className="font-bold text-blue-700">#{matchPlayer.jerseyNumber}</span>
+                          <span>{player.firstName} {player.lastName}</span>
+                          <span className="text-xs text-gray-500">{matchPlayer.position}</span>
+                        </li>
+                      );
+                    })}
                   </ul>
                 )}
               </div>
@@ -863,14 +882,12 @@ function App() {
               <h3 className="text-lg font-semibold text-gray-800 mb-2">In panchina</h3>
               <div className="bg-white rounded-xl shadow p-4 mb-4 min-h-[60px]">
                 {getPlayersOnBench().length === 0 ? (
-                  <span className="text-gray-400">Nessun giocatore in panchina</span>
-                ) : (
+                  <span className="text-gray-400">Nessun giocatore in panchina</span>                ) : (
                   <ul className="space-y-1">
                     {getPlayersOnBench().map(player => (
                       <li key={player.id} className="flex items-center gap-2">
-                        <span className="font-bold text-green-700">#{player.jerseyNumber}</span>
+                        <span className="font-bold text-green-700">{player.firstName.charAt(0)}{player.lastName.charAt(0)}</span>
                         <span>{player.firstName} {player.lastName}</span>
-                        <span className="text-xs text-gray-500">{player.position}</span>
                       </li>
                     ))}
                   </ul>
@@ -894,11 +911,14 @@ function App() {
                 onChange={e => setSelectedHomeScorer(e.target.value)}
                 disabled={managingMatch.status === 'scheduled' || managingMatch.status === 'finished'}
                 required
-              >
-                <option value="">Seleziona marcatore</option>
-                {players.filter(p => managingMatch.lineup.includes(p.id)).map(p => (
-                  <option key={p.id} value={p.id}>{p.jerseyNumber} - {p.firstName} {p.lastName}</option>
-                ))}
+              >                <option value="">Seleziona marcatore</option>
+                {managingMatch.lineup.map(matchPlayer => {
+                  const player = players.find(p => p.id === matchPlayer.playerId);
+                  if (!player) return null;
+                  return (
+                    <option key={player.id} value={player.id}>#{matchPlayer.jerseyNumber} - {player.firstName} {player.lastName}</option>
+                  );
+                })}
               </select>
             </div>
             <div>
@@ -1008,14 +1028,13 @@ function App() {
                     const playerIn = players.find(p => p.id === sub.playerIn);
                     return (
                       <div key={sub.id} className="flex items-center gap-4 p-3 bg-blue-50 rounded-lg group relative">
-                        <span className="text-sm font-bold text-blue-600">{sub.minute}{sub.second !== undefined ? `:${sub.second.toString().padStart(2, '0')}` : ''}</span>
-                        <div className="flex items-center gap-2">
+                        <span className="text-sm font-bold text-blue-600">{sub.minute}{sub.second !== undefined ? `:${sub.second.toString().padStart(2, '0')}` : ''}</span>                        <div className="flex items-center gap-2">
                           <span className="text-red-600">
-                            #{playerOut?.jerseyNumber} {playerOut?.firstName} {playerOut?.lastName}
+                            {playerOut?.firstName} {playerOut?.lastName}
                           </span>
                           <ArrowLeftRight className="w-4 h-4 text-gray-400" />
                           <span className="text-green-600">
-                            #{playerIn?.jerseyNumber} {playerIn?.firstName} {playerIn?.lastName}
+                            {playerIn?.firstName} {playerIn?.lastName}
                           </span>
                         </div>
                         <button
@@ -1064,12 +1083,12 @@ function App() {
     }
 
     switch (activeTab) {
-      case 'players':
-        return (
+      case 'players':        return (
           <PlayerList
             players={players}
             onEdit={handlePlayerEdit}
             onDelete={handlePlayerDelete}
+            onImportPlayers={handleImportPlayers}
           />
         );
       case 'trainings':

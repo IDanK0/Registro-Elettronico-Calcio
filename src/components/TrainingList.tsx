@@ -148,7 +148,7 @@ export function TrainingList({ trainings, players, onEdit, onDelete }: TrainingL
                       {presentPlayers.map(player => (
                         <div key={player?.id} className="text-sm text-gray-600 flex items-center gap-2">
                           <span className="w-6 h-6 bg-blue-100 rounded-full flex items-center justify-center text-xs font-medium text-blue-600">
-                            #{player?.jerseyNumber}
+                            {player?.firstName?.charAt(0)}{player?.lastName?.charAt(0)}
                           </span>
                           {player?.firstName} {player?.lastName}
                         </div>
@@ -166,7 +166,7 @@ export function TrainingList({ trainings, players, onEdit, onDelete }: TrainingL
                         {absentPlayers.map(player => (
                           <div key={player?.id} className="text-sm text-gray-600 flex items-center gap-2">
                             <span className="w-6 h-6 bg-gray-100 rounded-full flex items-center justify-center text-xs font-medium text-gray-500">
-                              #{player?.jerseyNumber}
+                              {player?.firstName?.charAt(0)}{player?.lastName?.charAt(0)}
                             </span>
                             {player?.firstName} {player?.lastName}
                           </div>

@@ -128,15 +128,74 @@ export function useDatabase() {
         `);
       } catch (e) {
         console.log('User tables migration already applied or failed:', e);
-      }
-
-      // Migrazione: aggiungi la colonna 'icon' ai gruppi se non esiste
+      }      // Migrazione: aggiungi la colonna 'icon' ai gruppi se non esiste
       try {
         database.run("ALTER TABLE groups ADD COLUMN icon TEXT DEFAULT 'Users'");        // Aggiorna le icone dei gruppi predefiniti con icone più appropriate
         database.run("UPDATE groups SET icon = 'Shield' WHERE id = 'admin'");
         database.run("UPDATE groups SET icon = 'Trophy' WHERE id = 'allenatore'");
         database.run("UPDATE groups SET icon = 'Briefcase' WHERE id = 'dirigente'");
         database.run("UPDATE groups SET icon = 'Stethoscope' WHERE id = 'massaggiatore'");
+      } catch (e) {
+        // ignore if exists
+      }
+
+      // Migrazione: aggiungi campi contatto ai giocatori
+      try {
+        database.run("ALTER TABLE players ADD COLUMN phone TEXT");
+        database.run("ALTER TABLE players ADD COLUMN email TEXT");
+        database.run("ALTER TABLE players ADD COLUMN parentName TEXT");
+        database.run("ALTER TABLE players ADD COLUMN parentPhone TEXT");
+        database.run("ALTER TABLE players ADD COLUMN parentEmail TEXT");
+      } catch (e) {
+        // ignore if exists
+      }
+
+      // Migrazione: rimuovi position e jerseyNumber dai giocatori (se esistono)
+      try {
+        database.run(`
+          CREATE TABLE IF NOT EXISTS players_new (
+            id TEXT PRIMARY KEY,
+            firstName TEXT NOT NULL,
+            lastName TEXT NOT NULL,
+            birthDate TEXT NOT NULL,
+            licenseNumber TEXT NOT NULL,
+            isActive BOOLEAN NOT NULL DEFAULT 1,
+            phone TEXT,
+            email TEXT,
+            parentName TEXT,
+            parentPhone TEXT,
+            parentEmail TEXT,
+            createdAt DATETIME DEFAULT CURRENT_TIMESTAMP
+          )
+        `);
+        database.run("INSERT INTO players_new (id, firstName, lastName, birthDate, licenseNumber, isActive, phone, email, parentName, parentPhone, parentEmail, createdAt) SELECT id, firstName, lastName, birthDate, licenseNumber, isActive, phone, email, parentName, parentPhone, parentEmail, createdAt FROM players");
+        database.run("DROP TABLE players");
+        database.run("ALTER TABLE players_new RENAME TO players");
+      } catch (e) {
+        // ignore if migration already done
+      }
+
+      // Migrazione: crea tabella documenti giocatori
+      try {
+        database.run(`
+          CREATE TABLE IF NOT EXISTS player_documents (
+            id TEXT PRIMARY KEY,
+            playerId TEXT NOT NULL,
+            fileName TEXT NOT NULL,
+            mimeType TEXT NOT NULL,
+            data TEXT NOT NULL,
+            uploadDate DATETIME DEFAULT CURRENT_TIMESTAMP,
+            FOREIGN KEY (playerId) REFERENCES players(id) ON DELETE CASCADE
+          )
+        `);
+      } catch (e) {
+        // ignore if exists
+      }
+
+      // Migrazione: aggiungi position e jerseyNumber alle formazioni
+      try {
+        database.run("ALTER TABLE match_lineups ADD COLUMN position TEXT");
+        database.run("ALTER TABLE match_lineups ADD COLUMN jerseyNumber INTEGER");
       } catch (e) {
         // ignore if exists
       }
@@ -150,7 +209,6 @@ export function useDatabase() {
       setIsLoading(false);
     }
   };
-
   const createTables = async (database: Database) => {
     // Tabella giocatori
     database.run(`
@@ -159,11 +217,27 @@ export function useDatabase() {
         firstName TEXT NOT NULL,
         lastName TEXT NOT NULL,
         birthDate TEXT NOT NULL,
-        position TEXT NOT NULL,
-        jerseyNumber INTEGER NOT NULL,
         licenseNumber TEXT NOT NULL,
         isActive BOOLEAN NOT NULL DEFAULT 1,
+        phone TEXT,
+        email TEXT,
+        parentName TEXT,
+        parentPhone TEXT,
+        parentEmail TEXT,
         createdAt DATETIME DEFAULT CURRENT_TIMESTAMP
+      )
+    `);
+
+    // Tabella documenti giocatori
+    database.run(`
+      CREATE TABLE IF NOT EXISTS player_documents (
+        id TEXT PRIMARY KEY,
+        playerId TEXT NOT NULL,
+        fileName TEXT NOT NULL,
+        mimeType TEXT NOT NULL,
+        data TEXT NOT NULL,
+        uploadDate DATETIME DEFAULT CURRENT_TIMESTAMP,
+        FOREIGN KEY (playerId) REFERENCES players(id) ON DELETE CASCADE
       )
     `);
 
@@ -206,14 +280,14 @@ export function useDatabase() {
         isRunning BOOLEAN DEFAULT 0,
         createdAt DATETIME DEFAULT CURRENT_TIMESTAMP
       )
-    `);
-
-    // Tabella formazioni
+    `);    // Tabella formazioni con posizione e numero maglia per partita
     database.run(`
       CREATE TABLE IF NOT EXISTS match_lineups (
         id TEXT PRIMARY KEY,
         matchId TEXT NOT NULL,
         playerId TEXT NOT NULL,
+        position TEXT NOT NULL,
+        jerseyNumber INTEGER NOT NULL,
         FOREIGN KEY (matchId) REFERENCES matches(id) ON DELETE CASCADE,
         FOREIGN KEY (playerId) REFERENCES players(id) ON DELETE CASCADE
       )
@@ -325,40 +399,71 @@ export function useDatabase() {
       localStorage.setItem('football_registry_db', JSON.stringify(buffer));
     }
   };
-
   // Funzioni per i giocatori
   const getPlayers = (): Player[] => {
     if (!db) return [];
     
-    const stmt = db.prepare('SELECT * FROM players ORDER BY jerseyNumber');
+    const stmt = db.prepare('SELECT * FROM players ORDER BY lastName, firstName');
     const players: Player[] = [];
     
     while (stmt.step()) {
       const row = stmt.getAsObject();
+      
+      // Carica documenti per questo giocatore
+      const documentsStmt = db.prepare('SELECT * FROM player_documents WHERE playerId = ?');
+      documentsStmt.bind([row.id]);
+      const documents: any[] = [];
+      while (documentsStmt.step()) {
+        const docRow = documentsStmt.getAsObject();
+        documents.push({
+          id: docRow.id,
+          fileName: docRow.fileName,
+          mimeType: docRow.mimeType,
+          data: docRow.data,
+          uploadDate: docRow.uploadDate
+        });
+      }
+      documentsStmt.free();
+      
       players.push({
         id: row.id as string,
         firstName: row.firstName as string,
         lastName: row.lastName as string,
         birthDate: row.birthDate as string,
-        position: row.position as string,
-        jerseyNumber: row.jerseyNumber as number,
         licenseNumber: row.licenseNumber as string,
-        isActive: Boolean(row.isActive)
+        isActive: Boolean(row.isActive),
+        phone: row.phone as string || '',
+        email: row.email as string || '',
+        parentName: row.parentName as string || '',
+        parentPhone: row.parentPhone as string || '',
+        parentEmail: row.parentEmail as string || '',
+        documents: documents
       });
     }
     
     stmt.free();
     return players;
   };
-
   const addPlayer = (player: Omit<Player, 'id'>) => {
     if (!db) return;
     
     const id = Date.now().toString();
     db.run(
-      'INSERT INTO players (id, firstName, lastName, birthDate, position, jerseyNumber, licenseNumber, isActive) VALUES (?, ?, ?, ?, ?, ?, ?, ?)',
-      [id, player.firstName, player.lastName, player.birthDate, player.position, player.jerseyNumber, player.licenseNumber, player.isActive ? 1 : 0]
+      'INSERT INTO players (id, firstName, lastName, birthDate, licenseNumber, isActive, phone, email, parentName, parentPhone, parentEmail) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)',
+      [id, player.firstName, player.lastName, player.birthDate, player.licenseNumber, player.isActive ? 1 : 0, player.phone || null, player.email || null, player.parentName || null, player.parentPhone || null, player.parentEmail || null]
     );
+    
+    // Inserisci documenti se presenti
+    if (player.documents && player.documents.length > 0) {
+      player.documents.forEach(doc => {
+        const docId = `${id}_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+        db.run(
+          'INSERT INTO player_documents (id, playerId, fileName, mimeType, data) VALUES (?, ?, ?, ?, ?)',
+          [docId, id, doc.fileName, doc.mimeType, doc.data]
+        );
+      });
+    }
+    
     saveDatabase();
     return id;
   };
@@ -367,9 +472,22 @@ export function useDatabase() {
     if (!db) return;
     
     db.run(
-      'UPDATE players SET firstName = ?, lastName = ?, birthDate = ?, position = ?, jerseyNumber = ?, licenseNumber = ?, isActive = ? WHERE id = ?',
-      [player.firstName, player.lastName, player.birthDate, player.position, player.jerseyNumber, player.licenseNumber, player.isActive ? 1 : 0, id]
+      'UPDATE players SET firstName = ?, lastName = ?, birthDate = ?, licenseNumber = ?, isActive = ?, phone = ?, email = ?, parentName = ?, parentPhone = ?, parentEmail = ? WHERE id = ?',
+      [player.firstName, player.lastName, player.birthDate, player.licenseNumber, player.isActive ? 1 : 0, player.phone || null, player.email || null, player.parentName || null, player.parentPhone || null, player.parentEmail || null, id]
     );
+    
+    // Aggiorna documenti - rimuovi vecchi e inserisci nuovi
+    db.run('DELETE FROM player_documents WHERE playerId = ?', [id]);
+    if (player.documents && player.documents.length > 0) {
+      player.documents.forEach(doc => {
+        const docId = `${id}_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+        db.run(
+          'INSERT INTO player_documents (id, playerId, fileName, mimeType, data) VALUES (?, ?, ?, ?, ?)',
+          [docId, id, doc.fileName, doc.mimeType, doc.data]
+        );
+      });
+    }
+    
     saveDatabase();
   };
 
@@ -473,14 +591,17 @@ export function useDatabase() {
     while (stmt.step()) {
       const row = stmt.getAsObject();
       const matchId = row.id as string;
-      
-      // Ottieni formazione
-      const lineupStmt = db.prepare('SELECT playerId FROM match_lineups WHERE matchId = ?');
+        // Ottieni formazione con posizione e numero maglia
+      const lineupStmt = db.prepare('SELECT playerId, position, jerseyNumber FROM match_lineups WHERE matchId = ?');
       lineupStmt.bind([matchId]);
-      const lineup: string[] = [];
+      const lineup: any[] = [];
       while (lineupStmt.step()) {
         const lineupRow = lineupStmt.getAsObject();
-        lineup.push(lineupRow.playerId as string);
+        lineup.push({
+          playerId: lineupRow.playerId as string,
+          position: lineupRow.position as string || '',
+          jerseyNumber: lineupRow.jerseyNumber as number || 0
+        });
       }
       lineupStmt.free();
       
@@ -561,11 +682,10 @@ export function useDatabase() {
       'INSERT INTO matches (id, date, opponent, homeAway, status, startTime, firstHalfDuration, secondHalfDuration, homeScore, awayScore, lastTimestamp, isRunning) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)',
       [id, match.date, match.opponent, match.homeAway, match.status, match.startTime || null, match.firstHalfDuration, match.secondHalfDuration, match.homeScore, match.awayScore, match.lastTimestamp || null, match.isRunning ? 1 : 0]
     );
-    
-    // Inserisci formazione
-    match.lineup.forEach(playerId => {
-      const lineupId = `${id}_${playerId}`;
-      db.run('INSERT INTO match_lineups (id, matchId, playerId) VALUES (?, ?, ?)', [lineupId, id, playerId]);
+      // Inserisci formazione con posizione e numero maglia
+    match.lineup.forEach(matchPlayer => {
+      const lineupId = `${id}_${matchPlayer.playerId}`;
+      db.run('INSERT INTO match_lineups (id, matchId, playerId, position, jerseyNumber) VALUES (?, ?, ?, ?, ?)', [lineupId, id, matchPlayer.playerId, matchPlayer.position, matchPlayer.jerseyNumber]);
     });
     
     // Inserisci numeri maglia avversari
@@ -597,12 +717,11 @@ export function useDatabase() {
       'UPDATE matches SET date = ?, opponent = ?, homeAway = ?, status = ?, startTime = ?, firstHalfDuration = ?, secondHalfDuration = ?, homeScore = ?, awayScore = ?, lastTimestamp = ?, isRunning = ? WHERE id = ?',
       [match.date, match.opponent, match.homeAway, match.status, match.startTime || null, match.firstHalfDuration, match.secondHalfDuration, match.homeScore, match.awayScore, (match as any).lastTimestamp || null, (match as any).isRunning ? 1 : 0, id]
     );
-    
-    // Aggiorna formazione
+      // Aggiorna formazione
     db.run('DELETE FROM match_lineups WHERE matchId = ?', [id]);
-    match.lineup.forEach(playerId => {
-      const lineupId = `${id}_${playerId}`;
-      db.run('INSERT INTO match_lineups (id, matchId, playerId) VALUES (?, ?, ?)', [lineupId, id, playerId]);
+    match.lineup.forEach(matchPlayer => {
+      const lineupId = `${id}_${matchPlayer.playerId}`;
+      db.run('INSERT INTO match_lineups (id, matchId, playerId, position, jerseyNumber) VALUES (?, ?, ?, ?, ?)', [lineupId, id, matchPlayer.playerId, matchPlayer.position, matchPlayer.jerseyNumber]);
     });
     
     // Aggiorna sostituzioni

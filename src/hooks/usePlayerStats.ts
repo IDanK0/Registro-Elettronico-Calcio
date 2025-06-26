@@ -12,14 +12,11 @@ export function usePlayerStats(players: Player[], matches: Match[]): PlayerStats
         goals: 0,
         matchesPlayed: 0,
         yellowCards: 0,
-        redCards: 0
+        redCards: 0,
+        trainingAttendance: 0,
+        totalTrainings: 0
       };
-    });
-
-    finishedMatches.forEach(m => {
-      const ourScore = m.homeAway === 'home' ? m.homeScore : m.awayScore;
-      const theirScore = m.homeAway === 'home' ? m.awayScore : m.homeScore;
-
+    });    finishedMatches.forEach(m => {
       // count goals per scorer in events
       m.events?.forEach(e => {
         if (e.type === 'goal' && e.description?.includes('(nostro)') && statsMap[e.playerId]) {
@@ -31,11 +28,9 @@ export function usePlayerStats(players: Player[], matches: Match[]): PlayerStats
         if (['red-card','expulsion'].includes(e.type) && statsMap[e.playerId]) {
           statsMap[e.playerId].redCards += 1;
         }
-      });
-
-      // count appearances
-      m.lineup.forEach(id => {
-        if (statsMap[id]) statsMap[id].matchesPlayed += 1;
+      });// count appearances
+      m.lineup.forEach(matchPlayer => {
+        if (statsMap[matchPlayer.playerId]) statsMap[matchPlayer.playerId].matchesPlayed += 1;
       });
     });
 

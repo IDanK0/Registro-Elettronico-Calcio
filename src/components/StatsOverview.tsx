@@ -1,6 +1,6 @@
-import { useMemo, useState } from 'react';
+import { useMemo } from 'react';
 import { Player, Match, Training, PlayerStats } from '../types';
-import { Trophy, Target, Users, Calendar, TrendingUp, Award, BarChart3, BarChart2, FileText, Shield, Repeat, UserCheck, Info } from 'lucide-react';
+import { Trophy, Target, Users, Calendar, Award, BarChart3, BarChart2, Shield, Info, TrendingUp, Repeat, UserCheck } from 'lucide-react';
 import { Line } from 'react-chartjs-2';
 import {
   Chart as ChartJS,
@@ -27,7 +27,6 @@ ChartJS.register(CategoryScale, LinearScale, PointElement, LineElement, Title, T
 
 export function StatsOverview({ players, matches, trainings, playerStats }: StatsOverviewProps) {
   const isMobile = useIsMobile();
-  const [openAccordion, setOpenAccordion] = useState<string | null>(null);
 
   const finishedMatches = matches.filter(m => m.status === 'finished');
   const wins = finishedMatches.filter(m => {
@@ -94,11 +93,9 @@ export function StatsOverview({ players, matches, trainings, playerStats }: Stat
   // Ammonizioni/Espulsioni
   const cardTypes = ['yellow-card','red-card','second-yellow-card','blue-card','expulsion','warning'];
   // Filtra solo i cartellini dei giocatori del team
-  const teamCards = allEvents.filter(e => cardTypes.includes(e.type) && players.some(p => p.id === e.playerId));
-  const totalReds = teamCards.filter(e => e.type === 'red-card' || e.type === 'expulsion').length;
+  const teamCards = allEvents.filter(e => cardTypes.includes(e.type) && players.some(p => p.id === e.playerId));  const totalReds = teamCards.filter(e => e.type === 'red-card' || e.type === 'expulsion').length;
   const totalYellows = teamCards.filter(e => e.type === 'yellow-card' || e.type === 'second-yellow-card').length;
   const avgCardsPerMatch = finishedMatches.length > 0 ? (teamCards.length / finishedMatches.length).toFixed(2) : '0.00';
-  const avgYellowCardsPerMatch = finishedMatches.length > 0 ? (totalYellows / finishedMatches.length).toFixed(2) : '0.00';
 
   // Sostituzioni
   const totalSubs = allSubs.length;
@@ -118,94 +115,46 @@ export function StatsOverview({ players, matches, trainings, playerStats }: Stat
     .sort((a,b) => b[1]-a[1])
     .slice(0,3)
     .map(([id,count]) => ({ player: players.find(p=>p.id===id), count }));
-
-  // Statistiche per ruolo
+  // Statistiche per ruolo - ora calcolate dalle partite
   const roleStats = useMemo(() => {
     const roles: Record<string, { goals: number; matches: number; yellows: number; reds: number }> = {};
-    players.forEach(p => {
-      if (!roles[p.position]) roles[p.position] = { goals: 0, matches: 0, yellows: 0, reds: 0 };
+    
+    // Raccogli ruoli da tutte le partite
+    finishedMatches.forEach(match => {
+      match.lineup.forEach(matchPlayer => {
+        if (!roles[matchPlayer.position]) {
+          roles[matchPlayer.position] = { goals: 0, matches: 0, yellows: 0, reds: 0 };
+        }
+        roles[matchPlayer.position].matches += 1;
+      });
+      
+      // Conta goal per ruolo
+      match.events?.forEach(event => {
+        if (event.type === 'goal' && event.description?.includes('(nostro)')) {
+          const playerInMatch = match.lineup.find(mp => mp.playerId === event.playerId);
+          if (playerInMatch && roles[playerInMatch.position]) {
+            roles[playerInMatch.position].goals += 1;
+          }
+        }
+        
+        // Conta cartellini per ruolo
+        if (['yellow-card','second-yellow-card'].includes(event.type)) {
+          const playerInMatch = match.lineup.find(mp => mp.playerId === event.playerId);
+          if (playerInMatch && roles[playerInMatch.position]) {
+            roles[playerInMatch.position].yellows += 1;
+          }
+        }
+        
+        if (['red-card','expulsion'].includes(event.type)) {
+          const playerInMatch = match.lineup.find(mp => mp.playerId === event.playerId);
+          if (playerInMatch && roles[playerInMatch.position]) {
+            roles[playerInMatch.position].reds += 1;
+          }
+        }
+      });
     });
-    playerStats.forEach(stat => {
-      const player = players.find(p => p.id === stat.playerId);
-      if (player && roles[player.position]) {
-        roles[player.position].goals += stat.goals;
-        roles[player.position].matches += stat.matchesPlayed;
-        roles[player.position].yellows += stat.yellowCards;
-        roles[player.position].reds += stat.redCards;
-      }
-    });
-    return roles;
-  }, [players, playerStats]);
-
-  // --- Trend stagionale: risultati, gol, ammonizioni per partita ---
-  const trendData = useMemo(() => {
-    const sorted = [...finishedMatches].sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime());
-    const labels = sorted.map(m => m.date.replace(/\d{4}-/g, ''));
-    const goalsFor = sorted.map(m => (m.homeAway === 'home' ? m.homeScore : m.awayScore));
-    const goalsAgainst = sorted.map(m => (m.homeAway === 'home' ? m.awayScore : m.homeScore));
-    const cardsPerMatch = sorted.map(m => (m.events ? m.events.filter(e => cardTypes.includes(e.type)).length : 0));
-    const results = sorted.map(m => {
-      const our = m.homeAway === 'home' ? m.homeScore : m.awayScore;
-      const their = m.homeAway === 'home' ? m.awayScore : m.homeScore;
-      if (our > their) return 3;
-      if (our === their) return 1;
-      return 0;
-    });
-    return { labels, goalsFor, goalsAgainst, cardsPerMatch, results };
-  }, [finishedMatches]);
-
-  // Chart.js data
-  const lineChartData = {
-    labels: trendData.labels,
-    datasets: [
-      {
-        label: 'Gol Fatti',
-        data: trendData.goalsFor,
-        borderColor: 'rgb(37, 99, 235)',
-        backgroundColor: 'rgba(37, 99, 235, 0.2)',
-        tension: 0.3,
-      },
-      {
-        label: 'Gol Subiti',
-        data: trendData.goalsAgainst,
-        borderColor: 'rgb(220, 38, 38)',
-        backgroundColor: 'rgba(220, 38, 38, 0.2)',
-        tension: 0.3,
-      },
-      {
-        label: 'Ammonizioni/Partita',
-        data: trendData.cardsPerMatch,
-        borderColor: 'rgb(202, 138, 4)',
-        backgroundColor: 'rgba(202, 138, 4, 0.2)',
-        yAxisID: 'y2',
-        tension: 0.3,
-      },
-      {
-        label: 'Risultato (3=V,1=P,0=S)',
-        data: trendData.results,
-        borderColor: 'rgb(16, 185, 129)',
-        backgroundColor: 'rgba(16, 185, 129, 0.2)',
-        yAxisID: 'y3',
-        tension: 0.1,
-        pointStyle: 'rectRounded',
-      },
-    ],
-  };
-  // Fix Chart.js interaction.mode type (all values must be valid union types)
-  const lineChartOptions = {
-    responsive: true,
-    plugins: {
-      legend: { position: 'top' as const },
-      title: { display: true, text: 'Andamento Stagionale' },
-      tooltip: { mode: 'index' as const, intersect: false },
-    },
-    interaction: { mode: 'nearest' as const, axis: 'x' as const, intersect: false },
-    scales: {
-      y: { beginAtZero: true, title: { display: true, text: 'Gol' } },
-      y2: { beginAtZero: true, position: 'right' as const, grid: { drawOnChartArea: false }, title: { display: true, text: 'Ammonizioni' } },
-      y3: { beginAtZero: true, position: 'right' as const, grid: { drawOnChartArea: false }, min: 0, max: 3, title: { display: true, text: 'Risultato' } },
-    },
-  } as const;
+    
+    return roles;  }, [finishedMatches]);
 
   const StatCard = ({ icon: Icon, title, value, subtitle, color }: {
     icon: any;
@@ -514,14 +463,12 @@ export function StatsOverview({ players, matches, trainings, playerStats }: Stat
                 <span data-tooltip-id="topscorers-tip" className="ml-1 cursor-pointer"><Info className="w-4 h-4 text-gray-400" /></span>
               </h3>
               <ReactTooltip id="topscorers-tip" place="top" content="Giocatori con il maggior numero di goal" />
-              <ul className="space-y-2">
-                {topScorers.map((item, index) => (
+              <ul className="space-y-2">                {topScorers.map((item, index) => (
                   <li key={item.playerId} className="flex justify-between items-center">
                     <div className="flex items-center gap-3">
                       <span className={`w-7 h-7 rounded-full flex items-center justify-center text-xs font-bold ring-2 ring-white shadow ${index===0?'bg-yellow-500 text-white':index===1?'bg-gray-400 text-white':index===2?'bg-yellow-700 text-white':'bg-gray-200 text-gray-600'}`}>{index+1}</span>
                       <div>
                         <span className="font-medium text-gray-800">{item.player?.firstName} {item.player?.lastName}</span>
-                        <span className="ml-2 text-xs text-gray-500">#{item.player?.jerseyNumber}</span>
                       </div>
                     </div>
                     <span className="text-lg font-bold text-blue-600">{item.goals}</span>
@@ -543,10 +490,8 @@ export function StatsOverview({ players, matches, trainings, playerStats }: Stat
                 {mostActivePlaybers.map((item, index) => (
                   <li key={item.playerId} className="flex justify-between items-center">
                     <div className="flex items-center gap-3">
-                      <span className={`w-7 h-7 rounded-full flex items-center justify-center text-xs font-bold ring-2 ring-white shadow ${index===0?'bg-green-500 text-white':index===1?'bg-blue-500 text-white':index===2?'bg-purple-500 text-white':'bg-gray-200 text-gray-600'}`}>{index+1}</span>
-                      <div>
+                      <span className={`w-7 h-7 rounded-full flex items-center justify-center text-xs font-bold ring-2 ring-white shadow ${index===0?'bg-green-500 text-white':index===1?'bg-blue-500 text-white':index===2?'bg-purple-500 text-white':'bg-gray-200 text-gray-600'}`}>{index+1}</span>                      <div>
                         <span className="font-medium text-gray-800">{item.player?.firstName} {item.player?.lastName}</span>
-                        <span className="ml-2 text-xs text-gray-500">#{item.player?.jerseyNumber}</span>
                       </div>
                     </div>
                     <span className="text-lg font-bold text-green-600">{item.matchesPlayed}</span>
@@ -591,11 +536,10 @@ export function StatsOverview({ players, matches, trainings, playerStats }: Stat
             <h3 className="text-base font-semibold text-gray-800 mb-3 flex items-center gap-2">
               <UserCheck className="w-5 h-5 text-blue-600" />
               Più sostituiti
-            </h3>
-            <ul className="space-y-2">
+            </h3>            <ul className="space-y-2">
               {mostSubbedOut.map(({player,count}) => player && (
                 <li key={player.id} className="flex justify-between items-center">
-                  <span>{player.firstName} {player.lastName} <span className="text-xs text-gray-500">#{player.jerseyNumber}</span></span>
+                  <span>{player.firstName} {player.lastName}</span>
                   <span className="font-bold text-red-600">{count}</span>
                 </li>
               ))}
@@ -609,7 +553,7 @@ export function StatsOverview({ players, matches, trainings, playerStats }: Stat
             <ul className="space-y-2">
               {mostSubbedIn.map(({player,count}) => player && (
                 <li key={player.id} className="flex justify-between items-center">
-                  <span>{player.firstName} {player.lastName} <span className="text-xs text-gray-500">#{player.jerseyNumber}</span></span>
+                  <span>{player.firstName} {player.lastName}</span>
                   <span className="font-bold text-green-600">{count}</span>
                 </li>
               ))}

@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Match, Player } from '../types';
+import { Match, Player, MatchPlayer } from '../types';
 import { Calendar, MapPin, Users, Home, Plane, Plus, Minus } from 'lucide-react';
 
 interface MatchFormProps {
@@ -9,6 +9,13 @@ interface MatchFormProps {
   onCancel?: () => void;
 }
 
+// Available positions for player selection
+const POSITIONS = [
+  'Portiere', 'Difensore', 'Centrocampista', 'Attaccante',
+  'Terzino Destro', 'Terzino Sinistro', 'Centrale',
+  'Mediano', 'Mezzala', 'Trequartista', 'Ala Destra', 'Ala Sinistra'
+];
+
 export function MatchForm({ players, onSubmit, initialData, onCancel }: MatchFormProps) {
   const [formData, setFormData] = useState({
     date: initialData?.date || new Date().toISOString().split('T')[0],
@@ -16,11 +23,14 @@ export function MatchForm({ players, onSubmit, initialData, onCancel }: MatchFor
     homeAway: initialData?.homeAway || 'home' as 'home' | 'away',
     homeScore: initialData?.homeScore || 0,
     awayScore: initialData?.awayScore || 0,
-    lineup: initialData?.lineup || [],
+    lineup: initialData?.lineup || [] as MatchPlayer[],
     opponentLineup: initialData?.opponentLineup || []
   });
   const [newJerseyNumber, setNewJerseyNumber] = useState<string>('');
   const [formError, setFormError] = useState<string | null>(null);
+  const [selectedPlayer, setSelectedPlayer] = useState<string>('');
+  const [selectedPosition, setSelectedPosition] = useState<string>('');
+  const [selectedJersey, setSelectedJersey] = useState<string>('');
   const activePlayers = players.filter(p => p.isActive);
 
   const handleSubmit = (e: React.FormEvent) => {
@@ -37,12 +47,51 @@ export function MatchForm({ players, onSubmit, initialData, onCancel }: MatchFor
     onSubmit(formData);
   };
 
-  const togglePlayerInLineup = (playerId: string) => {
+  const addPlayerToLineup = () => {
+    if (!selectedPlayer || !selectedPosition || !selectedJersey) {
+      setFormError('Seleziona giocatore, posizione e numero di maglia.');
+      return;
+    }
+    
+    const jerseyNum = parseInt(selectedJersey);
+    if (isNaN(jerseyNum) || jerseyNum < 1 || jerseyNum > 99) {
+      setFormError('Numero di maglia non valido (1-99).');
+      return;
+    }
+    
+    // Check if player is already in lineup
+    if (formData.lineup.some(mp => mp.playerId === selectedPlayer)) {
+      setFormError('Il giocatore è già nella formazione.');
+      return;
+    }
+    
+    // Check if jersey number is already used
+    if (formData.lineup.some(mp => mp.jerseyNumber === jerseyNum)) {
+      setFormError('Numero di maglia già utilizzato.');
+      return;
+    }
+    
+    const newMatchPlayer: MatchPlayer = {
+      playerId: selectedPlayer,
+      position: selectedPosition,
+      jerseyNumber: jerseyNum
+    };
+    
     setFormData(prev => ({
       ...prev,
-      lineup: prev.lineup.includes(playerId)
-        ? prev.lineup.filter(id => id !== playerId)
-        : [...prev.lineup, playerId]
+      lineup: [...prev.lineup, newMatchPlayer]
+    }));
+    
+    setSelectedPlayer('');
+    setSelectedPosition('');
+    setSelectedJersey('');
+    setFormError(null);
+  };
+
+  const removePlayerFromLineup = (playerId: string) => {
+    setFormData(prev => ({
+      ...prev,
+      lineup: prev.lineup.filter(mp => mp.playerId !== playerId)
     }));
   };
 
@@ -199,40 +248,99 @@ export function MatchForm({ players, onSubmit, initialData, onCancel }: MatchFor
             Formazione Titolare ({formData.lineup.length}/11)
           </h4>
           
+          {/* Add Player Form */}
+          <div className="bg-gray-50 p-4 rounded-lg mb-4">
+            <div className="grid grid-cols-1 md:grid-cols-4 gap-3">
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Giocatore</label>
+                <select
+                  value={selectedPlayer}
+                  onChange={(e) => setSelectedPlayer(e.target.value)}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-red-500"
+                >
+                  <option value="">Seleziona giocatore</option>
+                  {activePlayers
+                    .filter(p => !formData.lineup.some(mp => mp.playerId === p.id))
+                    .map(player => (
+                      <option key={player.id} value={player.id}>
+                        {player.firstName} {player.lastName}
+                      </option>
+                    ))}
+                </select>
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Posizione</label>
+                <select
+                  value={selectedPosition}
+                  onChange={(e) => setSelectedPosition(e.target.value)}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-red-500"
+                >
+                  <option value="">Seleziona posizione</option>
+                  {POSITIONS.map(position => (
+                    <option key={position} value={position}>{position}</option>
+                  ))}
+                </select>
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Maglia</label>
+                <input
+                  type="number"
+                  min="1"
+                  max="99"
+                  value={selectedJersey}
+                  onChange={(e) => setSelectedJersey(e.target.value)}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-red-500"
+                  placeholder="N°"
+                />
+              </div>
+              <div className="flex items-end">
+                <button
+                  type="button"
+                  onClick={addPlayerToLineup}
+                  className="w-full px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors flex items-center justify-center gap-2"
+                >
+                  <Plus className="w-4 h-4" />
+                  Aggiungi
+                </button>
+              </div>
+            </div>
+          </div>
+
+          {/* Current Lineup */}
           <div className="space-y-2 max-h-96 overflow-y-auto">
-            {activePlayers.map(player => {
-              const isInLineup = formData.lineup.includes(player.id);
+            {formData.lineup.map((matchPlayer) => {
+              const player = players.find(p => p.id === matchPlayer.playerId);
+              if (!player) return null;
+              
               return (
                 <div
-                  key={player.id}
-                  className={`flex items-center justify-between p-3 rounded-lg border-2 transition-all cursor-pointer ${
-                    isInLineup
-                      ? 'border-red-200 bg-red-50'
-                      : 'border-gray-200 bg-gray-50 hover:bg-gray-100'
-                  }`}
-                  onClick={() => togglePlayerInLineup(player.id)}
+                  key={matchPlayer.playerId}
+                  className="flex items-center justify-between p-3 rounded-lg border border-red-200 bg-red-50"
                 >
                   <div className="flex items-center gap-3">
-                    <div className="w-8 h-8 bg-blue-100 rounded-full flex items-center justify-center">
-                      <span className="text-blue-600 font-bold text-sm">#{player.jerseyNumber}</span>
+                    <div className="w-8 h-8 bg-red-500 text-white rounded-full flex items-center justify-center">
+                      <span className="font-bold text-sm">#{matchPlayer.jerseyNumber}</span>
                     </div>
                     <div>
                       <span className="font-medium text-gray-800">
                         {player.firstName} {player.lastName}
                       </span>
-                      <p className="text-sm text-gray-600">{player.position}</p>
+                      <p className="text-sm text-gray-600">{matchPlayer.position}</p>
                     </div>
                   </div>
-                  <div className={`w-6 h-6 rounded-full flex items-center justify-center border-2 ${
-                    isInLineup 
-                      ? 'bg-red-500 border-red-500' 
-                      : 'border-gray-300'
-                  }`}>
-                    {isInLineup && <Users className="w-4 h-4 text-white" />}
-                  </div>
+                  <button
+                    type="button"
+                    onClick={() => removePlayerFromLineup(matchPlayer.playerId)}
+                    className="w-6 h-6 bg-red-500 text-white rounded-full flex items-center justify-center hover:bg-red-600 transition-colors"
+                  >
+                    <Minus className="w-4 h-4" />
+                  </button>
                 </div>
               );
             })}
+            {formData.lineup.length === 0 && (
+              <p className="text-gray-500 text-center py-8">Nessun giocatore aggiunto alla formazione</p>
+            )}
           </div>
         </div>
 
