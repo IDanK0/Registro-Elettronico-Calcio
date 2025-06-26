@@ -9,8 +9,8 @@ interface MatchTimerProps {
   onPause: () => void;
   onInterval: () => void; // Crea un nuovo periodo di tipo intervallo
   onAddPeriod: (type: 'regular' | 'extra') => void;
-  onRemoveLastPeriod: () => void;
-  onFinish: () => void;
+  onRemoveLastPeriod: (event: React.MouseEvent) => void;
+  onFinish: (event: React.MouseEvent) => void;
   formatTime: (seconds: number) => string;
 }
 
@@ -70,19 +70,42 @@ export function MatchTimer({
         <div className="mb-6">
           <h4 className="text-sm font-medium text-gray-700 mb-3 text-center">Periodi</h4>
           <div className="flex flex-wrap gap-2 justify-center">
-            {periods.map((period, index) => (              <div
-                key={index}
-                className={`px-3 py-1 rounded-full text-xs font-medium ${
-                  index === currentPeriodIndex
-                    ? 'bg-blue-100 text-blue-800 border-2 border-blue-300'
-                    : period.isFinished
-                    ? 'bg-gray-100 text-gray-600'
-                    : 'bg-yellow-100 text-yellow-800'
-                }`}
-              >
-                {period.label}: {formatTime(period.duration)}
-              </div>
-            ))}
+            {periods.map((period, index) => {
+              // Determina i colori in base al tipo di periodo e allo stato
+              let colorClasses = '';
+              
+              if (index === currentPeriodIndex) {
+                // Periodo corrente - colori più vivaci con bordo
+                if (period.type === 'regular') {
+                  colorClasses = 'bg-green-100 text-green-800 border-2 border-green-400';
+                } else if (period.type === 'interval') {
+                  colorClasses = 'bg-orange-100 text-orange-800 border-2 border-orange-400';
+                } else if (period.type === 'extra') {
+                  colorClasses = 'bg-purple-100 text-purple-800 border-2 border-purple-400';
+                }
+              } else if (period.isFinished) {
+                // Periodo terminato - colori spenti
+                if (period.type === 'regular') {
+                  colorClasses = 'bg-green-50 text-green-600';
+                } else if (period.type === 'interval') {
+                  colorClasses = 'bg-orange-50 text-orange-600';
+                } else if (period.type === 'extra') {
+                  colorClasses = 'bg-purple-50 text-purple-600';
+                }
+              } else {
+                // Periodo non ancora iniziato - colori neutri
+                colorClasses = 'bg-gray-100 text-gray-600';
+              }
+              
+              return (
+                <div
+                  key={index}
+                  className={`px-3 py-1 rounded-full text-xs font-medium ${colorClasses}`}
+                >
+                  {period.label}: {formatTime(period.duration)}
+                </div>
+              );
+            })}
           </div>
         </div>
       )}
@@ -146,7 +169,7 @@ export function MatchTimer({
 
             {canRemovePeriod && (
               <button
-                onClick={onRemoveLastPeriod}
+                onClick={(e) => onRemoveLastPeriod(e)}
                 className="flex items-center gap-2 bg-red-600 text-white px-4 py-2 rounded-lg hover:bg-red-700 transition-colors"
               >
                 <Minus className="w-4 h-4" />
@@ -155,7 +178,7 @@ export function MatchTimer({
             )}
 
             <button
-              onClick={onFinish}
+              onClick={(e) => onFinish(e)}
               className="flex items-center gap-2 bg-gray-600 text-white px-4 py-2 rounded-lg hover:bg-gray-700 transition-colors"
             >
               <Square className="w-4 h-4" />

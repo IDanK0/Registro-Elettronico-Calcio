@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react';
+import React from 'react';
 import { useDatabase } from './hooks/useDatabase';
 import { useTimer } from './hooks/useTimer';
 import { useSession } from './hooks/useSession';
@@ -1199,12 +1200,13 @@ function App() {
     loadData();
   };
 
-  const handleRemoveLastPeriod = () => {
+  const handleRemoveLastPeriod = (event: React.MouseEvent) => {
     if (!managingMatch) return;
     let periods = [...(managingMatch.periods || defaultPeriods)];
     if (periods.length <= 1) return;
     
-    if (!window.confirm('Sei sicuro di voler rimuovere l\'ultimo periodo?')) return;
+    // Salta la conferma se Shift è premuto
+    if (!event.shiftKey && !window.confirm('Sei sicuro di voler rimuovere l\'ultimo periodo?')) return;
     
     periods.pop();
     const updatedMatch = { ...managingMatch, periods };
@@ -1255,8 +1257,10 @@ function App() {
     timer.start();
   };
 
-  const handleFinishMatchDynamic = () => {
-    if (!window.confirm('Sei sicuro di voler terminare la partita?')) return;
+  const handleFinishMatchDynamic = (event: React.MouseEvent) => {
+    // Salta la conferma se Shift è premuto
+    if (!event.shiftKey && !window.confirm('Sei sicuro di voler terminare la partita?')) return;
+    
     timer.pause();
     if (managingMatch) {
       const periods = [...(managingMatch.periods || defaultPeriods)];
