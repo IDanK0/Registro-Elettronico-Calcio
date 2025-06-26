@@ -36,6 +36,18 @@ export function MatchList({ matches, players, onEdit, onDelete, onManage, onRepo
         if (status === 'finished') {
           return 'Terminata';
         }
+        
+        // Se la partita è programmata (non ancora iniziata), mostra il testo appropriato
+        if (status === 'scheduled') {
+          if (match.homeAway === 'away' && match.location) {
+            if (match.field) {
+              return `Programmata a ${match.location} al campo ${match.field}`;
+            }
+            return `Programmata a ${match.location}`;
+          }
+          return 'Programmata';
+        }
+        
         // Altrimenti mostra il periodo corrente
         return currentPeriod.label;
       }
@@ -43,7 +55,14 @@ export function MatchList({ matches, players, onEdit, onDelete, onManage, onRepo
     
     // Fallback al vecchio sistema
     switch (status) {
-      case 'scheduled': return 'Programmata';
+      case 'scheduled': 
+        if (match.homeAway === 'away' && match.location) {
+          if (match.field) {
+            return `Programmata a ${match.location} al campo ${match.field}`;
+          }
+          return `Programmata a ${match.location}`;
+        }
+        return 'Programmata';
       case 'first-half': return '1° Tempo';
       case 'half-time': return 'Intervallo';
       case 'second-half': return '2° Tempo';
@@ -64,6 +83,11 @@ export function MatchList({ matches, players, onEdit, onDelete, onManage, onRepo
           return 'bg-blue-500';
         }
         
+        // Se la partita è programmata (non ancora iniziata), usa il colore grigio
+        if (status === 'scheduled') {
+          return 'bg-gray-400';
+        }
+        
         // Usa i colori in base al tipo di periodo
         if (currentPeriod.type === 'regular') {
           return 'bg-green-500'; // Verde per periodi regolari
@@ -77,12 +101,12 @@ export function MatchList({ matches, players, onEdit, onDelete, onManage, onRepo
     
     // Fallback al vecchio sistema
     switch (status) {
-      case 'scheduled': return 'bg-gray-500';
+      case 'scheduled': return 'bg-gray-400';
       case 'first-half': return 'bg-green-500';
       case 'half-time': return 'bg-orange-500';
       case 'second-half': return 'bg-green-500';
       case 'finished': return 'bg-blue-500';
-      default: return 'bg-gray-500';
+      default: return 'bg-gray-400';
     }
   };
 
