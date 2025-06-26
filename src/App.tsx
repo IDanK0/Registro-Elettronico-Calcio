@@ -306,6 +306,8 @@ function App() {
       if (!match.playerJerseyNumbers) {
         database.updateMatch(match.id, matchWithJerseyNumbers);
       }
+      // Assicurati che managingMatch abbia sempre la mappa dei numeri di maglia
+      setManagingMatch(matchWithJerseyNumbers);
     }
     
     // Restore timer based on current period and lastTimestamp
@@ -368,6 +370,11 @@ function App() {
       playerJerseyNumbers: updatedPlayerJerseyNumbers,
       substitutions: [...managingMatch.substitutions, substitution]
     };
+
+    // Se il giocatore che esce è il marcatore selezionato, resetta la selezione
+    if (selectedHomeScorer === playerOutId) {
+      setSelectedHomeScorer('');
+    }
 
     setManagingMatch(updatedMatch);
     database.updateMatch(managingMatch.id, updatedMatch);

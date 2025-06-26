@@ -75,6 +75,13 @@ export function useDatabase() {
         // ignore if exists
       }
 
+      // Migrazione: aggiungi colonna playerJerseyNumbers a matches se non esiste
+      try {
+        database.run("ALTER TABLE matches ADD COLUMN playerJerseyNumbers TEXT");
+      } catch (e) {
+        // ignore if exists
+      }
+
       // Migrazione: crea tabella match_periods se non esiste
       try {
         database.run(`
@@ -827,6 +834,7 @@ export function useDatabase() {
         isRunning: !!row.isRunning,
         periods: finalPeriods,
         currentPeriodIndex: row.currentPeriodIndex as number || 0,
+        playerJerseyNumbers: row.playerJerseyNumbers ? JSON.parse(row.playerJerseyNumbers as string) : {},
       });
     }
     
@@ -839,8 +847,8 @@ export function useDatabase() {
     const id = Date.now().toString();
       // Inserisci partita
     db.run(
-      'INSERT INTO matches (id, date, time, opponent, homeAway, location, field, status, startTime, firstHalfDuration, secondHalfDuration, homeScore, awayScore, lastTimestamp, isRunning, currentPeriodIndex) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)',
-      [id, match.date, match.time, match.opponent, match.homeAway, match.location || null, match.field || null, match.status, match.startTime || null, match.firstHalfDuration, match.secondHalfDuration, match.homeScore, match.awayScore, (match as any).lastTimestamp || null, (match as any).isRunning ? 1 : 0, (match as any).currentPeriodIndex || 0]
+      'INSERT INTO matches (id, date, time, opponent, homeAway, location, field, status, startTime, firstHalfDuration, secondHalfDuration, homeScore, awayScore, lastTimestamp, isRunning, currentPeriodIndex, playerJerseyNumbers) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)',
+      [id, match.date, match.time, match.opponent, match.homeAway, match.location || null, match.field || null, match.status, match.startTime || null, match.firstHalfDuration, match.secondHalfDuration, match.homeScore, match.awayScore, (match as any).lastTimestamp || null, (match as any).isRunning ? 1 : 0, (match as any).currentPeriodIndex || 0, JSON.stringify(match.playerJerseyNumbers || {})]
     );
       // Inserisci formazione con posizione e numero maglia
     match.lineup.forEach(matchPlayer => {
@@ -898,8 +906,8 @@ export function useDatabase() {
     if (!db) return;
       // Aggiorna partita
     db.run(
-      'UPDATE matches SET date = ?, time = ?, opponent = ?, homeAway = ?, location = ?, field = ?, status = ?, startTime = ?, firstHalfDuration = ?, secondHalfDuration = ?, homeScore = ?, awayScore = ?, lastTimestamp = ?, isRunning = ?, currentPeriodIndex = ? WHERE id = ?',
-      [match.date, match.time, match.opponent, match.homeAway, match.location || null, match.field || null, match.status, match.startTime || null, match.firstHalfDuration, match.secondHalfDuration, match.homeScore, match.awayScore, (match as any).lastTimestamp || null, (match as any).isRunning ? 1 : 0, (match as any).currentPeriodIndex || 0, id]
+      'UPDATE matches SET date = ?, time = ?, opponent = ?, homeAway = ?, location = ?, field = ?, status = ?, startTime = ?, firstHalfDuration = ?, secondHalfDuration = ?, homeScore = ?, awayScore = ?, lastTimestamp = ?, isRunning = ?, currentPeriodIndex = ?, playerJerseyNumbers = ? WHERE id = ?',
+      [match.date, match.time, match.opponent, match.homeAway, match.location || null, match.field || null, match.status, match.startTime || null, match.firstHalfDuration, match.secondHalfDuration, match.homeScore, match.awayScore, (match as any).lastTimestamp || null, (match as any).isRunning ? 1 : 0, (match as any).currentPeriodIndex || 0, JSON.stringify(match.playerJerseyNumbers || {}), id]
     );
       // Aggiorna formazione
     db.run('DELETE FROM match_lineups WHERE matchId = ?', [id]);
