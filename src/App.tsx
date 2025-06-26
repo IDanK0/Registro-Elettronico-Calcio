@@ -86,8 +86,7 @@ function App() {
   
   // State for dynamic periods
   const defaultPeriods: MatchPeriod[] = [
-    { type: 'regular' as const, label: '1° Tempo', duration: 0, isFinished: false },
-    { type: 'regular' as const, label: '2° Tempo', duration: 0, isFinished: false }
+    { type: 'regular' as const, label: '1° Tempo', duration: 0, isFinished: false }
   ];
   const [currentPeriodIndex, setCurrentPeriodIndex] = useState(0);
   
@@ -1185,9 +1184,13 @@ function App() {
   };  const handleAddPeriod = (type: 'regular' | 'extra') => {
     if (!managingMatch) return;
     const periods = [...(managingMatch.periods || defaultPeriods)];
+    const regularPeriodsCount = periods.filter(p => p.type === 'regular').length;
+    const extraPeriodsCount = periods.filter(p => p.type === 'extra').length;
+    
     const label = type === 'regular'
-      ? `${periods.filter(p => p.type === 'regular').length + 1}° Tempo`
-      : `${periods.filter(p => p.type === 'extra').length + 1}° Supplementare`;
+      ? `${regularPeriodsCount + 1}° Tempo`
+      : `${extraPeriodsCount + 1}° Supplementare`;
+      
     periods.push({ type, label, duration: 0, isFinished: false });
     const updatedMatch = { ...managingMatch, periods };
     setManagingMatch(updatedMatch);
@@ -1200,6 +1203,9 @@ function App() {
     if (!managingMatch) return;
     let periods = [...(managingMatch.periods || defaultPeriods)];
     if (periods.length <= 1) return;
+    
+    if (!window.confirm('Sei sicuro di voler rimuovere l\'ultimo periodo?')) return;
+    
     periods.pop();
     const updatedMatch = { ...managingMatch, periods };
     setManagingMatch(updatedMatch);

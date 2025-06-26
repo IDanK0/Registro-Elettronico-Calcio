@@ -68,8 +68,8 @@ export function MatchTimer({
       </div>      {/* Periodi Overview - Mostra solo dopo che la partita è iniziata */}
       {hasMatchStarted && (
         <div className="mb-6">
-          <h4 className="text-sm font-medium text-gray-700 mb-3">Periodi</h4>
-          <div className="flex flex-wrap gap-2">
+          <h4 className="text-sm font-medium text-gray-700 mb-3 text-center">Periodi</h4>
+          <div className="flex flex-wrap gap-2 justify-center">
             {periods.map((period, index) => (              <div
                 key={index}
                 className={`px-3 py-1 rounded-full text-xs font-medium ${
