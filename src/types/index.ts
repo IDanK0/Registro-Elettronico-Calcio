@@ -62,3 +62,38 @@ export interface PlayerStats {
   trainingAttendance: number;
   totalTrainings: number;
 }
+
+// User Management Types
+export interface Permission {
+  teamManagement: boolean;
+  matchManagement: boolean;
+  resultsView: boolean;
+  statisticsView: boolean;
+}
+
+export interface Group {
+  id: string;
+  name: string;
+  description?: string;
+  permissions: Permission;
+  createdAt: string;
+}
+
+export interface User {
+  id: string;
+  firstName: string;
+  lastName: string;
+  status: 'active' | 'inactive';
+  expirationDate: string;
+  groupId: string;
+  username: string;
+  password: string; // In production, this should be hashed
+  email: string;
+  phone: string;
+  matricola: string;
+  createdAt: string;
+}
+
+export interface UserWithGroup extends User {
+  group: Group;
+}

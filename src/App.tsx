@@ -1,8 +1,7 @@
-import React from 'react';
 import { useState, useEffect } from 'react';
 import { useDatabase } from './hooks/useDatabase';
 import { useTimer } from './hooks/useTimer';
-import { Player, Training, Match, Substitution } from './types';
+import { Player, Training, Match, Substitution, User, Group, UserWithGroup, Permission } from './types';
 import { usePlayerStats } from './hooks/usePlayerStats';
 import { PlayerForm } from './components/PlayerForm';
 import { PlayerList } from './components/PlayerList';
@@ -14,6 +13,12 @@ import { MatchTimer } from './components/MatchTimer';
 import { SubstitutionModal } from './components/SubstitutionModal';
 import { StatsOverview } from './components/StatsOverview';
 import { GoalCounter } from './components/GoalCounter';
+import { LoginForm } from './components/LoginForm';
+import { UserForm } from './components/UserForm';
+import { UserList } from './components/UserList';
+import { GroupForm } from './components/GroupForm';
+import { GroupList } from './components/GroupList';
+import { CSVManager } from './components/CSVManager';
 import { 
   Users, 
   Dumbbell, 
@@ -28,19 +33,26 @@ import {
   AlertTriangle,
   Square,
   Trash2,
-  Ban
+  Ban,
+  Shield,
+  UserCog,
+  LogOut,
+  FileText
 } from 'lucide-react';
 import { AmmonitionModal } from './components/AmmonitionModal';
 import { ReportMatch } from './components/ReportMatch';
 import { ExportStatsButton } from './components/ExportStatsButton';
-import Header from './components/Header';
-import Sidebar from './components/Sidebar';
 import useIsMobile from './hooks/useIsMobile';
 
-type Tab = 'players' | 'trainings' | 'matches' | 'stats';
-type View = 'list' | 'form' | 'manage';
+type Tab = 'players' | 'trainings' | 'matches' | 'stats' | 'users' | 'groups';
+type View = 'list' | 'form' | 'manage' | 'csv';
 
 function App() {
+  // Authentication state
+  const [currentUser, setCurrentUser] = useState<UserWithGroup | null>(null);
+  const [loginError, setLoginError] = useState<string>('');
+  const [isLoggingIn, setIsLoggingIn] = useState(false);
+
   const [activeTab, setActiveTab] = useState<Tab>('players');
   const [currentView, setCurrentView] = useState<View>('list');
   const [editingItem, setEditingItem] = useState<any>(null);
@@ -60,11 +72,12 @@ function App() {
 
   // Database hook
   const database = useDatabase();
-
   // Data state
   const [players, setPlayers] = useState<Player[]>([]);
   const [trainings, setTrainings] = useState<Training[]>([]);
   const [matches, setMatches] = useState<Match[]>([]);
+  const [users, setUsers] = useState<UserWithGroup[]>([]);
+  const [groups, setGroups] = useState<Group[]>([]);
 
   // Timer for match management
   const timer = useTimer();
@@ -127,11 +140,12 @@ function App() {
       loadData();
     }
   }, [database.isLoading, database.error]);
-
   const loadData = () => {
     setPlayers(database.getPlayers());
     setTrainings(database.getTrainings());
     setMatches(database.getMatches());
+    setUsers(database.getUsers());
+    setGroups(database.getGroups());
   };
 
   // Helper functions
@@ -412,14 +426,151 @@ function App() {
     setInitialLineup(null); // azzera la formazione iniziale quando si esce dalla gestione partita
     timer.reset();
   };
-
   const tabs = [
     { id: 'players' as const, name: 'Giocatori', icon: Users, color: 'text-blue-600' },
     { id: 'trainings' as const, name: 'Allenamenti', icon: Dumbbell, color: 'text-green-600' },
     { id: 'matches' as const, name: 'Partite', icon: Target, color: 'text-red-600' },
-    { id: 'stats' as const, name: 'Statistiche', icon: BarChart3, color: 'text-purple-600' }
+    { id: 'stats' as const, name: 'Statistiche', icon: BarChart3, color: 'text-purple-600' },
+    { id: 'users' as const, name: 'Utenti', icon: UserCog, color: 'text-indigo-600' },
+    { id: 'groups' as const, name: 'Gruppi', icon: Shield, color: 'text-yellow-600' }
   ];
 
+  // Authentication functions
+  const handleLogin = async (username: string, password: string) => {
+    setIsLoggingIn(true);
+    setLoginError('');
+    
+    try {
+      const user = database.authenticateUser(username, password);
+      if (user) {
+        setCurrentUser(user);
+        loadData();
+      } else {
+        setLoginError('Credenziali non valide o utente scaduto');
+      }
+    } catch (error) {
+      setLoginError('Errore durante l\'autenticazione');
+    } finally {
+      setIsLoggingIn(false);
+    }
+  };
+
+  const handleLogout = () => {
+    setCurrentUser(null);
+    setActiveTab('players');
+    setCurrentView('list');
+  };
+
+  // User management functions
+  const handleUserSubmit = (userData: Omit<User, 'id' | 'createdAt'>) => {
+    try {
+      if (editingItem) {
+        database.updateUser(editingItem.id, userData);
+      } else {
+        database.addUser(userData);
+      }
+      loadData();
+      setCurrentView('list');
+      setEditingItem(null);
+    } catch (error) {
+      alert('Errore durante il salvataggio dell\'utente: ' + (error instanceof Error ? error.message : 'Errore sconosciuto'));
+    }
+  };
+
+  const handleUserEdit = (user: UserWithGroup) => {
+    setEditingItem(user);
+    setCurrentView('form');
+  };
+
+  const handleUserDelete = (userId: string) => {
+    if (confirm('Sei sicuro di voler eliminare questo utente?')) {
+      try {
+        database.deleteUser(userId);
+        loadData();
+      } catch (error) {
+        alert('Errore durante l\'eliminazione dell\'utente: ' + (error instanceof Error ? error.message : 'Errore sconosciuto'));
+      }
+    }
+  };
+
+  // Group management functions
+  const handleGroupSubmit = (groupData: Omit<Group, 'id' | 'createdAt'>) => {
+    try {
+      if (editingItem) {
+        database.updateGroup(editingItem.id, groupData);
+      } else {
+        database.addGroup(groupData);
+      }
+      loadData();
+      setCurrentView('list');
+      setEditingItem(null);
+    } catch (error) {
+      alert('Errore durante il salvataggio del gruppo: ' + (error instanceof Error ? error.message : 'Errore sconosciuto'));
+    }
+  };
+
+  const handleGroupEdit = (group: Group) => {
+    setEditingItem(group);
+    setCurrentView('form');
+  };
+
+  const handleGroupDelete = (groupId: string) => {
+    if (confirm('Sei sicuro di voler eliminare questo gruppo?')) {
+      try {
+        database.deleteGroup(groupId);
+        loadData();
+      } catch (error) {
+        alert('Errore durante l\'eliminazione del gruppo: ' + (error instanceof Error ? error.message : 'Errore sconosciuto'));
+      }
+    }
+  };
+
+  // CSV Import functions
+  const handleImportGroups = (groupsData: Omit<Group, 'id' | 'createdAt'>[]) => {
+    try {
+      groupsData.forEach(groupData => {
+        database.addGroup(groupData);
+      });
+      loadData();
+    } catch (error) {
+      throw new Error('Errore durante l\'importazione dei gruppi: ' + (error instanceof Error ? error.message : 'Errore sconosciuto'));
+    }
+  };
+
+  const handleImportUsers = (usersData: Omit<User, 'id' | 'createdAt'>[]) => {
+    try {
+      usersData.forEach(userData => {
+        database.addUser(userData);
+      });
+      loadData();
+    } catch (error) {
+      throw new Error('Errore durante l\'importazione degli utenti: ' + (error instanceof Error ? error.message : 'Errore sconosciuto'));
+    }
+  };
+  // Permission check functions
+  const hasPermission = (permission: keyof Permission): boolean => {
+    if (!currentUser) return false;
+    return currentUser.group.permissions[permission];
+  };
+
+  const canAccessTab = (tab: Tab): boolean => {
+    if (!currentUser) return false;
+    
+    switch (tab) {
+      case 'players':
+        return hasPermission('teamManagement');
+      case 'trainings':
+      case 'matches':
+        return hasPermission('matchManagement');
+      case 'stats':
+        return hasPermission('statisticsView') || hasPermission('resultsView');
+      case 'users':
+      case 'groups':
+        return currentUser.group.id === 'admin'; // Only admin can manage users and groups
+      default:
+        return false;
+    }
+  };
   // Loading state
   if (database.isLoading) {
     return (
@@ -430,6 +581,17 @@ function App() {
           <p className="text-gray-600">Inizializzazione del registro elettronico...</p>
         </div>
       </div>
+    );
+  }
+
+  // Authentication check
+  if (!currentUser) {
+    return (
+      <LoginForm 
+        onLogin={handleLogin}
+        error={loginError}
+        isLoading={isLoggingIn}
+      />
     );
   }
 
@@ -584,13 +746,29 @@ function App() {
               initialData={editingItem}
               onCancel={handleBackToList}
             />
-          );
-        case 'matches':
+          );        case 'matches':
           return (
             <MatchForm
               players={players}
               onSubmit={handleMatchSubmit}
               initialData={editingItem}
+              onCancel={handleBackToList}
+            />
+          );
+        case 'users':
+          return (
+            <UserForm
+              user={editingItem}
+              groups={groups}
+              onSubmit={handleUserSubmit}
+              onCancel={handleBackToList}
+            />
+          );
+        case 'groups':
+          return (
+            <GroupForm
+              group={editingItem}
+              onSubmit={handleGroupSubmit}
               onCancel={handleBackToList}
             />
           );
@@ -853,9 +1031,18 @@ function App() {
           />
         </div>
       );
+    }    // List views
+    if (currentView === 'csv') {
+      return (
+        <CSVManager
+          groups={groups}
+          users={users}
+          onImportGroups={handleImportGroups}
+          onImportUsers={handleImportUsers}
+        />
+      );
     }
 
-    // List views
     switch (activeTab) {
       case 'players':
         return (
@@ -893,6 +1080,22 @@ function App() {
               />
             )}
           </>
+        );
+      case 'users':
+        return (
+          <UserList
+            users={users}
+            onEdit={handleUserEdit}
+            onDelete={handleUserDelete}
+          />
+        );
+      case 'groups':
+        return (
+          <GroupList
+            groups={groups}
+            onEdit={handleGroupEdit}
+            onDelete={handleGroupDelete}
+          />
         );
       case 'stats':
         return (
@@ -1057,11 +1260,29 @@ function App() {
         <div className="fixed inset-0 bg-black opacity-50 z-30" onClick={() => setMobileMenuOpen(false)} />
       )}
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-        <div className="flex flex-col lg:flex-row gap-8">
-           {/* Sidebar Navigation */}
+        <div className="flex flex-col lg:flex-row gap-8">           {/* Sidebar Navigation */}
           <aside className={`lg:w-64 ${mobileMenuOpen ? 'block fixed top-0 left-0 h-full z-40 bg-white p-4' : 'hidden lg:block'}`}>
+            {/* User Info */}
+            <div className="mb-6 p-4 bg-blue-50 rounded-lg">
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="text-sm font-medium text-gray-800">
+                    {currentUser.firstName} {currentUser.lastName}
+                  </p>
+                  <p className="text-xs text-gray-600">{currentUser.group.name}</p>
+                </div>
+                <button
+                  onClick={handleLogout}
+                  className="p-2 text-gray-600 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors"
+                  title="Logout"
+                >
+                  <LogOut className="w-4 h-4" />
+                </button>
+              </div>
+            </div>
+
             <nav className="space-y-2">
-              {tabs.map(tab => {
+              {tabs.filter(tab => canAccessTab(tab.id)).map(tab => {
                 const Icon = tab.icon;
                 return (
                   <button
@@ -1126,8 +1347,7 @@ function App() {
                     }
                   </p>
                 </div>
-              </div>
-              {/* Pulsanti a destra: export o aggiungi */}
+              </div>              {/* Pulsanti a destra: export, csv o aggiungi */}
               {currentView === 'list' && (
                 activeTab === 'stats' ? (
                   <div className="flex-shrink-0">
@@ -1138,7 +1358,24 @@ function App() {
                       playerStats={playerStats}
                     />
                   </div>
-                ) : (
+                ) : (activeTab === 'users' || activeTab === 'groups') ? (
+                  <div className="flex items-center gap-2">
+                    <button
+                      onClick={() => setCurrentView('csv')}
+                      className="flex items-center gap-2 bg-green-600 text-white px-4 py-2 rounded-lg hover:bg-green-700 transition-colors font-medium"
+                    >
+                      <FileText className="w-4 h-4" />
+                      CSV
+                    </button>
+                    <button
+                      onClick={() => setCurrentView('form')}
+                      className="flex items-center gap-2 bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 transition-colors font-medium"
+                    >
+                      <Plus className="w-4 h-4" />
+                      Aggiungi {activeTab === 'users' ? 'Utente' : 'Gruppo'}
+                    </button>
+                  </div>
+                ) : canAccessTab(activeTab) ? (
                   <button
                     onClick={() => setCurrentView('form')}
                     className="flex items-center gap-2 bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 transition-colors font-medium"
@@ -1146,7 +1383,7 @@ function App() {
                     <Plus className="w-4 h-4" />
                     Aggiungi {activeTab === 'players' ? 'Giocatore' : activeTab === 'trainings' ? 'Allenamento' : 'Partita'}
                   </button>
-                )
+                ) : null
               )}
             </div>
 

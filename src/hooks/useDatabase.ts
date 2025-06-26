@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import initSqlJs, { Database } from 'sql.js';
-import { Player, Training, Match } from '../types';
+import { Player, Training, Match, User, Group, UserWithGroup } from '../types';
 
 export function useDatabase() {
   const [db, setDb] = useState<Database | null>(null);
@@ -56,9 +56,7 @@ export function useDatabase() {
         database.run("ALTER TABLE match_events_tmp RENAME TO match_events");
       } catch (e) {
         // Se fallisce, probabilmente la tabella è già aggiornata
-      }
-
-      // Migrazione: aggiungi la colonna 'lastTimestamp' a matches se non esiste
+      }      // Migrazione: aggiungi la colonna 'lastTimestamp' a matches se non esiste
       try {
         database.run("ALTER TABLE matches ADD COLUMN lastTimestamp INTEGER");
       } catch (e) {
@@ -70,6 +68,54 @@ export function useDatabase() {
         database.run("ALTER TABLE matches ADD COLUMN isRunning BOOLEAN DEFAULT 0");
       } catch (e) {
         // ignore
+      }
+
+      // Migrazione: crea tabelle per gestione utenti se non esistono
+      try {
+        database.run(`
+          CREATE TABLE IF NOT EXISTS groups (
+            id TEXT PRIMARY KEY,
+            name TEXT NOT NULL UNIQUE,
+            description TEXT,
+            teamManagement BOOLEAN NOT NULL DEFAULT 0,
+            matchManagement BOOLEAN NOT NULL DEFAULT 0,
+            resultsView BOOLEAN NOT NULL DEFAULT 0,
+            statisticsView BOOLEAN NOT NULL DEFAULT 0,
+            createdAt DATETIME DEFAULT CURRENT_TIMESTAMP
+          )
+        `);
+
+        database.run(`
+          CREATE TABLE IF NOT EXISTS users (
+            id TEXT PRIMARY KEY,
+            firstName TEXT NOT NULL,
+            lastName TEXT NOT NULL,
+            status TEXT NOT NULL CHECK (status IN ('active', 'inactive')) DEFAULT 'active',
+            expirationDate TEXT NOT NULL,
+            groupId TEXT NOT NULL,
+            username TEXT NOT NULL UNIQUE,
+            password TEXT NOT NULL,
+            email TEXT NOT NULL,
+            phone TEXT NOT NULL,
+            matricola TEXT NOT NULL UNIQUE,
+            createdAt DATETIME DEFAULT CURRENT_TIMESTAMP,
+            FOREIGN KEY (groupId) REFERENCES groups(id) ON DELETE RESTRICT
+          )
+        `);
+
+        // Inserisci gruppo amministratore di default se non esiste
+        database.run(`
+          INSERT OR IGNORE INTO groups (id, name, description, teamManagement, matchManagement, resultsView, statisticsView)
+          VALUES ('admin', 'Amministratori', 'Gruppo con tutti i permessi', 1, 1, 1, 1)
+        `);
+
+        // Inserisci utente admin di default se non esiste
+        database.run(`
+          INSERT OR IGNORE INTO users (id, firstName, lastName, status, expirationDate, groupId, username, password, email, phone, matricola)
+          VALUES ('admin', 'Admin', 'System', 'active', '2030-12-31', 'admin', 'admin', 'admin123', 'admin@system.com', '000', 'ADMIN001')
+        `);
+      } catch (e) {
+        console.log('User tables migration already applied or failed:', e);
       }
 
       setDb(database);
@@ -177,8 +223,7 @@ export function useDatabase() {
         description TEXT,
         FOREIGN KEY (matchId) REFERENCES matches(id) ON DELETE CASCADE,
         FOREIGN KEY (playerId) REFERENCES players(id) ON DELETE CASCADE
-      )
-    `);
+      )    `);
 
     // Tabella formazioni avversarie
     database.run(`
@@ -188,6 +233,51 @@ export function useDatabase() {
         jerseyNumber INTEGER NOT NULL,
         FOREIGN KEY (matchId) REFERENCES matches(id) ON DELETE CASCADE
       )
+    `);
+
+    // Tabella gruppi utenti
+    database.run(`
+      CREATE TABLE IF NOT EXISTS groups (
+        id TEXT PRIMARY KEY,
+        name TEXT NOT NULL UNIQUE,
+        description TEXT,
+        teamManagement BOOLEAN NOT NULL DEFAULT 0,
+        matchManagement BOOLEAN NOT NULL DEFAULT 0,
+        resultsView BOOLEAN NOT NULL DEFAULT 0,
+        statisticsView BOOLEAN NOT NULL DEFAULT 0,
+        createdAt DATETIME DEFAULT CURRENT_TIMESTAMP
+      )
+    `);
+
+    // Tabella utenti
+    database.run(`
+      CREATE TABLE IF NOT EXISTS users (
+        id TEXT PRIMARY KEY,
+        firstName TEXT NOT NULL,
+        lastName TEXT NOT NULL,
+        status TEXT NOT NULL CHECK (status IN ('active', 'inactive')) DEFAULT 'active',
+        expirationDate TEXT NOT NULL,
+        groupId TEXT NOT NULL,
+        username TEXT NOT NULL UNIQUE,
+        password TEXT NOT NULL,
+        email TEXT NOT NULL,
+        phone TEXT NOT NULL,
+        matricola TEXT NOT NULL UNIQUE,
+        createdAt DATETIME DEFAULT CURRENT_TIMESTAMP,
+        FOREIGN KEY (groupId) REFERENCES groups(id) ON DELETE RESTRICT
+      )
+    `);
+
+    // Inserisci gruppo amministratore di default se non esiste
+    database.run(`
+      INSERT OR IGNORE INTO groups (id, name, description, teamManagement, matchManagement, resultsView, statisticsView)
+      VALUES ('admin', 'Amministratori', 'Gruppo con tutti i permessi', 1, 1, 1, 1)
+    `);
+
+    // Inserisci utente admin di default se non esiste
+    database.run(`
+      INSERT OR IGNORE INTO users (id, firstName, lastName, status, expirationDate, groupId, username, password, email, phone, matricola)
+      VALUES ('admin', 'Admin', 'System', 'active', '2030-12-31', 'admin', 'admin', 'admin123', 'admin@system.com', '000', 'ADMIN001')
     `);
   };
 
@@ -506,12 +596,214 @@ export function useDatabase() {
     
     saveDatabase();
   };
-
   const deleteMatch = (id: string) => {
     if (!db) return;
     
     db.run('DELETE FROM matches WHERE id = ?', [id]);
     saveDatabase();
+  };
+
+  // Funzioni per i gruppi
+  const getGroups = (): Group[] => {
+    if (!db) return [];
+    
+    const stmt = db.prepare('SELECT * FROM groups ORDER BY name');
+    const groups: Group[] = [];
+    
+    while (stmt.step()) {
+      const row = stmt.getAsObject();
+      groups.push({
+        id: row.id as string,
+        name: row.name as string,
+        description: row.description as string || '',
+        permissions: {
+          teamManagement: Boolean(row.teamManagement),
+          matchManagement: Boolean(row.matchManagement),
+          resultsView: Boolean(row.resultsView),
+          statisticsView: Boolean(row.statisticsView)
+        },
+        createdAt: row.createdAt as string
+      });
+    }
+    
+    stmt.free();
+    return groups;
+  };
+
+  const addGroup = (group: Omit<Group, 'id' | 'createdAt'>) => {
+    if (!db) return;
+    
+    const id = Date.now().toString();
+    db.run(
+      'INSERT INTO groups (id, name, description, teamManagement, matchManagement, resultsView, statisticsView) VALUES (?, ?, ?, ?, ?, ?, ?)',
+      [id, group.name, group.description || '', group.permissions.teamManagement ? 1 : 0, group.permissions.matchManagement ? 1 : 0, group.permissions.resultsView ? 1 : 0, group.permissions.statisticsView ? 1 : 0]
+    );
+    saveDatabase();
+    return id;
+  };
+
+  const updateGroup = (id: string, group: Omit<Group, 'id' | 'createdAt'>) => {
+    if (!db) return;
+    
+    db.run(
+      'UPDATE groups SET name = ?, description = ?, teamManagement = ?, matchManagement = ?, resultsView = ?, statisticsView = ? WHERE id = ?',
+      [group.name, group.description || '', group.permissions.teamManagement ? 1 : 0, group.permissions.matchManagement ? 1 : 0, group.permissions.resultsView ? 1 : 0, group.permissions.statisticsView ? 1 : 0, id]
+    );
+    saveDatabase();
+  };
+
+  const deleteGroup = (id: string) => {
+    if (!db) return;
+    
+    // Verifica che non ci siano utenti associati a questo gruppo
+    const stmt = db.prepare('SELECT COUNT(*) as count FROM users WHERE groupId = ?');
+    stmt.bind([id]);
+    stmt.step();
+    const count = stmt.getAsObject().count as number;
+    stmt.free();
+    
+    if (count > 0) {
+      throw new Error('Impossibile eliminare il gruppo: ci sono utenti associati');
+    }
+    
+    db.run('DELETE FROM groups WHERE id = ?', [id]);
+    saveDatabase();
+  };
+
+  // Funzioni per gli utenti
+  const getUsers = (): UserWithGroup[] => {
+    if (!db) return [];
+    
+    const stmt = db.prepare(`
+      SELECT u.*, g.name as groupName, g.description as groupDescription,
+             g.teamManagement, g.matchManagement, g.resultsView, g.statisticsView,
+             g.createdAt as groupCreatedAt
+      FROM users u 
+      JOIN groups g ON u.groupId = g.id 
+      ORDER BY u.lastName, u.firstName
+    `);
+    const users: UserWithGroup[] = [];
+    
+    while (stmt.step()) {
+      const row = stmt.getAsObject();
+      users.push({
+        id: row.id as string,
+        firstName: row.firstName as string,
+        lastName: row.lastName as string,
+        status: row.status as 'active' | 'inactive',
+        expirationDate: row.expirationDate as string,
+        groupId: row.groupId as string,
+        username: row.username as string,
+        password: row.password as string,
+        email: row.email as string,
+        phone: row.phone as string,
+        matricola: row.matricola as string,
+        createdAt: row.createdAt as string,
+        group: {
+          id: row.groupId as string,
+          name: row.groupName as string,
+          description: row.groupDescription as string || '',
+          permissions: {
+            teamManagement: Boolean(row.teamManagement),
+            matchManagement: Boolean(row.matchManagement),
+            resultsView: Boolean(row.resultsView),
+            statisticsView: Boolean(row.statisticsView)
+          },
+          createdAt: row.groupCreatedAt as string
+        }
+      });
+    }
+    
+    stmt.free();
+    return users;
+  };
+
+  const addUser = (user: Omit<User, 'id' | 'createdAt'>) => {
+    if (!db) return;
+    
+    const id = Date.now().toString();
+    db.run(
+      'INSERT INTO users (id, firstName, lastName, status, expirationDate, groupId, username, password, email, phone, matricola) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)',
+      [id, user.firstName, user.lastName, user.status, user.expirationDate, user.groupId, user.username, user.password, user.email, user.phone, user.matricola]
+    );
+    saveDatabase();
+    return id;
+  };
+
+  const updateUser = (id: string, user: Omit<User, 'id' | 'createdAt'>) => {
+    if (!db) return;
+    
+    db.run(
+      'UPDATE users SET firstName = ?, lastName = ?, status = ?, expirationDate = ?, groupId = ?, username = ?, password = ?, email = ?, phone = ?, matricola = ? WHERE id = ?',
+      [user.firstName, user.lastName, user.status, user.expirationDate, user.groupId, user.username, user.password, user.email, user.phone, user.matricola, id]
+    );
+    saveDatabase();
+  };
+
+  const deleteUser = (id: string) => {
+    if (!db) return;
+    
+    db.run('DELETE FROM users WHERE id = ?', [id]);
+    saveDatabase();
+  };
+
+  const authenticateUser = (username: string, password: string): UserWithGroup | null => {
+    if (!db) return null;
+    
+    const stmt = db.prepare(`
+      SELECT u.*, g.name as groupName, g.description as groupDescription,
+             g.teamManagement, g.matchManagement, g.resultsView, g.statisticsView,
+             g.createdAt as groupCreatedAt
+      FROM users u 
+      JOIN groups g ON u.groupId = g.id 
+      WHERE u.username = ? AND u.password = ? AND u.status = 'active'
+    `);
+    
+    stmt.bind([username, password]);
+    
+    if (stmt.step()) {
+      const row = stmt.getAsObject();
+      const user: UserWithGroup = {
+        id: row.id as string,
+        firstName: row.firstName as string,
+        lastName: row.lastName as string,
+        status: row.status as 'active' | 'inactive',
+        expirationDate: row.expirationDate as string,
+        groupId: row.groupId as string,
+        username: row.username as string,
+        password: row.password as string,
+        email: row.email as string,
+        phone: row.phone as string,
+        matricola: row.matricola as string,
+        createdAt: row.createdAt as string,
+        group: {
+          id: row.groupId as string,
+          name: row.groupName as string,
+          description: row.groupDescription as string || '',
+          permissions: {
+            teamManagement: Boolean(row.teamManagement),
+            matchManagement: Boolean(row.matchManagement),
+            resultsView: Boolean(row.resultsView),
+            statisticsView: Boolean(row.statisticsView)
+          },
+          createdAt: row.groupCreatedAt as string
+        }
+      };
+      
+      stmt.free();
+      
+      // Verifica scadenza
+      const now = new Date();
+      const expiration = new Date(user.expirationDate);
+      if (expiration < now) {
+        return null;
+      }
+      
+      return user;
+    }
+    
+    stmt.free();
+    return null;
   };
 
   return {
@@ -532,6 +824,17 @@ export function useDatabase() {
     addMatch,
     updateMatch,
     deleteMatch,
+    // Groups
+    getGroups,
+    addGroup,
+    updateGroup,
+    deleteGroup,
+    // Users
+    getUsers,
+    addUser,
+    updateUser,
+    deleteUser,
+    authenticateUser,
     // Utility
     saveDatabase
   };
