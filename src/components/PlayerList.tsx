@@ -1,5 +1,5 @@
 import { Player } from '../types';
-import { Edit2, Trash2, User, ShieldCheck, ShieldOff, ChevronDown, Filter, Phone, Mail, UserPlus, Download, FileText, Upload } from 'lucide-react';
+import { Edit2, Trash2, User, ShieldCheck, ShieldOff, ChevronDown, Filter, Phone, Mail, UserPlus, Download, FileText, Upload, Eye } from 'lucide-react';
 import { useState, useMemo } from 'react';
 import useIsMobile from '../hooks/useIsMobile';
 import { exportPlayersToCSV, parsePlayersFromCSV, generatePlayersCSVTemplate } from '../utils/csvUtils';
@@ -16,6 +16,8 @@ export function PlayerList({ players, onEdit, onDelete, onImportPlayers }: Playe
   const [filterStatus, setFilterStatus] = useState('all');
   const [showCSVMenu, setShowCSVMenu] = useState(false);
   const [importMessage, setImportMessage] = useState<string>('');
+  const [selectedPlayer, setSelectedPlayer] = useState<Player | null>(null);
+  const [showDetailsModal, setShowDetailsModal] = useState(false);
   const isMobile = useIsMobile();
 
   const calculateAge = (birthDate: string) => {
@@ -104,6 +106,16 @@ export function PlayerList({ players, onEdit, onDelete, onImportPlayers }: Playe
                     <FileText className="w-4 h-4" />
                   </button>
                 )}
+                <button
+                  onClick={() => {
+                    setSelectedPlayer(player);
+                    setShowDetailsModal(true);
+                  }}
+                  className="p-2 text-green-600 hover:bg-green-100 rounded-lg transition-colors"
+                  title="Visualizza dettagli"
+                >
+                  <Eye className="w-4 h-4" />
+                </button>
                 <button onClick={() => onEdit(player)} className="p-2 text-blue-600 hover:bg-blue-100 rounded-lg transition-colors" title="Modifica">
                   <Edit2 className="w-4 h-4" />
                 </button>
@@ -258,10 +270,7 @@ export function PlayerList({ players, onEdit, onDelete, onImportPlayers }: Playe
               <thead className="bg-gray-100">
                 <tr>
                   <th scope="col" className="px-6 py-3 text-left text-xs font-bold text-gray-600 uppercase tracking-wider">Giocatore</th>
-                  <th scope="col" className="px-6 py-3 text-left text-xs font-bold text-gray-600 uppercase tracking-wider">Contatti</th>
-                  <th scope="col" className="px-6 py-3 text-left text-xs font-bold text-gray-600 uppercase tracking-wider">Genitore</th>
                   <th scope="col" className="px-6 py-3 text-left text-xs font-bold text-gray-600 uppercase tracking-wider">Età</th>
-                  <th scope="col" className="px-6 py-3 text-left text-xs font-bold text-gray-600 uppercase tracking-wider">Documenti</th>
                   <th scope="col" className="px-6 py-3 text-left text-xs font-bold text-gray-600 uppercase tracking-wider">Stato</th>
                   <th scope="col" className="relative px-6 py-3">
                     <span className="sr-only">Azioni</span>
@@ -283,63 +292,7 @@ export function PlayerList({ players, onEdit, onDelete, onImportPlayers }: Playe
                       </div>
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap">
-                      <div className="space-y-1">
-                        {player.phone && (
-                          <div className="flex items-center gap-1 text-xs text-gray-600">
-                            <Phone className="w-3 h-3" />
-                            <span>{player.phone}</span>
-                          </div>
-                        )}
-                        {player.email && (
-                          <div className="flex items-center gap-1 text-xs text-gray-600">
-                            <Mail className="w-3 h-3" />
-                            <span className="truncate max-w-32" title={player.email}>{player.email}</span>
-                          </div>
-                        )}
-                        {!player.phone && !player.email && (
-                          <span className="text-xs text-gray-400">Nessun contatto</span>
-                        )}
-                      </div>
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap">
-                      {player.parentName ? (
-                        <div className="space-y-1">
-                          <div className="text-xs font-medium text-gray-900">{player.parentName}</div>
-                          {player.parentPhone && (
-                            <div className="flex items-center gap-1 text-xs text-gray-500">
-                              <Phone className="w-3 h-3" />
-                              <span>{player.parentPhone}</span>
-                            </div>
-                          )}
-                          {player.parentEmail && (
-                            <div className="flex items-center gap-1 text-xs text-gray-500">
-                              <Mail className="w-3 h-3" />
-                              <span className="truncate max-w-32" title={player.parentEmail}>{player.parentEmail}</span>
-                            </div>
-                          )}
-                        </div>
-                      ) : (
-                        <span className="text-xs text-gray-400">Non specificato</span>
-                      )}
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap">
                       <div className="text-sm text-gray-800">{calculateAge(player.birthDate)} anni</div>
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-center">
-                      {player.documents && player.documents.length > 0 ? (
-                        <div className="flex items-center justify-center gap-1">
-                          <button
-                            onClick={() => downloadDocument(player.documents![0])}
-                            className="p-1 text-green-600 hover:bg-green-100 rounded transition-colors"
-                            title={`${player.documents.length} documento/i disponibile/i`}
-                          >
-                            <FileText className="w-4 h-4" />
-                          </button>
-                          <span className="text-xs text-gray-500">({player.documents.length})</span>
-                        </div>
-                      ) : (
-                        <span className="text-xs text-gray-400">Nessuno</span>
-                      )}
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap">
                       {player.isActive ? (
@@ -356,6 +309,16 @@ export function PlayerList({ players, onEdit, onDelete, onImportPlayers }: Playe
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
                       <div className="flex items-center justify-end gap-2">
+                        <button
+                          onClick={() => {
+                            setSelectedPlayer(player);
+                            setShowDetailsModal(true);
+                          }}
+                          className="p-2 text-green-600 hover:bg-green-100 rounded-lg transition-colors"
+                          title="Visualizza dettagli"
+                        >
+                          <Eye className="w-4 h-4" />
+                        </button>
                         <button
                           onClick={() => onEdit(player)}
                           className="p-2 text-blue-600 hover:bg-blue-100 rounded-lg transition-colors"
@@ -385,6 +348,153 @@ export function PlayerList({ players, onEdit, onDelete, onImportPlayers }: Playe
           </div>
         )}
       </div>
+
+      {/* Modal Dettagli Giocatore */}
+      {showDetailsModal && selectedPlayer && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-xl shadow-2xl max-w-2xl w-full max-h-[90vh] overflow-y-auto">
+            <div className="p-6">
+              <div className="flex justify-between items-start mb-6">
+                <h3 className="text-2xl font-bold text-gray-800 flex items-center gap-3">
+                  <User className="w-7 h-7 text-blue-600" />
+                  Dettagli Giocatore
+                </h3>
+                <button
+                  onClick={() => {
+                    setShowDetailsModal(false);
+                    setSelectedPlayer(null);
+                  }}
+                  className="p-2 text-gray-400 hover:text-gray-600 hover:bg-gray-100 rounded-lg transition-colors"
+                >
+                  <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                  </svg>
+                </button>
+              </div>
+
+              <div className="space-y-6">
+                {/* Informazioni Personali */}
+                <div className="bg-gray-50 p-4 rounded-lg">
+                  <h4 className="text-lg font-semibold text-gray-800 mb-4 flex items-center gap-2">
+                    <User className="w-5 h-5 text-blue-600" />
+                    Informazioni Personali
+                  </h4>
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div>
+                      <label className="block text-sm font-medium text-gray-600 mb-1">Nome</label>
+                      <div className="text-gray-900 font-medium">{selectedPlayer.firstName}</div>
+                    </div>
+                    <div>
+                      <label className="block text-sm font-medium text-gray-600 mb-1">Cognome</label>
+                      <div className="text-gray-900 font-medium">{selectedPlayer.lastName}</div>
+                    </div>
+                    <div>
+                      <label className="block text-sm font-medium text-gray-600 mb-1">Data di Nascita</label>
+                      <div className="text-gray-900">{new Date(selectedPlayer.birthDate).toLocaleDateString('it-IT')}</div>
+                    </div>
+                    <div>
+                      <label className="block text-sm font-medium text-gray-600 mb-1">Età</label>
+                      <div className="text-gray-900">{calculateAge(selectedPlayer.birthDate)} anni</div>
+                    </div>
+                    <div>
+                      <label className="block text-sm font-medium text-gray-600 mb-1">Numero Licenza</label>
+                      <div className="text-gray-900 font-mono">#{selectedPlayer.licenseNumber}</div>
+                    </div>
+                    <div>
+                      <label className="block text-sm font-medium text-gray-600 mb-1">Stato</label>
+                      <div>
+                        {selectedPlayer.isActive ? (
+                          <span className="px-3 py-1 inline-flex text-xs leading-5 font-semibold rounded-full bg-green-100 text-green-800 items-center gap-1.5">
+                            <ShieldCheck className="w-4 h-4" />
+                            Attivo
+                          </span>
+                        ) : (
+                          <span className="px-3 py-1 inline-flex text-xs leading-5 font-semibold rounded-full bg-red-100 text-red-800 items-center gap-1.5">
+                            <ShieldOff className="w-4 h-4" />
+                            Inattivo
+                          </span>
+                        )}
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Contatti */}
+                <div className="bg-gray-50 p-4 rounded-lg">
+                  <h4 className="text-lg font-semibold text-gray-800 mb-4 flex items-center gap-2">
+                    <Mail className="w-5 h-5 text-green-600" />
+                    Contatti
+                  </h4>
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div>
+                      <label className="block text-sm font-medium text-gray-600 mb-1">Telefono</label>
+                      <div className="text-gray-900">{selectedPlayer.phone || 'Non specificato'}</div>
+                    </div>
+                    <div>
+                      <label className="block text-sm font-medium text-gray-600 mb-1">Email</label>
+                      <div className="text-gray-900">{selectedPlayer.email || 'Non specificato'}</div>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Informazioni Genitore */}
+                <div className="bg-gray-50 p-4 rounded-lg">
+                  <h4 className="text-lg font-semibold text-gray-800 mb-4 flex items-center gap-2">
+                    <UserPlus className="w-5 h-5 text-purple-600" />
+                    Informazioni Genitore
+                  </h4>
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div>
+                      <label className="block text-sm font-medium text-gray-600 mb-1">Nome Genitore</label>
+                      <div className="text-gray-900">{selectedPlayer.parentName || 'Non specificato'}</div>
+                    </div>
+                    <div>
+                      <label className="block text-sm font-medium text-gray-600 mb-1">Telefono Genitore</label>
+                      <div className="text-gray-900">{selectedPlayer.parentPhone || 'Non specificato'}</div>
+                    </div>
+                    <div className="md:col-span-2">
+                      <label className="block text-sm font-medium text-gray-600 mb-1">Email Genitore</label>
+                      <div className="text-gray-900">{selectedPlayer.parentEmail || 'Non specificato'}</div>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Documenti */}
+                <div className="bg-gray-50 p-4 rounded-lg">
+                  <h4 className="text-lg font-semibold text-gray-800 mb-4 flex items-center gap-2">
+                    <FileText className="w-5 h-5 text-orange-600" />
+                    Documenti Allegati
+                  </h4>
+                  {selectedPlayer.documents && selectedPlayer.documents.length > 0 ? (
+                    <div className="space-y-2">
+                      {selectedPlayer.documents.map((doc, index) => (
+                        <div key={index} className="flex items-center justify-between p-3 bg-white rounded-lg border">
+                          <div className="flex items-center gap-2">
+                            <FileText className="w-4 h-4 text-gray-500" />
+                            <span className="text-sm font-medium text-gray-900">{doc.fileName}</span>
+                            <span className="text-xs text-gray-500">({doc.mimeType})</span>
+                          </div>
+                          <button
+                            onClick={() => downloadDocument(doc)}
+                            className="px-3 py-1 text-xs bg-blue-600 text-white rounded hover:bg-blue-700 transition-colors"
+                          >
+                            Scarica
+                          </button>
+                        </div>
+                      ))}
+                    </div>
+                  ) : (
+                    <div className="text-center py-6">
+                      <FileText className="w-12 h-12 text-gray-300 mx-auto mb-2" />
+                      <p className="text-gray-500">Nessun documento allegato</p>
+                    </div>
+                  )}
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
