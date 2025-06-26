@@ -23,7 +23,7 @@
     - Sostituire gestione formazione titolare (selezione dei giocatori) con un tasto "aggiungi giocatore", esso deve aprire un menu pop-up con la selezione dei giocatori attivi, la selezione del ruolo tramite menu a tendina e assegnazione del numero della maglia personalizzabile.
     - Tasto per generare la distinta prima di creare la nuova partita.
 
-Gestione Partita in corso:
+[X] Gestione Partita in corso:
     - Aggiungere supplementari
     - Rimuovere il limite di 2 tempi rendendolo dinamico e illimitato, facendo in modo che si possano aggiungere illimitati tempi e si possa passare ai supplementari (anch'essi illimitati) o terminare la partita a piacimento
 
