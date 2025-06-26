@@ -50,8 +50,8 @@ export function useDatabase() {
 
       // Migrazione: aggiorna il CHECK della colonna 'type' in match_events per supportare tutti i tipi
       try {
-        database.run("CREATE TABLE IF NOT EXISTS match_events_tmp (id TEXT PRIMARY KEY, matchId TEXT NOT NULL, type TEXT NOT NULL CHECK (type IN ('goal', 'yellow-card', 'red-card', 'second-yellow-card', 'blue-card', 'expulsion', 'warning', 'substitution')), minute INTEGER NOT NULL, second INTEGER, playerId TEXT NOT NULL, description TEXT, FOREIGN KEY (matchId) REFERENCES matches(id) ON DELETE CASCADE, FOREIGN KEY (playerId) REFERENCES players(id) ON DELETE CASCADE)");
-        database.run("INSERT INTO match_events_tmp SELECT * FROM match_events");
+        database.run("CREATE TABLE IF NOT EXISTS match_events_tmp (id TEXT PRIMARY KEY, matchId TEXT NOT NULL, type TEXT NOT NULL CHECK (type IN ('goal', 'yellow-card', 'red-card', 'second-yellow-card', 'blue-card', 'expulsion', 'warning', 'substitution', 'foul', 'corner', 'offside', 'free-kick', 'penalty', 'throw-in', 'injury')), minute INTEGER NOT NULL, second INTEGER, playerId TEXT NOT NULL, description TEXT, reason TEXT, teamType TEXT CHECK (teamType IN ('own', 'opponent')), FOREIGN KEY (matchId) REFERENCES matches(id) ON DELETE CASCADE, FOREIGN KEY (playerId) REFERENCES players(id) ON DELETE CASCADE)");
+        database.run("INSERT INTO match_events_tmp (id, matchId, type, minute, second, playerId, description) SELECT id, matchId, type, minute, second, playerId, description FROM match_events");
         database.run("DROP TABLE match_events");
         database.run("ALTER TABLE match_events_tmp RENAME TO match_events");
       } catch (e) {
@@ -437,14 +437,17 @@ export function useDatabase() {
       CREATE TABLE IF NOT EXISTS match_events (
         id TEXT PRIMARY KEY,
         matchId TEXT NOT NULL,
-        type TEXT NOT NULL CHECK (type IN ('goal', 'yellow-card', 'red-card', 'second-yellow-card', 'blue-card', 'expulsion', 'warning', 'substitution')),
+        type TEXT NOT NULL CHECK (type IN ('goal', 'yellow-card', 'red-card', 'second-yellow-card', 'blue-card', 'expulsion', 'warning', 'substitution', 'foul', 'corner', 'offside', 'free-kick', 'penalty', 'throw-in', 'injury')),
         minute INTEGER NOT NULL,
         second INTEGER,
         playerId TEXT NOT NULL,
         description TEXT,
+        reason TEXT,
+        teamType TEXT CHECK (teamType IN ('own', 'opponent')),
         FOREIGN KEY (matchId) REFERENCES matches(id) ON DELETE CASCADE,
         FOREIGN KEY (playerId) REFERENCES players(id) ON DELETE CASCADE
-      )    `);
+      )
+    `);
 
     // Tabella formazioni avversarie
     database.run(`
@@ -757,7 +760,9 @@ export function useDatabase() {
           minute: eventRow.minute,
           second: eventRow.second, // Load the second field from DB
           playerId: eventRow.playerId,
-          description: eventRow.description
+          description: eventRow.description,
+          reason: eventRow.reason, // Load the reason field from DB
+          teamType: eventRow.teamType // Load the teamType field from DB
         });
       }
       eventsStmt.free();
@@ -882,8 +887,8 @@ export function useDatabase() {
     if (Array.isArray(match.events)) {
       match.events.forEach(event => {
         db.run(
-          'INSERT INTO match_events (id, matchId, type, minute, second, playerId, description) VALUES (?, ?, ?, ?, ?, ?, ?)',
-          [event.id, id, event.type, event.minute, event.second ?? null, event.playerId, event.description || null]
+          'INSERT INTO match_events (id, matchId, type, minute, second, playerId, description, reason, teamType) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)',
+          [event.id, id, event.type, event.minute, event.second ?? null, event.playerId, event.description || null, event.reason || null, event.teamType || null]
         );
       });
     }
@@ -947,8 +952,8 @@ export function useDatabase() {
     db.run('DELETE FROM match_events WHERE matchId = ?', [id]);
     match.events.forEach(event => {
       db.run(
-        'INSERT INTO match_events (id, matchId, type, minute, second, playerId, description) VALUES (?, ?, ?, ?, ?, ?, ?)',
-        [event.id, id, event.type, event.minute, event.second ?? null, event.playerId, event.description || null]
+        'INSERT INTO match_events (id, matchId, type, minute, second, playerId, description, reason, teamType) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)',
+        [event.id, id, event.type, event.minute, event.second ?? null, event.playerId, event.description || null, event.reason || null, event.teamType || null]
       );
     });
       // Aggiorna numeri maglia avversari

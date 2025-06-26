@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { Match, Player, UserWithGroup } from '../types';
-import { Download, FileText, Calendar, MapPin, Users, Trophy, Timer, Target, AlertTriangle, RotateCcw } from 'lucide-react';
+import { Download, FileText, Calendar, MapPin, Users, Trophy, Timer, Target, AlertTriangle, RotateCcw, Flag, Ban, Zap, UserX } from 'lucide-react';
 import * as XLSX from 'xlsx';
 
 interface ReportMatchProps {
@@ -14,6 +14,12 @@ export function ReportMatch({ match, players, users, onClose }: ReportMatchProps
   const [showExportMenu, setShowExportMenu] = useState(false);
   const lineupPlayers = players.filter(p => match.lineup.find(lp => lp.playerId === p.id));
   
+  // Funzione per ottenere il numero di maglia di un giocatore
+  const getPlayerJerseyNumber = (playerId: string) => {
+    const matchPlayer = match.lineup.find(lp => lp.playerId === playerId);
+    return matchPlayer?.jerseyNumber;
+  };
+  
   // Funzione per ottenere il nome del periodo
   const getPeriodName = (periodIndex: number) => {
     if (!match.periods || !match.periods[periodIndex]) return 'Periodo sconosciuto';
@@ -22,14 +28,14 @@ export function ReportMatch({ match, players, users, onClose }: ReportMatchProps
 
   // Raggruppa eventi per periodo basandosi sui tempi
   const getEventsByPeriod = () => {
-    const eventsByPeriod: { [key: number]: { goals: any[], cards: any[], substitutions: any[] } } = {};
+    const eventsByPeriod: { [key: number]: { goals: any[], cards: any[], substitutions: any[], otherEvents: any[] } } = {};
     
     // Se non ci sono periodi, usa un periodo di default
     const periods = match.periods || [{ type: 'regular', label: '1° Tempo', duration: 0 }];
     
     // Inizializza tutti i periodi
     periods.forEach((_, index) => {
-      eventsByPeriod[index] = { goals: [], cards: [], substitutions: [] };
+      eventsByPeriod[index] = { goals: [], cards: [], substitutions: [], otherEvents: [] };
     });
 
     // Funzione per determinare in quale periodo appartiene un evento basandosi sul tempo
@@ -69,7 +75,7 @@ export function ReportMatch({ match, players, users, onClose }: ReportMatchProps
       const periodIndex = goal.periodIndex !== undefined ? goal.periodIndex : getEventPeriodIndex(eventTimeInSeconds);
       
       if (!eventsByPeriod[periodIndex]) {
-        eventsByPeriod[periodIndex] = { goals: [], cards: [], substitutions: [] };
+        eventsByPeriod[periodIndex] = { goals: [], cards: [], substitutions: [], otherEvents: [] };
       }
       eventsByPeriod[periodIndex].goals.push(goal);
     });
@@ -83,7 +89,7 @@ export function ReportMatch({ match, players, users, onClose }: ReportMatchProps
       const periodIndex = card.periodIndex !== undefined ? card.periodIndex : getEventPeriodIndex(eventTimeInSeconds);
       
       if (!eventsByPeriod[periodIndex]) {
-        eventsByPeriod[periodIndex] = { goals: [], cards: [], substitutions: [] };
+        eventsByPeriod[periodIndex] = { goals: [], cards: [], substitutions: [], otherEvents: [] };
       }
       eventsByPeriod[periodIndex].cards.push(card);
     });
@@ -94,9 +100,23 @@ export function ReportMatch({ match, players, users, onClose }: ReportMatchProps
       const periodIndex = substitution.periodIndex !== undefined ? substitution.periodIndex : getEventPeriodIndex(eventTimeInSeconds);
       
       if (!eventsByPeriod[periodIndex]) {
-        eventsByPeriod[periodIndex] = { goals: [], cards: [], substitutions: [] };
+        eventsByPeriod[periodIndex] = { goals: [], cards: [], substitutions: [], otherEvents: [] };
       }
       eventsByPeriod[periodIndex].substitutions.push(substitution);
+    });
+
+    // Raggruppa altri eventi per periodo
+    const otherEvents = match.events.filter(e => [
+      'foul', 'corner', 'offside', 'free-kick', 'penalty', 'throw-in', 'injury'
+    ].includes(e.type));
+    otherEvents.forEach(event => {
+      const eventTimeInSeconds = (event.minute * 60) + (event.second || 0);
+      const periodIndex = event.periodIndex !== undefined ? event.periodIndex : getEventPeriodIndex(eventTimeInSeconds);
+      
+      if (!eventsByPeriod[periodIndex]) {
+        eventsByPeriod[periodIndex] = { goals: [], cards: [], substitutions: [], otherEvents: [] };
+      }
+      eventsByPeriod[periodIndex].otherEvents.push(event);
     });
 
     return eventsByPeriod;
@@ -162,7 +182,7 @@ export function ReportMatch({ match, players, users, onClose }: ReportMatchProps
         csvRows.push('Goal');
         csvRows.push('Minuto,Descrizione');
         events.goals.forEach(g => {
-          const timeStr = `${g.minute}${g.second !== undefined ? ':' + g.second.toString().padStart(2, '0') : ''}`;
+          const timeStr = `${g.minute}${g.second !== null && g.second !== undefined ? ':' + g.second.toString().padStart(2, '0') : ''}`;
           csvRows.push(`${timeStr},"${g.description || ''}"`);
         });
         csvRows.push('');
@@ -173,7 +193,7 @@ export function ReportMatch({ match, players, users, onClose }: ReportMatchProps
         csvRows.push('Ammonizioni/Espulsioni');
         csvRows.push('Minuto,Tipo,Descrizione');
         events.cards.forEach(c => {
-          const timeStr = `${c.minute}${c.second !== undefined ? ':' + c.second.toString().padStart(2, '0') : ''}`;
+          const timeStr = `${c.minute}${c.second !== null && c.second !== undefined ? ':' + c.second.toString().padStart(2, '0') : ''}`;
           let tipo = 'Ammonizione';
           if (c.type === 'red-card' || c.type === 'expulsion') tipo = 'Espulsione';
           else if (c.type === 'second-yellow-card') tipo = 'Seconda Gialla';
@@ -188,12 +208,49 @@ export function ReportMatch({ match, players, users, onClose }: ReportMatchProps
         csvRows.push('Sostituzioni');
         csvRows.push('Minuto,Esce,Entra');
         events.substitutions.forEach(s => {
-          const timeStr = `${s.minute}${s.second !== undefined ? ':' + s.second.toString().padStart(2, '0') : ''}`;
+          const timeStr = `${s.minute}${s.second !== null && s.second !== undefined ? ':' + s.second.toString().padStart(2, '0') : ''}`;
           const out = players.find(p => p.id === s.playerOut);
           const inP = players.find(p => p.id === s.playerIn);
           const outDisplay = `${s.playerOutJerseyNumber ? `#${s.playerOutJerseyNumber}` : '#'} ${out ? out.lastName : s.playerOut}`;
           const inDisplay = `${s.playerInJerseyNumber ? `#${s.playerInJerseyNumber}` : '#'} ${inP ? inP.lastName : s.playerIn}`;
           csvRows.push(`${timeStr},"${outDisplay}","${inDisplay}"`);
+        });
+        csvRows.push('');
+      }
+      
+      // Altri eventi del periodo
+      if (events.otherEvents.length > 0) {
+        csvRows.push('Altri Eventi');
+        csvRows.push('Minuto,Tipo,Giocatore,Descrizione');
+        events.otherEvents.forEach(e => {
+          const timeStr = `${e.minute}${e.second !== null && e.second !== undefined ? ':' + e.second.toString().padStart(2, '0') : ''}`;
+          let tipo = '';
+          switch (e.type) {
+            case 'foul': tipo = 'Fallo'; break;
+            case 'corner': tipo = 'Calcio d\'angolo'; break;
+            case 'offside': tipo = 'Fuorigioco'; break;
+            case 'free-kick': tipo = 'Calcio di punizione'; break;
+            case 'penalty': tipo = 'Rigore'; break;
+            case 'throw-in': tipo = 'Rimessa laterale'; break;
+            case 'injury': tipo = 'Infortunio'; break;
+            default: tipo = 'Evento'; break;
+          }
+          
+          // Ottieni informazioni giocatore
+          let playerInfo = '';
+          if (e.playerId && e.teamType === 'own') {
+            const player = players.find(p => p.id === e.playerId);
+            const jerseyNumber = getPlayerJerseyNumber(e.playerId);
+            if (player && jerseyNumber) {
+              playerInfo = `#${jerseyNumber} ${player.lastName}`;
+            } else if (player) {
+              playerInfo = player.lastName;
+            }
+          } else if (e.teamType === 'opponent') {
+            playerInfo = 'Avversario';
+          }
+          
+          csvRows.push(`${timeStr},${tipo},"${playerInfo}","${e.description || ''}"`);
         });
         csvRows.push('');
       }
@@ -271,7 +328,7 @@ export function ReportMatch({ match, players, users, onClose }: ReportMatchProps
         eventsData.push(['Goal']);
         eventsData.push(['Minuto', 'Descrizione']);
         events.goals.forEach(g => {
-          const timeStr = `${g.minute}${g.second !== undefined ? ':' + g.second.toString().padStart(2, '0') : ''}`;
+          const timeStr = `${g.minute}${g.second !== null && g.second !== undefined ? ':' + g.second.toString().padStart(2, '0') : ''}`;
           eventsData.push([timeStr, g.description || '']);
         });
         eventsData.push([]);
@@ -281,7 +338,7 @@ export function ReportMatch({ match, players, users, onClose }: ReportMatchProps
         eventsData.push(['Ammonizioni/Espulsioni']);
         eventsData.push(['Minuto', 'Tipo', 'Descrizione']);
         events.cards.forEach(c => {
-          const timeStr = `${c.minute}${c.second !== undefined ? ':' + c.second.toString().padStart(2, '0') : ''}`;
+          const timeStr = `${c.minute}${c.second !== null && c.second !== undefined ? ':' + c.second.toString().padStart(2, '0') : ''}`;
           let tipo = 'Ammonizione';
           if (c.type === 'red-card' || c.type === 'expulsion') tipo = 'Espulsione';
           else if (c.type === 'second-yellow-card') tipo = 'Seconda Gialla';
@@ -295,12 +352,48 @@ export function ReportMatch({ match, players, users, onClose }: ReportMatchProps
         eventsData.push(['Sostituzioni']);
         eventsData.push(['Minuto', 'Esce', 'Entra']);
         events.substitutions.forEach(s => {
-          const timeStr = `${s.minute}${s.second !== undefined ? ':' + s.second.toString().padStart(2, '0') : ''}`;
+          const timeStr = `${s.minute}${s.second !== null && s.second !== undefined ? ':' + s.second.toString().padStart(2, '0') : ''}`;
           const out = players.find(p => p.id === s.playerOut);
           const inP = players.find(p => p.id === s.playerIn);
           const outDisplay = `${s.playerOutJerseyNumber ? `#${s.playerOutJerseyNumber}` : '#'} ${out ? out.lastName : s.playerOut}`;
           const inDisplay = `${s.playerInJerseyNumber ? `#${s.playerInJerseyNumber}` : '#'} ${inP ? inP.lastName : s.playerIn}`;
           eventsData.push([timeStr, outDisplay, inDisplay]);
+        });
+        eventsData.push([]);
+      }
+      
+      if (events.otherEvents.length > 0) {
+        eventsData.push(['Altri Eventi']);
+        eventsData.push(['Minuto', 'Tipo', 'Giocatore', 'Descrizione']);
+        events.otherEvents.forEach(e => {
+          const timeStr = `${e.minute}${e.second !== null && e.second !== undefined ? ':' + e.second.toString().padStart(2, '0') : ''}`;
+          let tipo = '';
+          switch (e.type) {
+            case 'foul': tipo = 'Fallo'; break;
+            case 'corner': tipo = 'Calcio d\'angolo'; break;
+            case 'offside': tipo = 'Fuorigioco'; break;
+            case 'free-kick': tipo = 'Calcio di punizione'; break;
+            case 'penalty': tipo = 'Rigore'; break;
+            case 'throw-in': tipo = 'Rimessa laterale'; break;
+            case 'injury': tipo = 'Infortunio'; break;
+            default: tipo = 'Evento'; break;
+          }
+          
+          // Ottieni informazioni giocatore
+          let playerInfo = '';
+          if (e.playerId && e.teamType === 'own') {
+            const player = players.find(p => p.id === e.playerId);
+            const jerseyNumber = getPlayerJerseyNumber(e.playerId);
+            if (player && jerseyNumber) {
+              playerInfo = `#${jerseyNumber} ${player.lastName}`;
+            } else if (player) {
+              playerInfo = player.lastName;
+            }
+          } else if (e.teamType === 'opponent') {
+            playerInfo = 'Avversario';
+          }
+          
+          eventsData.push([timeStr, tipo, playerInfo, e.description || '']);
         });
         eventsData.push([]);
       }
@@ -425,8 +518,8 @@ export function ReportMatch({ match, players, users, onClose }: ReportMatchProps
             </h3>
             
             {(match.periods || [{ type: 'regular', label: '1° Tempo', duration: 0 }]).map((period, periodIndex) => {
-              const events = eventsByPeriod[periodIndex] || { goals: [], cards: [], substitutions: [] };
-              const hasEvents = events.goals.length > 0 || events.cards.length > 0 || events.substitutions.length > 0;
+              const events = eventsByPeriod[periodIndex] || { goals: [], cards: [], substitutions: [], otherEvents: [] };
+              const hasEvents = events.goals.length > 0 || events.cards.length > 0 || events.substitutions.length > 0 || events.otherEvents.length > 0;
               
               // Mostra il periodo se ha eventi o se è un periodo di gioco (non intervallo)
               if (!hasEvents && period.type === 'interval') return null;
@@ -471,7 +564,7 @@ export function ReportMatch({ match, players, users, onClose }: ReportMatchProps
                                   <div key={g.id} className={`p-2 rounded border ${isOpponent ? 'bg-red-50 border-red-200' : 'bg-green-50 border-green-200'}`}>
                                     <div className="flex items-center gap-1">
                                       <span className={`text-xs font-bold px-1 py-0.5 rounded ${isOpponent ? 'bg-red-100 text-red-700' : 'bg-green-100 text-green-700'}`}>
-                                        {g.minute}{g.second !== undefined ? `:${g.second.toString().padStart(2, '0')}` : ''}
+                                        {g.minute}{g.second !== null && g.second !== undefined ? `:${g.second.toString().padStart(2, '0')}` : ''}
                                       </span>
                                       <span className="text-gray-700 text-xs">{g.description}</span>
                                     </div>
@@ -507,7 +600,7 @@ export function ReportMatch({ match, players, users, onClose }: ReportMatchProps
                                   <div key={c.id} className={`p-2 rounded border ${colorClass}`}>
                                     <div className="flex items-center gap-1">
                                       <span className={`text-xs font-bold px-1 py-0.5 rounded ${badgeClass}`}>
-                                        {c.minute}{c.second !== undefined ? `:${c.second.toString().padStart(2, '0')}` : ''}
+                                        {c.minute}{c.second !== null && c.second !== undefined ? `:${c.second.toString().padStart(2, '0')}` : ''}
                                       </span>
                                       <span className="text-gray-700 text-xs">{c.description}</span>
                                     </div>
@@ -535,7 +628,7 @@ export function ReportMatch({ match, players, users, onClose }: ReportMatchProps
                                   <div key={s.id} className="p-2 rounded border bg-blue-50 border-blue-200">
                                     <div className="flex items-center gap-1 mb-1">
                                       <span className="text-xs font-bold px-1 py-0.5 rounded bg-blue-100 text-blue-700">
-                                        {s.minute}{s.second !== undefined ? `:${s.second.toString().padStart(2, '0')}` : ''}
+                                        {s.minute}{s.second !== null && s.second !== undefined ? `:${s.second.toString().padStart(2, '0')}` : ''}
                                       </span>
                                     </div>
                                     <div className="text-xs space-y-0.5">
@@ -557,6 +650,60 @@ export function ReportMatch({ match, players, users, onClose }: ReportMatchProps
                               })}
                             </div>
                           )}
+                        </div>
+                      </div>
+                    )}
+                    
+                    {/* Altri Eventi del periodo */}
+                    {events.otherEvents.length > 0 && (
+                      <div className="p-3 bg-gray-50 rounded-lg">
+                        <div>
+                          <h5 className="text-xs font-semibold mb-2 text-gray-700 flex items-center gap-1">
+                            <FileText className="w-3 h-3" />
+                            Altri Eventi ({events.otherEvents.length})
+                          </h5>
+                          <div className="space-y-1">
+                            {events.otherEvents.map(e => {
+                              // Funzione per ottenere l'icona e il colore dell'evento
+                              const getEventIcon = (type: string) => {
+                                switch (type) {
+                                  case 'foul': return { icon: AlertTriangle, color: 'text-orange-600', bg: 'bg-orange-50', border: 'border-orange-200' };
+                                  case 'corner': return { icon: Flag, color: 'text-blue-600', bg: 'bg-blue-50', border: 'border-blue-200' };
+                                  case 'offside': return { icon: Ban, color: 'text-red-600', bg: 'bg-red-50', border: 'border-red-200' };
+                                  case 'free-kick': return { icon: Zap, color: 'text-green-600', bg: 'bg-green-50', border: 'border-green-200' };
+                                  case 'penalty': return { icon: Calendar, color: 'text-purple-600', bg: 'bg-purple-50', border: 'border-purple-200' };
+                                  case 'throw-in': return { icon: UserX, color: 'text-gray-600', bg: 'bg-gray-50', border: 'border-gray-200' };
+                                  case 'injury': return { icon: UserX, color: 'text-red-500', bg: 'bg-red-50', border: 'border-red-200' };
+                                  default: return { icon: FileText, color: 'text-gray-600', bg: 'bg-gray-50', border: 'border-gray-200' };
+                                }
+                              };
+
+                              const { icon: Icon, color, bg, border } = getEventIcon(e.type);
+
+                              // Ottieni il numero di maglia del giocatore se disponibile
+                              const jerseyNumber = e.playerId ? getPlayerJerseyNumber(e.playerId) : null;
+
+                              return (
+                                <div key={e.id} className={`p-2 rounded border ${bg} ${border}`}>
+                                  <div className="flex items-center gap-1 mb-1">
+                                    <span className="text-xs font-bold px-1 py-0.5 rounded bg-gray-100 text-gray-700">
+                                      {e.minute}{e.second !== null && e.second !== undefined ? `:${e.second.toString().padStart(2, '0')}` : ''}
+                                    </span>
+                                    <Icon className={`w-3 h-3 ${color}`} />
+                                    {/* Mostra numero di maglia se disponibile */}
+                                    {jerseyNumber && (
+                                      <span className="text-xs font-bold px-1 py-0.5 rounded bg-blue-100 text-blue-700">
+                                        #{jerseyNumber}
+                                      </span>
+                                    )}
+                                  </div>
+                                  <div className="text-xs text-gray-700">
+                                    {e.description}
+                                  </div>
+                                </div>
+                              );
+                            })}
+                          </div>
                         </div>
                       </div>
                     )}

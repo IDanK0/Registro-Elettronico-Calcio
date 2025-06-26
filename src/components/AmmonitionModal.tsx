@@ -1,11 +1,11 @@
-import React, { useState } from 'react';
-import { Player } from '../types';
+import { useState } from 'react';
+import { Player, MatchPlayer } from '../types';
 import { X, Square, AlertTriangle, Ban, SquareStack } from 'lucide-react';
 
 interface AmmonitionModalProps {
   isOpen: boolean;
   onClose: () => void;
-  playersOnField: Player[];
+  playersOnField: (Player & { matchPlayer: MatchPlayer })[];
   opponentLineup: number[];
   onAmmonition: (
     type: 'yellow-card' | 'red-card' | 'second-yellow-card' | 'blue-card' | 'expulsion' | 'warning',
@@ -114,8 +114,10 @@ export function AmmonitionModal({
             className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-yellow-500 focus:border-yellow-500"
           >
             <option value="">Seleziona giocatore o maglia avversaria</option>
-            {playersOnField.map(p => (
-              <option key={p.id} value={p.id}># {p.jerseyNumber} {p.firstName} {p.lastName}</option>
+            {playersOnField
+              .sort((a, b) => a.matchPlayer.jerseyNumber - b.matchPlayer.jerseyNumber)
+              .map(p => (
+              <option key={p.id} value={p.id}>#{p.matchPlayer.jerseyNumber} - {p.firstName} {p.lastName}</option>
             ))}
             {opponentLineup.map(num => (
               <option key={`opp-${num}`} value={`opp-${num}`}>Maglia avversaria #{num}</option>

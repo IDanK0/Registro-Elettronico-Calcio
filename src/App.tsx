@@ -3,7 +3,7 @@ import React from 'react';
 import { useDatabase } from './hooks/useDatabase';
 import { useTimer } from './hooks/useTimer';
 import { useSession } from './hooks/useSession';
-import { Player, Training, Match, MatchPlayer, Substitution, User, Group, UserWithGroup, Permission, MatchPeriod } from './types';
+import { Player, Training, Match, MatchPlayer, Substitution, User, Group, UserWithGroup, Permission, MatchPeriod, MatchEvent } from './types';
 import { usePlayerStats } from './hooks/usePlayerStats';
 import { PlayerForm } from './components/PlayerForm';
 import { PlayerList } from './components/PlayerList';
@@ -39,9 +39,14 @@ import {
   Shield,
   UserCog,
   LogOut,
-  FileText
+  FileText,
+  Flag,
+  Zap,
+  UserX,
+  Calendar
 } from 'lucide-react';
 import { AmmonitionModal } from './components/AmmonitionModal';
+import { OtherEventsModal } from './components/OtherEventsModal';
 import { ReportMatch } from './components/ReportMatch';
 import { ExportStatsButton } from './components/ExportStatsButton';
 import useIsMobile from './hooks/useIsMobile';
@@ -62,6 +67,7 @@ function App() {
   const [initialLineup, setInitialLineup] = useState<MatchPlayer[] | null>(null);
   const [showSubstitutionModal, setShowSubstitutionModal] = useState(false);
   const [showAmmonitionModal, setShowAmmonitionModal] = useState(false);
+  const [showOtherEventsModal, setShowOtherEventsModal] = useState(false);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [showReportMatch, setShowReportMatch] = useState<null | Match>(null);
 
@@ -664,6 +670,27 @@ function App() {
     loadData();
   };
 
+  // Funzione per gestire altri eventi (falli, calci d'angolo, ecc.)
+  const handleOtherEvent = (eventData: Omit<MatchEvent, 'id'>) => {
+    if (!managingMatch) return;
+    
+    const currentPeriodIndex = managingMatch.currentPeriodIndex || 0;
+    const newEvent = {
+      ...eventData,
+      id: generateId(),
+      periodIndex: currentPeriodIndex
+    };
+
+    const updatedMatch = {
+      ...managingMatch,
+      events: [...managingMatch.events, newEvent]
+    };
+    
+    setManagingMatch(updatedMatch);
+    database.updateMatch(managingMatch.id, updatedMatch);
+    loadData();
+  };
+
   // Funzione per rimuovere un evento (goal o ammonizione)
   function handleRemoveEvent(eventId: string) {
     if (!managingMatch) return;
@@ -819,6 +846,14 @@ function App() {
                 <AlertTriangle className="w-4 h-4" />
                 Ammonizione
               </button>
+              <button
+                onClick={() => setShowOtherEventsModal(true)}
+                disabled={managingMatch.status === 'scheduled' || managingMatch.status === 'finished' || (managingMatch.periods?.[currentPeriodIndex]?.type === 'interval')}
+                className="flex items-center gap-2 bg-purple-600 text-white px-4 py-2 rounded-lg hover:bg-purple-700 disabled:bg-gray-400 disabled:cursor-not-allowed transition-colors"
+              >
+                <FileText className="w-4 h-4" />
+                Altri Eventi
+              </button>
             </div>
           </div>          <MatchTimer
             periods={managingMatch.periods || defaultPeriods}
@@ -943,7 +978,7 @@ function App() {
                       key={goal.id}
                       className={`flex items-center gap-4 p-3 rounded-lg group relative ${goal.description?.includes('avversario') ? 'bg-red-50' : 'bg-green-50'}`}
                     >
-                      <span className={`text-sm font-bold ${goal.description?.includes('avversario') ? 'text-red-600' : 'text-green-600'}`}>{goal.minute}{goal.second !== undefined ? `:${goal.second.toString().padStart(2, '0')}` : ''}</span>
+                      <span className={`text-sm font-bold ${goal.description?.includes('avversario') ? 'text-red-600' : 'text-green-600'}`}>{goal.minute}{goal.second !== null && goal.second !== undefined ? `:${goal.second.toString().padStart(2, '0')}` : ''}</span>
                       <div className="flex items-center gap-2">
                         <span className="text-gray-800">{goal.description}</span>
                       </div>
@@ -974,7 +1009,7 @@ function App() {
                   })
                   .map(ev => (
                     <div key={ev.id} className={`flex items-center gap-4 p-3 rounded-lg group relative ${ev.type === 'yellow-card' ? 'bg-yellow-50' : ev.type === 'red-card' ? 'bg-red-50' : ev.type === 'second-yellow-card' ? 'bg-orange-50' : ev.type === 'blue-card' ? 'bg-blue-50' : 'bg-gray-50'}`}>
-                      <span className={`text-sm font-bold ${ev.type === 'yellow-card' ? 'text-yellow-600' : ev.type === 'red-card' ? 'text-red-600' : ev.type === 'second-yellow-card' ? 'text-orange-600' : ev.type === 'blue-card' ? 'text-blue-600' : 'text-gray-600'}`}>{ev.minute}{ev.second !== undefined ? `:${ev.second.toString().padStart(2, '0')}` : ''}</span>
+                      <span className={`text-sm font-bold ${ev.type === 'yellow-card' ? 'text-yellow-600' : ev.type === 'red-card' ? 'text-red-600' : ev.type === 'second-yellow-card' ? 'text-orange-600' : ev.type === 'blue-card' ? 'text-blue-600' : 'text-gray-600'}`}>{ev.minute}{ev.second !== null && ev.second !== undefined ? `:${ev.second.toString().padStart(2, '0')}` : ''}</span>
                       <div className="flex items-center gap-2">
                         {ev.type === 'yellow-card' && <Square className="w-5 h-5 text-yellow-500" />}
                         {ev.type === 'red-card' && <Square className="w-5 h-5 text-red-600" />}
@@ -1014,7 +1049,7 @@ function App() {
                     const playerIn = players.find(p => p.id === sub.playerIn);
                     return (
                       <div key={sub.id} className="flex items-center gap-4 p-3 bg-blue-50 rounded-lg group relative">
-                        <span className="text-sm font-bold text-blue-600">{sub.minute}{sub.second !== undefined ? `:${sub.second.toString().padStart(2, '0')}` : ''}</span>                        <div className="flex items-center gap-2">
+                        <span className="text-sm font-bold text-blue-600">{sub.minute}{sub.second !== null && sub.second !== undefined ? `:${sub.second.toString().padStart(2, '0')}` : ''}</span>                        <div className="flex items-center gap-2">
                           <span className="text-red-600">
                             {playerOut?.firstName} {playerOut?.lastName}
                           </span>
@@ -1028,6 +1063,56 @@ function App() {
                           disabled={managingMatch.periods?.[currentPeriodIndex]?.type === 'interval'}
                           className="ml-auto p-1 text-red-500 hover:bg-red-100 rounded-full opacity-0 group-hover:opacity-100 transition-opacity absolute right-2 top-1/2 -translate-y-1/2 disabled:text-gray-400 disabled:hover:bg-gray-100"
                           title="Rimuovi sostituzione"
+                        >
+                          <Trash2 className="w-4 h-4" />
+                        </button>
+                      </div>
+                    );
+                  })}
+              </div>
+            </div>
+          )}
+
+          {/* Cronologia Altri Eventi */}
+          {managingMatch.events.filter(e => ['foul', 'corner', 'offside', 'free-kick', 'penalty', 'throw-in', 'injury'].includes(e.type)).length > 0 && (
+            <div className="bg-white rounded-xl shadow-md p-6 mb-6">
+              <h3 className="text-lg font-semibold text-gray-800 mb-4">Altri Eventi</h3>
+              <div className="space-y-3">
+                {managingMatch.events
+                  .filter(e => ['foul', 'corner', 'offside', 'free-kick', 'penalty', 'throw-in', 'injury'].includes(e.type))
+                  .sort((a, b) => {
+                    if (b.minute !== a.minute) return b.minute - a.minute;
+                    return (b.second || 0) - (a.second || 0);
+                  })
+                  .map(ev => {
+                    // Funzione per ottenere l'icona e il colore dell'evento
+                    const getEventIcon = (type: string) => {
+                      switch (type) {
+                        case 'foul': return { icon: AlertTriangle, color: 'text-orange-600' };
+                        case 'corner': return { icon: Flag, color: 'text-blue-600' };
+                        case 'offside': return { icon: Ban, color: 'text-red-600' };
+                        case 'free-kick': return { icon: Zap, color: 'text-green-600' };
+                        case 'penalty': return { icon: Calendar, color: 'text-purple-600' };
+                        case 'throw-in': return { icon: UserX, color: 'text-gray-600' };
+                        case 'injury': return { icon: UserX, color: 'text-red-500' };
+                        default: return { icon: FileText, color: 'text-gray-600' };
+                      }
+                    };
+
+                    const { icon: Icon, color } = getEventIcon(ev.type);
+
+                    return (
+                      <div key={ev.id} className="flex items-center gap-4 p-3 bg-gray-50 rounded-lg group relative">
+                        <span className="text-sm font-bold text-gray-600">{ev.minute}{ev.second !== null && ev.second !== undefined ? `:${ev.second.toString().padStart(2, '0')}` : ''}</span>
+                        <div className="flex items-center gap-2">
+                          <Icon className={`w-5 h-5 ${color}`} />
+                          <span className="text-gray-800">{ev.description}</span>
+                        </div>
+                        <button
+                          onClick={() => handleRemoveEvent(ev.id)}
+                          disabled={managingMatch.periods?.[currentPeriodIndex]?.type === 'interval'}
+                          className="ml-auto p-1 text-red-500 hover:bg-red-100 rounded-full opacity-0 group-hover:opacity-100 transition-opacity absolute right-2 top-1/2 -translate-y-1/2 disabled:text-gray-400 disabled:hover:bg-gray-100"
+                          title="Rimuovi evento"
                         >
                           <Trash2 className="w-4 h-4" />
                         </button>
@@ -1055,6 +1140,15 @@ function App() {
             opponentLineup={managingMatch.opponentLineup}
             onAmmonition={handleAmmonition}
             currentMinute={Math.floor(timer.time / 60)}
+          />
+
+          <OtherEventsModal
+            isOpen={showOtherEventsModal}
+            onClose={() => setShowOtherEventsModal(false)}
+            players={players}
+            lineup={managingMatch.lineup}
+            currentTimeInSeconds={timer.time}
+            onEventAdd={handleOtherEvent}
           />
         </div>
       );

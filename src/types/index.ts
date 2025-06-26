@@ -100,12 +100,15 @@ export interface Substitution {
 
 export interface MatchEvent {
   id: string;
-  type: 'goal' | 'yellow-card' | 'red-card' | 'second-yellow-card' | 'blue-card' | 'expulsion' | 'warning' | 'substitution';
+  type: 'goal' | 'yellow-card' | 'red-card' | 'second-yellow-card' | 'blue-card' | 'expulsion' | 'warning' | 'substitution' | 'foul' | 'corner' | 'offside' | 'free-kick' | 'penalty' | 'throw-in' | 'injury';
   minute: number;
   second?: number;
   playerId: string;
   description?: string;
   periodIndex?: number; // Indice del periodo in cui è avvenuto l'evento
+  // Campi aggiuntivi per eventi specifici
+  reason?: string; // Per falli, infortuni, ecc.
+  teamType?: 'own' | 'opponent'; // Per distinguere tra eventi della propria squadra e avversari
 }
 
 export interface PlayerStats {
