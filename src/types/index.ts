@@ -75,6 +75,7 @@ export interface Group {
   id: string;
   name: string;
   description?: string;
+  icon?: string;
   permissions: Permission;
   createdAt: string;
 }

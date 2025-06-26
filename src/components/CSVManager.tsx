@@ -162,14 +162,13 @@ export function CSVManager({ groups, users, onImportGroups, onImportUsers }: CSV
             </div>
           </div>
         </div>
-      </div>
-
-      {/* Instructions */}
+      </div>      {/* Instructions */}
       <div className="mt-6 p-4 bg-gray-50 rounded-md">
         <h5 className="text-sm font-medium text-gray-700 mb-2">Istruzioni:</h5>
         <ul className="text-sm text-gray-600 space-y-1">
           <li>• Scarica il template per vedere il formato corretto del CSV</li>
           <li>• Per i gruppi: usa "SI" o "NO" per i permessi</li>
+          <li>• Per le icone dei gruppi: usa uno dei nomi seguenti: Shield, Users, Crown, UserCheck, Settings, Star, Award, Target, Trophy, Briefcase, UserCog, Zap, Heart, Eye, Lock, Key, Calendar, Flag, Camera, Lightbulb, Headphones, Stethoscope, Clipboard, FileText, UserPlus, Database, Globe, Layers (se lasciato vuoto verrà usata "Users")</li>
           <li>• Per gli utenti: assicurati che i gruppi esistano prima dell'importazione</li>
           <li>• Le date devono essere nel formato DD/MM/YYYY</li>
           <li>• I file devono essere in formato CSV con codifica UTF-8</li>

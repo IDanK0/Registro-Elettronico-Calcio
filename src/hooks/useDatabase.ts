@@ -68,15 +68,14 @@ export function useDatabase() {
         database.run("ALTER TABLE matches ADD COLUMN isRunning BOOLEAN DEFAULT 0");
       } catch (e) {
         // ignore
-      }
-
-      // Migrazione: crea tabelle per gestione utenti se non esistono
+      }      // Migrazione: crea tabelle per gestione utenti se non esistono
       try {
         database.run(`
           CREATE TABLE IF NOT EXISTS groups (
             id TEXT PRIMARY KEY,
             name TEXT NOT NULL UNIQUE,
             description TEXT,
+            icon TEXT DEFAULT 'Users',
             teamManagement BOOLEAN NOT NULL DEFAULT 0,
             matchManagement BOOLEAN NOT NULL DEFAULT 0,
             resultsView BOOLEAN NOT NULL DEFAULT 0,
@@ -122,15 +121,24 @@ export function useDatabase() {
         database.run(`
           INSERT OR IGNORE INTO groups (id, name, description, teamManagement, matchManagement, resultsView, statisticsView)
           VALUES ('massaggiatore', 'Massaggiatore', 'Solo visualizzazione risultati e statistiche', 0, 0, 1, 1)
-        `);
-
-        // Inserisci utente admin di default se non esiste
+        `);        // Inserisci utente admin di default se non esiste
         database.run(`
           INSERT OR IGNORE INTO users (id, firstName, lastName, status, expirationDate, groupId, username, password, email, phone, matricola)
           VALUES ('admin', 'Admin', 'System', 'active', '2030-12-31', 'admin', 'admin', 'admin123', 'admin@system.com', '000', 'ADMIN001')
         `);
       } catch (e) {
         console.log('User tables migration already applied or failed:', e);
+      }
+
+      // Migrazione: aggiungi la colonna 'icon' ai gruppi se non esiste
+      try {
+        database.run("ALTER TABLE groups ADD COLUMN icon TEXT DEFAULT 'Users'");        // Aggiorna le icone dei gruppi predefiniti con icone più appropriate
+        database.run("UPDATE groups SET icon = 'Shield' WHERE id = 'admin'");
+        database.run("UPDATE groups SET icon = 'Trophy' WHERE id = 'allenatore'");
+        database.run("UPDATE groups SET icon = 'Briefcase' WHERE id = 'dirigente'");
+        database.run("UPDATE groups SET icon = 'Stethoscope' WHERE id = 'massaggiatore'");
+      } catch (e) {
+        // ignore if exists
       }
 
       setDb(database);
@@ -631,7 +639,6 @@ export function useDatabase() {
     db.run('DELETE FROM matches WHERE id = ?', [id]);
     saveDatabase();
   };
-
   // Funzioni per i gruppi
   const getGroups = (): Group[] => {
     if (!db) return [];
@@ -645,6 +652,7 @@ export function useDatabase() {
         id: row.id as string,
         name: row.name as string,
         description: row.description as string || '',
+        icon: row.icon as string || 'Users',
         permissions: {
           teamManagement: Boolean(row.teamManagement),
           matchManagement: Boolean(row.matchManagement),
@@ -658,25 +666,23 @@ export function useDatabase() {
     stmt.free();
     return groups;
   };
-
   const addGroup = (group: Omit<Group, 'id' | 'createdAt'>) => {
     if (!db) return;
     
     const id = Date.now().toString();
     db.run(
-      'INSERT INTO groups (id, name, description, teamManagement, matchManagement, resultsView, statisticsView) VALUES (?, ?, ?, ?, ?, ?, ?)',
-      [id, group.name, group.description || '', group.permissions.teamManagement ? 1 : 0, group.permissions.matchManagement ? 1 : 0, group.permissions.resultsView ? 1 : 0, group.permissions.statisticsView ? 1 : 0]
+      'INSERT INTO groups (id, name, description, icon, teamManagement, matchManagement, resultsView, statisticsView) VALUES (?, ?, ?, ?, ?, ?, ?, ?)',
+      [id, group.name, group.description || '', group.icon || 'Users', group.permissions.teamManagement ? 1 : 0, group.permissions.matchManagement ? 1 : 0, group.permissions.resultsView ? 1 : 0, group.permissions.statisticsView ? 1 : 0]
     );
     saveDatabase();
     return id;
   };
-
   const updateGroup = (id: string, group: Omit<Group, 'id' | 'createdAt'>) => {
     if (!db) return;
     
     db.run(
-      'UPDATE groups SET name = ?, description = ?, teamManagement = ?, matchManagement = ?, resultsView = ?, statisticsView = ? WHERE id = ?',
-      [group.name, group.description || '', group.permissions.teamManagement ? 1 : 0, group.permissions.matchManagement ? 1 : 0, group.permissions.resultsView ? 1 : 0, group.permissions.statisticsView ? 1 : 0, id]
+      'UPDATE groups SET name = ?, description = ?, icon = ?, teamManagement = ?, matchManagement = ?, resultsView = ?, statisticsView = ? WHERE id = ?',
+      [group.name, group.description || '', group.icon || 'Users', group.permissions.teamManagement ? 1 : 0, group.permissions.matchManagement ? 1 : 0, group.permissions.resultsView ? 1 : 0, group.permissions.statisticsView ? 1 : 0, id]
     );
     saveDatabase();
   };
@@ -696,15 +702,14 @@ export function useDatabase() {
     }
     
     db.run('DELETE FROM groups WHERE id = ?', [id]);
-    saveDatabase();
-  };
+    saveDatabase();  };
 
   // Funzioni per gli utenti
   const getUsers = (): UserWithGroup[] => {
     if (!db) return [];
     
     const stmt = db.prepare(`
-      SELECT u.*, g.name as groupName, g.description as groupDescription,
+      SELECT u.*, g.name as groupName, g.description as groupDescription, g.icon as groupIcon,
              g.teamManagement, g.matchManagement, g.resultsView, g.statisticsView,
              g.createdAt as groupCreatedAt
       FROM users u 
@@ -725,13 +730,13 @@ export function useDatabase() {
         username: row.username as string,
         password: row.password as string,
         email: row.email as string,
-        phone: row.phone as string,
-        matricola: row.matricola as string,
+        phone: row.phone as string,        matricola: row.matricola as string,
         createdAt: row.createdAt as string,
         group: {
           id: row.groupId as string,
           name: row.groupName as string,
           description: row.groupDescription as string || '',
+          icon: row.groupIcon as string || 'Users',
           permissions: {
             teamManagement: Boolean(row.teamManagement),
             matchManagement: Boolean(row.matchManagement),
@@ -778,9 +783,8 @@ export function useDatabase() {
 
   const authenticateUser = (username: string, password: string): UserWithGroup | null => {
     if (!db) return null;
-    
-    const stmt = db.prepare(`
-      SELECT u.*, g.name as groupName, g.description as groupDescription,
+      const stmt = db.prepare(`
+      SELECT u.*, g.name as groupName, g.description as groupDescription, g.icon as groupIcon,
              g.teamManagement, g.matchManagement, g.resultsView, g.statisticsView,
              g.createdAt as groupCreatedAt
       FROM users u 
@@ -804,11 +808,11 @@ export function useDatabase() {
         email: row.email as string,
         phone: row.phone as string,
         matricola: row.matricola as string,
-        createdAt: row.createdAt as string,
-        group: {
+        createdAt: row.createdAt as string,        group: {
           id: row.groupId as string,
           name: row.groupName as string,
           description: row.groupDescription as string || '',
+          icon: row.groupIcon as string || 'Users',
           permissions: {
             teamManagement: Boolean(row.teamManagement),
             matchManagement: Boolean(row.matchManagement),

@@ -1,4 +1,4 @@
-Aggiungere sistema di gestione utenti:
+[X] Aggiungere sistema di gestione utenti:
     - Ogni utente deve essere associato ad un gruppo, quindi bisogna gestire un anagrafica gruppi
     - ogni gruppo deve gestire una lista di permessi Fissa True/False( Gestione Squadra, Gestione Partite, Visualizzazione Risultati, Visualizzazione Statistiche)
     - ogni utente deve avere le seguenti specifiche: 

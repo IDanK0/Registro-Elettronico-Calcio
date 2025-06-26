@@ -1,5 +1,40 @@
 import { UserWithGroup } from '../types';
-import { Edit2, Trash2, User as UserIcon, Shield, Clock, ChevronDown, Filter, Eye } from 'lucide-react';
+import { 
+  Edit2, 
+  Trash2, 
+  User as UserIcon, 
+  Shield, 
+  Clock, 
+  ChevronDown, 
+  Filter, 
+  Eye,
+  Users,
+  Crown,
+  UserCheck,
+  Settings,
+  Star,
+  Award,
+  Target,
+  Trophy,
+  Briefcase,
+  UserCog,
+  Zap,
+  Heart,
+  Lock,
+  Key,
+  Calendar,
+  Flag,
+  Camera,
+  Lightbulb,
+  Headphones,
+  Stethoscope,
+  Clipboard,
+  FileText,
+  UserPlus,
+  Database,
+  Globe,
+  Layers
+} from 'lucide-react';
 import { useState, useMemo } from 'react';
 
 interface UserListProps {
@@ -21,7 +56,6 @@ export function UserList({ users, onEdit, onDelete }: UserListProps) {
   const isExpired = (expirationDate: string) => {
     return new Date(expirationDate) < new Date();
   };
-
   const getStatusBadge = (user: UserWithGroup) => {
     if (user.status === 'inactive') {
       return <span className="px-2 py-1 text-xs rounded-full bg-red-100 text-red-800">Disattivo</span>;
@@ -30,6 +64,16 @@ export function UserList({ users, onEdit, onDelete }: UserListProps) {
       return <span className="px-2 py-1 text-xs rounded-full bg-orange-100 text-orange-800">Scaduto</span>;
     }
     return <span className="px-2 py-1 text-xs rounded-full bg-green-100 text-green-800">Attivo</span>;
+  };
+
+  const getGroupIcon = (iconName?: string) => {
+    const iconMap: Record<string, any> = {
+      Shield, Users, Crown, UserCheck, Settings, Star, Award, Target, 
+      Trophy, Briefcase, UserCog, Zap, Heart, Eye, Lock, Key, 
+      Calendar, Flag, Camera, Lightbulb, Headphones, Stethoscope, 
+      Clipboard, FileText, UserPlus, Database, Globe, Layers
+    };
+    return iconMap[iconName || 'Users'] || Users;
   };
 
   const processedUsers = useMemo(() => {
@@ -170,7 +214,10 @@ export function UserList({ users, onEdit, onDelete }: UserListProps) {
                       </div>
                     </td>                    <td className="px-6 py-4 whitespace-nowrap">
                       <div className="flex items-center">
-                        <Shield className="w-4 h-4 mr-2 text-blue-500" />
+                        {(() => {
+                          const GroupIcon = getGroupIcon(user.group.icon);
+                          return <GroupIcon className="w-4 h-4 mr-2 text-blue-500" />;
+                        })()}
                         <span className="text-sm font-medium text-gray-900">
                           {user.group.name}
                         </span>
@@ -301,15 +348,23 @@ export function UserList({ users, onEdit, onDelete }: UserListProps) {
                   </div>
                 </div>
 
-                {/* Gruppo e Permessi */}
-                <div className="bg-gray-50 p-4 rounded-lg">
+                {/* Gruppo e Permessi */}                <div className="bg-gray-50 p-4 rounded-lg">
                   <h4 className="text-lg font-semibold text-gray-800 mb-4 flex items-center gap-2">
-                    <Shield className="w-5 h-5 text-blue-600" />
+                    {(() => {
+                      const GroupIcon = getGroupIcon(selectedUser.group.icon);
+                      return <GroupIcon className="w-5 h-5 text-blue-600" />;
+                    })()}
                     Gruppo e Permessi
                   </h4>
                   <div className="mb-4">
                     <label className="block text-sm font-medium text-gray-600 mb-1">Gruppo</label>
-                    <div className="text-gray-900 font-medium">{selectedUser.group.name}</div>
+                    <div className="text-gray-900 font-medium flex items-center gap-2">
+                      {(() => {
+                        const GroupIcon = getGroupIcon(selectedUser.group.icon);
+                        return <GroupIcon className="w-4 h-4 text-blue-500" />;
+                      })()}
+                      {selectedUser.group.name}
+                    </div>
                   </div>
                   <div>
                     <label className="block text-sm font-medium text-gray-600 mb-2">Permessi</label>

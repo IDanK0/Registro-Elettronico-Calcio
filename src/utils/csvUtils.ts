@@ -6,6 +6,7 @@ export const exportGroupsToCSV = (groups: Group[]): void => {
     'ID',
     'Nome',
     'Descrizione',
+    'Icona',
     'Gestione Squadra',
     'Gestione Partite',
     'Visualizzazione Risultati',
@@ -17,6 +18,7 @@ export const exportGroupsToCSV = (groups: Group[]): void => {
     group.id,
     group.name,
     group.description || '',
+    group.icon || 'Users',
     group.permissions.teamManagement ? 'SI' : 'NO',
     group.permissions.matchManagement ? 'SI' : 'NO',
     group.permissions.resultsView ? 'SI' : 'NO',
@@ -105,6 +107,7 @@ export const parseGroupsFromCSV = (csvContent: string): Omit<Group, 'id' | 'crea
     groups.push({
       name,
       description: getColumnValue('Descrizione').trim(),
+      icon: getColumnValue('Icona').trim() || 'Users',
       permissions: {
         teamManagement: toBool(getColumnValue('Gestione Squadra')),
         matchManagement: toBool(getColumnValue('Gestione Partite')),
@@ -277,8 +280,8 @@ const parseDate = (dateString: string): string | null => {
 
 // CSV Template generators
 export const generateGroupsCSVTemplate = (): void => {
-  const headers = ['Nome', 'Descrizione', 'Gestione Squadra', 'Gestione Partite', 'Visualizzazione Risultati', 'Visualizzazione Statistiche'];
-  const exampleRow = ['Esempio Gruppo', 'Descrizione del gruppo', 'SI', 'NO', 'SI', 'SI'];
+  const headers = ['Nome', 'Descrizione', 'Icona', 'Gestione Squadra', 'Gestione Partite', 'Visualizzazione Risultati', 'Visualizzazione Statistiche'];
+  const exampleRow = ['Esempio Gruppo', 'Descrizione del gruppo', 'Users', 'SI', 'NO', 'SI', 'SI'];
   
   const csvContent = [headers, exampleRow]
     .map(row => row.map(field => `"${field}"`).join(','))
