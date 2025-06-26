@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { useDatabase } from './hooks/useDatabase';
 import { useTimer } from './hooks/useTimer';
+import { useSession } from './hooks/useSession';
 import { Player, Training, Match, Substitution, User, Group, UserWithGroup, Permission } from './types';
 import { usePlayerStats } from './hooks/usePlayerStats';
 import { PlayerForm } from './components/PlayerForm';
@@ -69,9 +70,10 @@ function App() {
 
   // Stato per errori di gestione partita
   const [manageError, setManageError] = useState<string | null>(null);
-
   // Database hook
   const database = useDatabase();
+  // Session hook
+  const session = useSession();
   // Data state
   const [players, setPlayers] = useState<Player[]>([]);
   const [trainings, setTrainings] = useState<Training[]>([]);
@@ -133,13 +135,31 @@ function App() {
     window.addEventListener('beforeunload', handler);
     return () => window.removeEventListener('beforeunload', handler);
   }, [managingMatch, timer.time, timer.isRunning]);
-
   // Load data when database is ready
   useEffect(() => {
     if (!database.isLoading && !database.error) {
       loadData();
     }
   }, [database.isLoading, database.error]);
+
+  // Load session on app start
+  useEffect(() => {
+    if (!database.isLoading && !database.error && !currentUser) {
+      const savedUser = session.loadSession();
+      if (savedUser) {
+        // Verifica che l'utente esista ancora nel database
+        const users = database.getUsers();
+        const existingUser = users.find(u => u.id === savedUser.id);
+        if (existingUser && existingUser.status === 'active') {
+          setCurrentUser(savedUser);
+          loadData();
+        } else {
+          // L'utente non esiste più o è stato disattivato, rimuovi la sessione
+          session.clearSession();
+        }
+      }
+    }
+  }, [database.isLoading, database.error, currentUser]);
   const loadData = () => {
     setPlayers(database.getPlayers());
     setTrainings(database.getTrainings());
@@ -434,9 +454,8 @@ function App() {
     { id: 'users' as const, name: 'Utenti', icon: UserCog, color: 'text-indigo-600' },
     { id: 'groups' as const, name: 'Gruppi', icon: Shield, color: 'text-yellow-600' }
   ];
-
   // Authentication functions
-  const handleLogin = async (username: string, password: string) => {
+  const handleLogin = async (username: string, password: string, rememberMe: boolean = true) => {
     setIsLoggingIn(true);
     setLoginError('');
     
@@ -444,6 +463,7 @@ function App() {
       const user = database.authenticateUser(username, password);
       if (user) {
         setCurrentUser(user);
+        session.saveSession(user, rememberMe);
         loadData();
       } else {
         setLoginError('Credenziali non valide o utente scaduto');
@@ -454,9 +474,9 @@ function App() {
       setIsLoggingIn(false);
     }
   };
-
   const handleLogout = () => {
     setCurrentUser(null);
+    session.clearSession();
     setActiveTab('players');
     setCurrentView('list');
   };

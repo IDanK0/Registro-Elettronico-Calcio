@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { LogIn, Eye, EyeOff } from 'lucide-react';
 
 interface LoginFormProps {
-  onLogin: (username: string, password: string) => void;
+  onLogin: (username: string, password: string, rememberMe?: boolean) => void;
   error?: string;
   isLoading?: boolean;
 }
@@ -11,10 +11,11 @@ export function LoginForm({ onLogin, error, isLoading }: LoginFormProps) {
   const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
+  const [rememberMe, setRememberMe] = useState(true);
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    onLogin(username, password);
+    onLogin(username, password, rememberMe);
   };
 
   return (
@@ -71,7 +72,20 @@ export function LoginForm({ onLogin, error, isLoading }: LoginFormProps) {
                   <Eye className="w-5 h-5" />
                 )}
               </button>
-            </div>
+            </div>          </div>
+
+          <div className="flex items-center">
+            <input
+              id="remember-me"
+              name="remember-me"
+              type="checkbox"
+              checked={rememberMe}
+              onChange={(e) => setRememberMe(e.target.checked)}
+              className="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded"
+            />
+            <label htmlFor="remember-me" className="ml-2 block text-sm text-gray-700">
+              Ricordami per 30 giorni
+            </label>
           </div>
 
           {error && (

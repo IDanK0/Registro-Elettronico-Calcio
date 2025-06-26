@@ -9,6 +9,7 @@ Giocatori:
     - Aggiungere Recapiti: Numero, email e nome di un genitore
     - Rimozione assegnazione fissa di ruolo e numero di maglia per giocatore (varierà per ogni partita)
     - Aggiungere possibilità di allegare documenti o file per ogni persona (come certificati medici, ecc..) e di visualizzarli e scaricarli tramite un tasto nella lista giocatori
+    - Aggiungere Import/Export tramite CSV dei giocatori.
 
 Allenamenti:
     - Partire dai presenti come predefinito invece degli assenti
