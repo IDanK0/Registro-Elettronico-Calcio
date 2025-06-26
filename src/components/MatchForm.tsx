@@ -56,7 +56,18 @@ export function MatchForm({ players, users = [], onSubmit, initialData, onCancel
       return;
     }
     setFormError(null);
-    onSubmit(formData);
+    
+    // Include default periods and currentPeriodIndex if not present
+    const matchData = {
+      ...formData,
+      periods: initialData?.periods || [
+        { type: 'regular' as const, label: 'Primo Tempo', duration: 0 },
+        { type: 'regular' as const, label: 'Secondo Tempo', duration: 0 }
+      ],
+      currentPeriodIndex: initialData?.currentPeriodIndex || 0
+    };
+    
+    onSubmit(matchData);
   };
 
   const addPlayerToLineup = () => {
@@ -110,12 +121,22 @@ export function MatchForm({ players, users = [], onSubmit, initialData, onCancel
   const addOpponentJerseyNumber = () => {
     if (newJerseyNumber && !isNaN(Number(newJerseyNumber))) {
       const jerseyNum = Number(newJerseyNumber);
+      
+      // Validate jersey number range (1-99)
+      if (jerseyNum < 1 || jerseyNum > 99) {
+        setFormError('Numero di maglia avversario non valido (1-99).');
+        return;
+      }
+      
       if (!formData.opponentLineup.includes(jerseyNum)) {
         setFormData(prev => ({
           ...prev,
           opponentLineup: [...prev.opponentLineup, jerseyNum].sort((a, b) => a - b)
         }));
         setNewJerseyNumber('');
+        setFormError(null);
+      } else {
+        setFormError('Numero di maglia avversario già utilizzato.');
       }
     }
   };
