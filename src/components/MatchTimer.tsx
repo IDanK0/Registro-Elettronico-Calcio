@@ -145,7 +145,7 @@ export function MatchTimer({
                 onClick={onInterval}
                 className="flex items-center gap-2 bg-orange-600 text-white px-6 py-3 rounded-lg hover:bg-orange-700 transition-colors font-medium"
               >
-                <Square className="w-5 h-5" />
+                <Clock className="w-5 h-5" />
                 Intervallo
               </button>
             </>

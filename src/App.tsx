@@ -849,7 +849,7 @@ function App() {
               <button
                 onClick={() => setShowOtherEventsModal(true)}
                 disabled={managingMatch.status === 'scheduled' || managingMatch.status === 'finished' || (managingMatch.periods?.[currentPeriodIndex]?.type === 'interval')}
-                className="flex items-center gap-2 bg-purple-600 text-white px-4 py-2 rounded-lg hover:bg-purple-700 disabled:bg-gray-400 disabled:cursor-not-allowed transition-colors"
+                className="flex items-center gap-2 bg-sky-600 text-white px-4 py-2 rounded-lg hover:bg-sky-700 disabled:bg-gray-400 disabled:cursor-not-allowed transition-colors"
               >
                 <FileText className="w-4 h-4" />
                 Altri Eventi
