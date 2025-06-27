@@ -22,29 +22,20 @@ import { UserList } from './components/UserList';
 import { GroupForm } from './components/GroupForm';
 import { GroupList } from './components/GroupList';
 import { CSVManager } from './components/CSVManager';
-import { 
-  Users, 
-  Dumbbell, 
-  Target, 
-  BarChart3, 
-  Plus, 
+import {
+  Users,
+  Dumbbell,
+  Target,
+  BarChart3,
+  Plus,
   ArrowLeft,
   Menu,
   X,
-  ArrowLeftRight,
   Loader2,
-  AlertTriangle,
-  Square,
-  Trash2,
-  Ban,
   Shield,
   UserCog,
   LogOut,
-  FileText,
-  Flag,
-  Zap,
-  UserX,
-  Calendar
+  FileText
 } from 'lucide-react';
 import { AmmonitionModal } from './components/AmmonitionModal';
 import { OtherEventsModal } from './components/OtherEventsModal';
@@ -78,8 +69,6 @@ function App() {
 
   // Stato per errori di gestione partita
   const [manageError, setManageError] = useState<string | null>(null);
-  // Stato per la nuova interfaccia
-  const [useEnhancedInterface, setUseEnhancedInterface] = useState(true);
   // Database hook
   const database = useDatabase();
   // Session hook
@@ -821,378 +810,41 @@ function App() {
     }
 
     if (currentView === 'manage' && managingMatch) {
-      if (useEnhancedInterface) {
-        return (
-          <>
-            <EnhancedMatchManagement
-              match={managingMatch}
-              players={players}
-              users={users}
-              currentPeriodIndex={currentPeriodIndex}
-              isTimerRunning={timer.isRunning}
-              currentTime={timer.time}
-              onTimerStart={handleStartPeriod}
-              onTimerPause={handlePausePeriod}
-              onTimerInterval={handleInterval}
-              onAddPeriod={handleAddPeriod}
-              onRemoveLastPeriod={handleRemoveLastPeriod}
-              onFinishMatch={handleFinishMatchDynamic}
-              onHomeGoal={handleHomeGoal}
-              onAwayGoal={handleAwayGoal}
-              onHomeGoalRemove={handleHomeGoalRemove}
-              onAwayGoalRemove={handleAwayGoalRemove}
-              onSubstitution={() => setShowSubstitutionModal(true)}
-              onAmmonition={() => setShowAmmonitionModal(true)}              onOtherEvents={() => setShowOtherEventsModal(true)}
-              onRemoveEvent={handleRemoveEvent}
-              onRemoveSubstitution={handleRemoveSubstitution}
-              selectedHomeScorer={selectedHomeScorer}
-              selectedAwayScorer={selectedAwayScorer}
-              onSelectHomeScorer={setSelectedHomeScorer}
-              onSelectAwayScorer={setSelectedAwayScorer}
-              formatTime={timer.formatTime}
-              getPlayersOnField={getPlayersOnField}
-              getPlayersOnBench={getPlayersOnBench}
-              getPlayerJerseyNumber={getPlayerJerseyNumber}
-              manageError={manageError}
-            />
-            
-            {/* Mantieni i modali esistenti */}
-            <SubstitutionModal
-              isOpen={showSubstitutionModal}
-              onClose={() => setShowSubstitutionModal(false)}
-              playersOnField={getPlayersOnField()}
-              playersOnBench={getPlayersOnBench()}
-              onSubstitute={handleSubstitution}
-              currentMinute={Math.floor(timer.time / 60)}
-              playerJerseyNumbers={managingMatch.playerJerseyNumbers}
-            />
-
-            <AmmonitionModal
-              isOpen={showAmmonitionModal}
-              onClose={() => setShowAmmonitionModal(false)}
-              playersOnField={getPlayersOnField()}
-              opponentLineup={managingMatch.opponentLineup}
-              onAmmonition={handleAmmonition}
-              currentMinute={Math.floor(timer.time / 60)}
-            />
-
-            <OtherEventsModal
-              isOpen={showOtherEventsModal}
-              onClose={() => setShowOtherEventsModal(false)}
-              players={players}
-              lineup={managingMatch.lineup}
-              currentTimeInSeconds={timer.time}
-              onEventAdd={handleOtherEvent}
-            />
-          </>
-        );
-      } else {
-        // Interfaccia originale
-        return (
-        <div className="space-y-6">
-          {manageError && (
-            <div className="bg-red-100 text-red-700 px-4 py-2 rounded-lg font-semibold">
-              {manageError}
-            </div>
-          )}
-          <div className="flex items-center justify-between gap-2">
-            <h2 className="text-2xl font-bold text-gray-800">
-              Gestione Partita vs {managingMatch.opponent}
-            </h2>
-            <div className="flex gap-2">
-              <button
-                onClick={() => setShowSubstitutionModal(true)}
-                disabled={managingMatch.status === 'scheduled' || managingMatch.status === 'finished' || (managingMatch.periods?.[currentPeriodIndex]?.type === 'interval')}
-                className="flex items-center gap-2 bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 disabled:bg-gray-400 disabled:cursor-not-allowed transition-colors"
-              >
-                <ArrowLeftRight className="w-4 h-4" />
-                Sostituzione
-              </button>
-              <button
-                onClick={() => setShowAmmonitionModal(true)}
-                disabled={managingMatch.status === 'scheduled' || managingMatch.status === 'finished' || (managingMatch.periods?.[currentPeriodIndex]?.type === 'interval')}
-                className="flex items-center gap-2 bg-yellow-500 text-white px-4 py-2 rounded-lg hover:bg-yellow-600 disabled:bg-gray-400 disabled:cursor-not-allowed transition-colors"
-              >
-                <AlertTriangle className="w-4 h-4" />
-                Ammonizione
-              </button>
-              <button
-                onClick={() => setShowOtherEventsModal(true)}
-                disabled={managingMatch.status === 'scheduled' || managingMatch.status === 'finished' || (managingMatch.periods?.[currentPeriodIndex]?.type === 'interval')}
-                className="flex items-center gap-2 bg-sky-600 text-white px-4 py-2 rounded-lg hover:bg-sky-700 disabled:bg-gray-400 disabled:cursor-not-allowed transition-colors"
-              >
-                <FileText className="w-4 h-4" />
-                Altri Eventi
-              </button>
-            </div>
-          </div>          <MatchTimer
-            periods={managingMatch.periods || defaultPeriods}
+      // Solo interfaccia migliorata
+      return (
+        <>
+          <EnhancedMatchManagement
+            match={managingMatch}
+            players={players}
+            users={users}
             currentPeriodIndex={currentPeriodIndex}
-            isRunning={timer.isRunning}
-            onStart={handleStartPeriod}
-            onPause={handlePausePeriod}
-            onInterval={handleInterval}
+            isTimerRunning={timer.isRunning}
+            currentTime={timer.time}
+            onTimerStart={handleStartPeriod}
+            onTimerPause={handlePausePeriod}
+            onTimerInterval={handleInterval}
             onAddPeriod={handleAddPeriod}
             onRemoveLastPeriod={handleRemoveLastPeriod}
-            onFinish={handleFinishMatchDynamic}
+            onFinishMatch={handleFinishMatchDynamic}
+            onHomeGoal={handleHomeGoal}
+            onAwayGoal={handleAwayGoal}
+            onHomeGoalRemove={handleHomeGoalRemove}
+            onAwayGoalRemove={handleAwayGoalRemove}
+            onSubstitution={() => setShowSubstitutionModal(true)}
+            onAmmonition={() => setShowAmmonitionModal(true)}
+            onOtherEvents={() => setShowOtherEventsModal(true)}
+            onRemoveEvent={handleRemoveEvent}
+            onRemoveSubstitution={handleRemoveSubstitution}
+            selectedHomeScorer={selectedHomeScorer}
+            selectedAwayScorer={selectedAwayScorer}
+            onSelectHomeScorer={setSelectedHomeScorer}
+            onSelectAwayScorer={setSelectedAwayScorer}
             formatTime={timer.formatTime}
+            getPlayersOnField={getPlayersOnField}
+            getPlayersOnBench={getPlayersOnBench}
+            getPlayerJerseyNumber={getPlayerJerseyNumber}
+            manageError={manageError}
           />
-
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
-            <div>
-              <h3 className="text-lg font-semibold text-gray-800 mb-2">In campo</h3>
-              <div className="bg-white rounded-xl shadow p-4 mb-4 min-h-[60px]">
-                {getPlayersOnField().length === 0 ? (
-                  <span className="text-gray-400">Nessun giocatore in campo</span>
-                ) : (                <ul className="space-y-1">
-                    {managingMatch.lineup.map(matchPlayer => {
-                      const player = players.find(p => p.id === matchPlayer.playerId);
-                      if (!player) return null;
-                      return (
-                        <li key={player.id} className="flex items-center gap-2">
-                          <span className="font-bold text-blue-700">#{matchPlayer.jerseyNumber}</span>
-                          <span>{player.firstName} {player.lastName}</span>
-                          <span className="text-xs text-gray-500">{matchPlayer.position}</span>
-                        </li>
-                      );
-                    })}
-                  </ul>
-                )}
-              </div>
-            </div>
-            <div>
-              <h3 className="text-lg font-semibold text-gray-800 mb-2">In panchina</h3>
-              <div className="bg-white rounded-xl shadow p-4 mb-4 min-h-[60px]">
-                {getPlayersOnBench().length === 0 ? (
-                  <span className="text-gray-400">Nessun giocatore in panchina</span>
-                ) : (
-                  <ul className="space-y-1">
-                    {getPlayersOnBench().map(player => {
-                      const jerseyNumber = getPlayerJerseyNumber(player.id);
-                      return (
-                        <li key={player.id} className="flex items-center gap-2">
-                          <span className="font-bold text-green-700">
-                            {jerseyNumber ? `#${jerseyNumber}` : '#'}
-                          </span>
-                          <span>{player.firstName} {player.lastName}</span>
-                        </li>
-                      );
-                    })}
-                  </ul>
-                )}
-              </div>
-            </div>
-          </div>
-
-          <div className="grid grid-cols-2 gap-6 mb-6">
-            <div>
-              <GoalCounter
-                teamName={"Nostra Squadra"}
-                score={managingMatch.homeAway === 'home' ? managingMatch.homeScore : managingMatch.awayScore}
-                onIncrement={handleHomeGoal}
-                onDecrement={handleHomeGoalRemove}
-                disabled={managingMatch.status === 'scheduled' || managingMatch.status === 'finished' || !selectedHomeScorer || (managingMatch.periods?.[currentPeriodIndex]?.type === 'interval')}
-              />
-              <select
-                className="mt-2 w-full px-3 py-2 border border-gray-300 rounded-lg"
-                value={selectedHomeScorer}
-                onChange={e => setSelectedHomeScorer(e.target.value)}
-                disabled={managingMatch.status === 'scheduled' || managingMatch.status === 'finished' || (managingMatch.periods?.[currentPeriodIndex]?.type === 'interval')}
-                required
-              >
-                <option value="">Seleziona marcatore</option>
-                {managingMatch.lineup.map(matchPlayer => {
-                  const player = players.find(p => p.id === matchPlayer.playerId);
-                  if (!player) return null;
-                  return (
-                    <option key={player.id} value={player.id}>#{matchPlayer.jerseyNumber} - {player.firstName} {player.lastName}</option>
-                  );
-                })}
-              </select>
-            </div>
-            <div>
-              <GoalCounter
-                teamName={managingMatch.opponent}
-                score={managingMatch.homeAway === 'home' ? managingMatch.awayScore : managingMatch.homeScore}
-                onIncrement={handleAwayGoal}
-                onDecrement={handleAwayGoalRemove}
-                disabled={managingMatch.status === 'scheduled' || managingMatch.status === 'finished' || !selectedAwayScorer || (managingMatch.periods?.[currentPeriodIndex]?.type === 'interval')}
-              />
-              <select
-                className="mt-2 w-full px-3 py-2 border border-gray-300 rounded-lg"
-                value={selectedAwayScorer}
-                onChange={e => setSelectedAwayScorer(Number(e.target.value))}
-                disabled={managingMatch.status === 'scheduled' || managingMatch.status === 'finished' || (managingMatch.periods?.[currentPeriodIndex]?.type === 'interval')}
-                required
-              >
-                <option value="">Seleziona maglia avversaria</option>
-                {managingMatch.opponentLineup.map(num => (
-                  <option key={num} value={num}>#{num}</option>
-                ))}
-              </select>
-            </div>
-          </div>
-
-          {managingMatch.events.filter(e => e.type === 'goal').length > 0 && (
-            <div className="bg-white rounded-xl shadow-md p-6 mb-6">
-              <h3 className="text-lg font-semibold text-gray-800 mb-4">Cronologia Goal</h3>
-              <div className="space-y-3">
-                {managingMatch.events
-                  .filter(e => e.type === 'goal')
-                  .sort((a, b) => {
-                    if (b.minute !== a.minute) return b.minute - a.minute;
-                    return (b.second || 0) - (a.second || 0);
-                  })
-                  .map(goal => (
-                    <div
-                      key={goal.id}
-                      className={`flex items-center gap-4 p-3 rounded-lg group relative ${goal.description?.includes('avversario') ? 'bg-red-50' : 'bg-green-50'}`}
-                    >
-                      <span className={`text-sm font-bold ${goal.description?.includes('avversario') ? 'text-red-600' : 'text-green-600'}`}>{goal.minute}{goal.second !== null && goal.second !== undefined ? `:${goal.second.toString().padStart(2, '0')}` : ''}</span>
-                      <div className="flex items-center gap-2">
-                        <span className="text-gray-800">{goal.description}</span>
-                      </div>
-                      <button
-                        onClick={() => handleRemoveEvent(goal.id)}
-                        disabled={managingMatch.periods?.[currentPeriodIndex]?.type === 'interval'}
-                        className="ml-auto p-1 text-red-500 hover:bg-red-100 rounded-full opacity-0 group-hover:opacity-100 transition-opacity absolute right-2 top-1/2 -translate-y-1/2 disabled:text-gray-400 disabled:hover:bg-gray-100"
-                        title="Rimuovi goal"
-                      >
-                        <Trash2 className="w-4 h-4" />
-                      </button>
-                    </div>
-                  ))}
-              </div>
-            </div>
-          )}
-
-          {/* Cronologia Ammonizioni */}
-          {managingMatch.events.filter(e => e.type === 'yellow-card' || e.type === 'red-card' || e.type === 'second-yellow-card' || e.type === 'blue-card' || e.type === 'expulsion' || e.type === 'warning').length > 0 && (
-            <div className="bg-white rounded-xl shadow-md p-6 mb-6">
-              <h3 className="text-lg font-semibold text-gray-800 mb-4">Cronologia Ammonizioni</h3>
-              <div className="space-y-3">
-                {managingMatch.events
-                  .filter(e => ['yellow-card','red-card','second-yellow-card','blue-card','expulsion','warning'].includes(e.type))
-                  .sort((a, b) => {
-                    if (b.minute !== a.minute) return b.minute - a.minute;
-                    return (b.second || 0) - (a.second || 0);
-                  })
-                  .map(ev => (
-                    <div key={ev.id} className={`flex items-center gap-4 p-3 rounded-lg group relative ${ev.type === 'yellow-card' ? 'bg-yellow-50' : ev.type === 'red-card' ? 'bg-red-50' : ev.type === 'second-yellow-card' ? 'bg-orange-50' : ev.type === 'blue-card' ? 'bg-blue-50' : 'bg-gray-50'}`}>
-                      <span className={`text-sm font-bold ${ev.type === 'yellow-card' ? 'text-yellow-600' : ev.type === 'red-card' ? 'text-red-600' : ev.type === 'second-yellow-card' ? 'text-orange-600' : ev.type === 'blue-card' ? 'text-blue-600' : 'text-gray-600'}`}>{ev.minute}{ev.second !== null && ev.second !== undefined ? `:${ev.second.toString().padStart(2, '0')}` : ''}</span>
-                      <div className="flex items-center gap-2">
-                        {ev.type === 'yellow-card' && <Square className="w-5 h-5 text-yellow-500" />}
-                        {ev.type === 'red-card' && <Square className="w-5 h-5 text-red-600" />}
-                        {ev.type === 'second-yellow-card' && <Square className="w-5 h-5 text-orange-500" />}
-                        {ev.type === 'blue-card' && <Square className="w-5 h-5 text-blue-600" />}
-                        {ev.type === 'expulsion' && <Ban className="w-5 h-5 text-gray-700" />}
-                        {ev.type === 'warning' && <AlertTriangle className="w-5 h-5 text-yellow-400" />}
-                        <span className="text-gray-800">{ev.description}</span>
-                      </div>
-                      <button
-                        onClick={() => handleRemoveEvent(ev.id)}
-                        disabled={managingMatch.periods?.[currentPeriodIndex]?.type === 'interval'}
-                        className="ml-auto p-1 text-red-500 hover:bg-red-100 rounded-full opacity-0 group-hover:opacity-100 transition-opacity absolute right-2 top-1/2 -translate-y-1/2 disabled:text-gray-400 disabled:hover:bg-gray-100"
-                        title="Rimuovi ammonizione"
-                      >
-                        <Trash2 className="w-4 h-4" />
-                      </button>
-                    </div>
-                  ))}
-              </div>
-            </div>
-          )}
-
-          {/* Cronologia Sostituzioni */}
-          {managingMatch.substitutions.length > 0 && (
-            <div className="bg-white rounded-xl shadow-md p-6">
-              <h3 className="text-lg font-semibold text-gray-800 mb-4">Sostituzioni</h3>
-              <div className="space-y-3">
-                {managingMatch.substitutions
-                  .slice()
-                  .sort((a, b) => {
-                    if (b.minute !== a.minute) return b.minute - a.minute;
-                    return (b.second || 0) - (a.second || 0);
-                  })
-                  .map(sub => {
-                    const playerOut = players.find(p => p.id === sub.playerOut);
-                    const playerIn = players.find(p => p.id === sub.playerIn);
-                    return (
-                      <div key={sub.id} className="flex items-center gap-4 p-3 bg-blue-50 rounded-lg group relative">
-                        <span className="text-sm font-bold text-blue-600">{sub.minute}{sub.second !== null && sub.second !== undefined ? `:${sub.second.toString().padStart(2, '0')}` : ''}</span>                        <div className="flex items-center gap-2">
-                          <span className="text-red-600">
-                            {playerOut?.firstName} {playerOut?.lastName}
-                          </span>
-                          <ArrowLeftRight className="w-4 h-4 text-gray-400" />
-                          <span className="text-green-600">
-                            {playerIn?.firstName} {playerIn?.lastName}
-                          </span>
-                        </div>
-                        <button
-                          onClick={() => handleRemoveSubstitution(sub.id)}
-                          disabled={managingMatch.periods?.[currentPeriodIndex]?.type === 'interval'}
-                          className="ml-auto p-1 text-red-500 hover:bg-red-100 rounded-full opacity-0 group-hover:opacity-100 transition-opacity absolute right-2 top-1/2 -translate-y-1/2 disabled:text-gray-400 disabled:hover:bg-gray-100"
-                          title="Rimuovi sostituzione"
-                        >
-                          <Trash2 className="w-4 h-4" />
-                        </button>
-                      </div>
-                    );
-                  })}
-              </div>
-            </div>
-          )}
-
-          {/* Cronologia Altri Eventi */}
-          {managingMatch.events.filter(e => ['foul', 'corner', 'offside', 'free-kick', 'penalty', 'throw-in', 'injury'].includes(e.type)).length > 0 && (
-            <div className="bg-white rounded-xl shadow-md p-6 mb-6">
-              <h3 className="text-lg font-semibold text-gray-800 mb-4">Altri Eventi</h3>
-              <div className="space-y-3">
-                {managingMatch.events
-                  .filter(e => ['foul', 'corner', 'offside', 'free-kick', 'penalty', 'throw-in', 'injury'].includes(e.type))
-                  .sort((a, b) => {
-                    if (b.minute !== a.minute) return b.minute - a.minute;
-                    return (b.second || 0) - (a.second || 0);
-                  })
-                  .map(ev => {
-                    // Funzione per ottenere l'icona e il colore dell'evento
-                    const getEventIcon = (type: string) => {
-                      switch (type) {
-                        case 'foul': return { icon: AlertTriangle, color: 'text-orange-600' };
-                        case 'corner': return { icon: Flag, color: 'text-blue-600' };
-                        case 'offside': return { icon: Ban, color: 'text-red-600' };
-                        case 'free-kick': return { icon: Zap, color: 'text-green-600' };
-                        case 'penalty': return { icon: Calendar, color: 'text-purple-600' };
-                        case 'throw-in': return { icon: UserX, color: 'text-gray-600' };
-                        case 'injury': return { icon: UserX, color: 'text-red-500' };
-                        default: return { icon: FileText, color: 'text-gray-600' };
-                      }
-                    };
-
-                    const { icon: Icon, color } = getEventIcon(ev.type);
-
-                    return (
-                      <div key={ev.id} className="flex items-center gap-4 p-3 bg-gray-50 rounded-lg group relative">
-                        <span className="text-sm font-bold text-gray-600">{ev.minute}{ev.second !== null && ev.second !== undefined ? `:${ev.second.toString().padStart(2, '0')}` : ''}</span>
-                        <div className="flex items-center gap-2">
-                          <Icon className={`w-5 h-5 ${color}`} />
-                          <span className="text-gray-800">{ev.description}</span>
-                        </div>
-                        <button
-                          onClick={() => handleRemoveEvent(ev.id)}
-                          disabled={managingMatch.periods?.[currentPeriodIndex]?.type === 'interval'}
-                          className="ml-auto p-1 text-red-500 hover:bg-red-100 rounded-full opacity-0 group-hover:opacity-100 transition-opacity absolute right-2 top-1/2 -translate-y-1/2 disabled:text-gray-400 disabled:hover:bg-gray-100"
-                          title="Rimuovi evento"
-                        >
-                          <Trash2 className="w-4 h-4" />
-                        </button>
-                      </div>
-                    );
-                  })}
-              </div>
-            </div>
-          )}
-
           <SubstitutionModal
             isOpen={showSubstitutionModal}
             onClose={() => setShowSubstitutionModal(false)}
@@ -1202,7 +854,6 @@ function App() {
             currentMinute={Math.floor(timer.time / 60)}
             playerJerseyNumbers={managingMatch.playerJerseyNumbers}
           />
-
           <AmmonitionModal
             isOpen={showAmmonitionModal}
             onClose={() => setShowAmmonitionModal(false)}
@@ -1211,7 +862,6 @@ function App() {
             onAmmonition={handleAmmonition}
             currentMinute={Math.floor(timer.time / 60)}
           />
-
           <OtherEventsModal
             isOpen={showOtherEventsModal}
             onClose={() => setShowOtherEventsModal(false)}
@@ -1220,9 +870,8 @@ function App() {
             currentTimeInSeconds={timer.time}
             onEventAdd={handleOtherEvent}
           />
-        </div>
-        );
-      }
+        </>
+      );
     }    // List views
     if (currentView === 'csv') {
       return (
@@ -1467,7 +1116,8 @@ function App() {
     setManagingMatch(updatedMatch);
     database.updateMatch(managingMatch.id, updatedMatch);
     loadData();
-  };const handleAddPeriod = (type: 'regular' | 'extra') => {
+  };
+  const handleAddPeriod = (type: 'regular' | 'extra') => {
     if (!managingMatch) return;
     const periods = [...(managingMatch.periods || defaultPeriods)];
     const regularPeriodsCount = periods.filter(p => p.type === 'regular').length;
@@ -1776,14 +1426,6 @@ function App() {
                       currentView === 'manage' ? (
                         <span className="flex items-center gap-2">
                           Gestione partita in corso
-                          {managingMatch && (
-                            <button
-                              onClick={() => setUseEnhancedInterface(!useEnhancedInterface)}
-                              className="text-xs bg-blue-100 text-blue-700 px-2 py-1 rounded-full hover:bg-blue-200 transition-colors"
-                            >
-                              {useEnhancedInterface ? 'Vista Classica' : 'Vista Migliorata'}
-                            </button>
-                          )}
                         </span>
                       ) :
                       'Gestisci e visualizza'
