@@ -219,13 +219,43 @@ export function EnhancedMatchManagement({
             <span>{tab.label}</span>
           </button>
         ))}
-      </div>
-
-      {/* Contenuto basato sulla vista attiva */}
+      </div>      {/* Contenuto basato sulla vista attiva */}
       {activeView === 'overview' && (
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-          {/* Sezione Goal migliorata */}
+          {/* Sezione principale */}
           <div className="lg:col-span-2 space-y-6">
+            {/* Azioni Rapide - spostate sopra i goal */}
+            <div className="bg-white rounded-2xl shadow-lg p-6 hover:shadow-xl transition-shadow">
+              <h3 className="text-xl font-bold text-gray-800 mb-6">Azioni Rapide</h3>
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                <button
+                  onClick={onSubstitution}
+                  disabled={match.status === 'finished' || currentPeriod?.type === 'interval'}
+                  className="flex items-center justify-center gap-3 bg-blue-500 hover:bg-blue-600 disabled:bg-gray-300 text-white px-6 py-4 rounded-lg transition-all duration-200 font-medium shadow-md hover:shadow-lg"
+                >
+                  <ArrowLeftRight className="w-5 h-5" />
+                  Sostituzione
+                </button>
+                <button
+                  onClick={onAmmonition}
+                  disabled={match.status === 'finished' || currentPeriod?.type === 'interval'}
+                  className="flex items-center justify-center gap-3 bg-yellow-500 hover:bg-yellow-600 disabled:bg-gray-300 text-white px-6 py-4 rounded-lg transition-all duration-200 font-medium shadow-md hover:shadow-lg"
+                >
+                  <AlertTriangle className="w-5 h-5" />
+                  Ammonizione
+                </button>
+                <button
+                  onClick={onOtherEvents}
+                  disabled={match.status === 'finished' || currentPeriod?.type === 'interval'}
+                  className="flex items-center justify-center gap-3 bg-purple-500 hover:bg-purple-600 disabled:bg-gray-300 text-white px-6 py-4 rounded-lg transition-all duration-200 font-medium shadow-md hover:shadow-lg"
+                >
+                  <Flag className="w-5 h-5" />
+                  Altri Eventi
+                </button>
+              </div>
+            </div>
+
+            {/* Sezione Goal */}
             <div className="grid grid-cols-2 gap-6">
               {/* Nostra Squadra */}
               <div className="bg-white rounded-2xl shadow-lg p-6 border-l-4 border-blue-500 hover:shadow-xl transition-shadow">
@@ -311,115 +341,9 @@ export function EnhancedMatchManagement({
                     </button>
                   </div>
                 </div>
-              </div>
-            </div>
+              </div>            </div>
 
-            {/* Azioni Rapide */}
-            <div className="bg-white rounded-2xl shadow-lg p-6 hover:shadow-xl transition-shadow">
-              <h3 className="text-xl font-bold text-gray-800 mb-6">Azioni Rapide</h3>
-              <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-                <button
-                  onClick={onSubstitution}
-                  disabled={match.status === 'finished' || currentPeriod?.type === 'interval'}
-                  className="flex items-center justify-center gap-3 bg-blue-500 hover:bg-blue-600 disabled:bg-gray-300 text-white px-6 py-4 rounded-lg transition-all duration-200 font-medium shadow-md hover:shadow-lg"
-                >
-                  <ArrowLeftRight className="w-5 h-5" />
-                  Sostituzione
-                </button>
-                <button
-                  onClick={onAmmonition}
-                  disabled={match.status === 'finished' || currentPeriod?.type === 'interval'}
-                  className="flex items-center justify-center gap-3 bg-yellow-500 hover:bg-yellow-600 disabled:bg-gray-300 text-white px-6 py-4 rounded-lg transition-all duration-200 font-medium shadow-md hover:shadow-lg"
-                >
-                  <AlertTriangle className="w-5 h-5" />
-                  Ammonizione
-                </button>
-                <button
-                  onClick={onOtherEvents}
-                  disabled={match.status === 'finished' || currentPeriod?.type === 'interval'}
-                  className="flex items-center justify-center gap-3 bg-purple-500 hover:bg-purple-600 disabled:bg-gray-300 text-white px-6 py-4 rounded-lg transition-all duration-200 font-medium shadow-md hover:shadow-lg"
-                >
-                  <Flag className="w-5 h-5" />
-                  Altri Eventi
-                </button>
-              </div>
-            </div>
-          </div>
-
-          {/* Sidebar migliorata */}
-          <div className="space-y-6">
-            {/* Periodi */}
-            {hasMatchStarted && (
-              <div className="bg-white rounded-2xl shadow-lg p-6 hover:shadow-xl transition-shadow">
-                <h3 className="text-xl font-bold text-gray-800 mb-6">Periodi</h3>
-                <div className="space-y-3">
-                  {match.periods?.map((period, index) => {
-                    const isCurrent = index === currentPeriodIndex;
-                    return (
-                      <div
-                        key={index}
-                        className={`p-4 rounded-lg border-2 transition-all duration-200 ${
-                          isCurrent
-                            ? period.type === 'regular'
-                              ? 'border-green-400 bg-green-50 shadow-md'
-                              : period.type === 'interval'
-                              ? 'border-orange-400 bg-orange-50 shadow-md'
-                              : 'border-purple-400 bg-purple-50 shadow-md'
-                            : 'border-gray-200 bg-gray-50 hover:bg-gray-100'
-                        }`}
-                      >
-                        <div className="flex justify-between items-center">
-                          <span className={`font-semibold ${isCurrent ? 'text-gray-800' : 'text-gray-600'}`}>
-                            {period.label}
-                          </span>
-                          <span className={`text-sm font-mono ${isCurrent ? 'text-gray-700' : 'text-gray-500'}`}>
-                            {formatTime(period.duration)}
-                          </span>
-                        </div>
-                      </div>
-                    );
-                  })}
-                </div>
-                
-                {/* Controlli periodo */}
-                <div className="grid grid-cols-2 gap-3 mt-6">
-                  <button
-                    onClick={() => onAddPeriod('regular')}
-                    className="flex items-center justify-center gap-2 bg-blue-500 hover:bg-blue-600 text-white px-4 py-3 rounded-lg transition-all duration-200 font-medium shadow-md text-sm"
-                  >
-                    <Plus className="w-4 h-4" />
-                    Tempo
-                  </button>
-                  <button
-                    onClick={() => onAddPeriod('extra')}
-                    className="flex items-center justify-center gap-2 bg-purple-500 hover:bg-purple-600 text-white px-4 py-3 rounded-lg transition-all duration-200 font-medium shadow-md text-sm"
-                  >
-                    <Plus className="w-4 h-4" />
-                    Extra
-                  </button>
-                </div>
-                
-                <div className="grid grid-cols-2 gap-3 mt-3">
-                  <button
-                    onClick={onRemoveLastPeriod}
-                    disabled={!match.periods || match.periods.length <= 1}
-                    className="flex items-center justify-center gap-2 bg-red-500 hover:bg-red-600 disabled:bg-gray-300 text-white px-4 py-3 rounded-lg transition-all duration-200 font-medium shadow-md text-sm"
-                  >
-                    <Minus className="w-4 h-4" />
-                    Rimuovi
-                  </button>
-                  <button
-                    onClick={onFinishMatch}
-                    className="flex items-center justify-center gap-2 bg-gray-600 hover:bg-gray-700 text-white px-4 py-3 rounded-lg transition-all duration-200 font-medium shadow-md text-sm"
-                  >
-                    <Square className="w-4 h-4" />
-                    Termina
-                  </button>
-                </div>
-              </div>
-            )}
-
-            {/* Eventi Recenti */}
+            {/* Eventi Recenti - Spostati sotto i goal */}
             <div className="bg-white rounded-2xl shadow-lg p-6 hover:shadow-xl transition-shadow">
               <h3 className="text-xl font-bold text-gray-800 mb-6 flex items-center gap-2">
                 <Activity className="w-5 h-5 text-green-600" />
@@ -491,6 +415,79 @@ export function EnhancedMatchManagement({
                 })()}
               </div>
             </div>
+          </div>
+
+          {/* Sidebar migliorata */}
+          <div className="space-y-6">{/* Periodi */}
+            {hasMatchStarted && (
+              <div className="bg-white rounded-2xl shadow-lg p-6 hover:shadow-xl transition-shadow">
+                <h3 className="text-xl font-bold text-gray-800 mb-6">Periodi</h3>
+                
+                {/* Controlli periodo - Spostati sopra l'elenco dei periodi */}
+                <div className="grid grid-cols-2 gap-3 mb-6">
+                  <button
+                    onClick={() => onAddPeriod('regular')}
+                    className="flex items-center justify-center gap-2 bg-blue-500 hover:bg-blue-600 text-white px-4 py-3 rounded-lg transition-all duration-200 font-medium shadow-md text-sm"
+                  >
+                    <Plus className="w-4 h-4" />
+                    Tempo
+                  </button>
+                  <button
+                    onClick={() => onAddPeriod('extra')}
+                    className="flex items-center justify-center gap-2 bg-purple-500 hover:bg-purple-600 text-white px-4 py-3 rounded-lg transition-all duration-200 font-medium shadow-md text-sm"
+                  >
+                    <Plus className="w-4 h-4" />
+                    Extra
+                  </button>
+                </div>
+                
+                <div className="grid grid-cols-2 gap-3 mb-6">
+                  <button
+                    onClick={onRemoveLastPeriod}
+                    disabled={!match.periods || match.periods.length <= 1}
+                    className="flex items-center justify-center gap-2 bg-red-500 hover:bg-red-600 disabled:bg-gray-300 text-white px-4 py-3 rounded-lg transition-all duration-200 font-medium shadow-md text-sm"
+                  >
+                    <Minus className="w-4 h-4" />
+                    Rimuovi
+                  </button>
+                  <button
+                    onClick={onFinishMatch}
+                    className="flex items-center justify-center gap-2 bg-gray-600 hover:bg-gray-700 text-white px-4 py-3 rounded-lg transition-all duration-200 font-medium shadow-md text-sm"
+                  >
+                    <Square className="w-4 h-4" />
+                    Termina
+                  </button>
+                </div>                <div className="space-y-3">
+                  {match.periods?.slice().reverse().map((period, reverseIndex) => {
+                    const index = match.periods!.length - 1 - reverseIndex; // Calcola l'indice originale
+                    const isCurrent = index === currentPeriodIndex;
+                    return (
+                      <div
+                        key={index}
+                        className={`p-4 rounded-lg border-2 transition-all duration-200 ${
+                          isCurrent
+                            ? period.type === 'regular'
+                              ? 'border-green-400 bg-green-50 shadow-md'
+                              : period.type === 'interval'
+                              ? 'border-orange-400 bg-orange-50 shadow-md'
+                              : 'border-purple-400 bg-purple-50 shadow-md'
+                            : 'border-gray-200 bg-gray-50 hover:bg-gray-100'
+                        }`}
+                      >
+                        <div className="flex justify-between items-center">
+                          <span className={`font-semibold ${isCurrent ? 'text-gray-800' : 'text-gray-600'}`}>
+                            {period.label}
+                          </span>
+                          <span className={`text-sm font-mono ${isCurrent ? 'text-gray-700' : 'text-gray-500'}`}>
+                            {formatTime(period.duration)}
+                          </span>
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+            )}
           </div>
         </div>
       )}
@@ -629,9 +626,22 @@ function MatchEventChronologies({
       default: return { icon: FileText, color: 'text-gray-600' };
     }
   };
+  // Controlla se ci sono eventi di qualsiasi tipo
+  const hasAnyEvents = goals.length > 0 || cards.length > 0 || match.substitutions.length > 0 || otherEvents.length > 0;
 
   return (
     <div className="space-y-6">
+      {/* Messaggio quando non ci sono eventi */}
+      {!hasAnyEvents && (
+        <div className="bg-white rounded-xl shadow-lg p-12">
+          <div className="text-center">
+            <FileText className="w-16 h-16 text-gray-400 mx-auto mb-4" />
+            <h3 className="text-lg font-semibold text-gray-800 mb-2">Nessun evento registrato</h3>
+            <p className="text-gray-500">Gli eventi della partita appariranno qui una volta registrati</p>
+          </div>
+        </div>
+      )}
+
       {/* Cronologia Goal */}
       {goals.length > 0 && (
         <div className="bg-white rounded-xl shadow-lg p-6">

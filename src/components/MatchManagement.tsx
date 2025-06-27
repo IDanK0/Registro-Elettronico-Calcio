@@ -229,9 +229,39 @@ export function MatchManagement({
 
       {/* Content based on active view */}
       {activeView === 'overview' && (
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-          {/* Goal Management */}
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">          {/* Goal Management */}
           <div className="lg:col-span-2 space-y-6">
+            {/* Quick Actions - spostate sopra i goal */}
+            <div className="bg-white rounded-xl shadow-lg p-6">
+              <h3 className="text-lg font-semibold text-gray-800 mb-4">Azioni Rapide</h3>
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                <button
+                  onClick={onSubstitution}
+                  disabled={match.status === 'finished' || currentPeriod?.type === 'interval'}
+                  className="flex items-center justify-center gap-2 bg-blue-500 hover:bg-blue-600 disabled:bg-gray-300 text-white px-4 py-3 rounded-lg transition-colors"
+                >
+                  <ArrowLeftRight className="w-4 h-4" />
+                  Sostituzione
+                </button>
+                <button
+                  onClick={onAmmonition}
+                  disabled={match.status === 'finished' || currentPeriod?.type === 'interval'}
+                  className="flex items-center justify-center gap-2 bg-yellow-500 hover:bg-yellow-600 disabled:bg-gray-300 text-white px-4 py-3 rounded-lg transition-colors"
+                >
+                  <AlertTriangle className="w-4 h-4" />
+                  Ammonizione
+                </button>
+                <button
+                  onClick={onOtherEvents}
+                  disabled={match.status === 'finished' || currentPeriod?.type === 'interval'}
+                  className="flex items-center justify-center gap-2 bg-purple-500 hover:bg-purple-600 disabled:bg-gray-300 text-white px-4 py-3 rounded-lg transition-colors"
+                >
+                  <Flag className="w-4 h-4" />
+                  Altri Eventi
+                </button>
+              </div>
+            </div>
+
             {/* Goal Counters */}
             <div className="grid grid-cols-2 gap-4">
               {/* Nossa Squadra */}
@@ -318,37 +348,36 @@ export function MatchManagement({
                     </button>
                   </div>
                 </div>
-              </div>
-            </div>
+              </div>            </div>
 
-            {/* Quick Actions */}
+            {/* Eventi recenti - Spostati sotto i goal */}
             <div className="bg-white rounded-xl shadow-lg p-6">
-              <h3 className="text-lg font-semibold text-gray-800 mb-4">Azioni Rapide</h3>
-              <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-                <button
-                  onClick={onSubstitution}
-                  disabled={match.status === 'finished' || currentPeriod?.type === 'interval'}
-                  className="flex items-center justify-center gap-2 bg-blue-500 hover:bg-blue-600 disabled:bg-gray-300 text-white px-4 py-3 rounded-lg transition-colors"
-                >
-                  <ArrowLeftRight className="w-4 h-4" />
-                  Sostituzione
-                </button>
-                <button
-                  onClick={onAmmonition}
-                  disabled={match.status === 'finished' || currentPeriod?.type === 'interval'}
-                  className="flex items-center justify-center gap-2 bg-yellow-500 hover:bg-yellow-600 disabled:bg-gray-300 text-white px-4 py-3 rounded-lg transition-colors"
-                >
-                  <AlertTriangle className="w-4 h-4" />
-                  Ammonizione
-                </button>
-                <button
-                  onClick={onOtherEvents}
-                  disabled={match.status === 'finished' || currentPeriod?.type === 'interval'}
-                  className="flex items-center justify-center gap-2 bg-purple-500 hover:bg-purple-600 disabled:bg-gray-300 text-white px-4 py-3 rounded-lg transition-colors"
-                >
-                  <Flag className="w-4 h-4" />
-                  Altri Eventi
-                </button>
+              <h3 className="text-lg font-semibold text-gray-800 mb-4">Eventi Recenti</h3>
+              <div className="space-y-3">
+                {recentEvents.length === 0 ? (
+                  <p className="text-gray-500 text-sm text-center py-4">Nessun evento registrato</p>
+                ) : (
+                  recentEvents.map(event => (
+                    <div key={event.id} className="flex items-center gap-3 p-3 bg-gray-50 rounded-lg">
+                      <div className="flex-shrink-0 w-12 text-center">
+                        <span className="text-xs font-bold text-gray-600">
+                          {event.minute}:{(event.second || 0).toString().padStart(2, '0')}
+                        </span>
+                      </div>                      <div className="flex-1 text-sm text-gray-800">
+                        {event.type === 'substitution' ? 'Sostituzione' : (event.description || 'Evento')}
+                      </div>
+                      <button
+                        onClick={() => event.type === 'substitution' 
+                          ? onRemoveSubstitution(event.id)
+                          : onRemoveEvent(event.id)
+                        }
+                        className="flex-shrink-0 p-1 text-red-500 hover:bg-red-100 rounded-full transition-colors"
+                      >
+                        <Trash2 className="w-3 h-3" />
+                      </button>
+                    </div>
+                  ))
+                )}
               </div>
             </div>
 
@@ -363,13 +392,48 @@ export function MatchManagement({
           </div>
 
           {/* Sidebar con eventi recenti */}
-          <div className="space-y-6">
-            {/* Periodi */}
+          <div className="space-y-6">            {/* Periodi */}
             {hasMatchStarted && (
               <div className="bg-white rounded-xl shadow-lg p-6">
                 <h3 className="text-lg font-semibold text-gray-800 mb-4">Periodi</h3>
-                <div className="space-y-2">
-                  {match.periods?.map((period, index) => {
+                
+                {/* Period controls - Spostati sopra l'elenco dei periodi */}
+                <div className="flex gap-2 mb-4">
+                  <button
+                    onClick={() => onAddPeriod('regular')}
+                    className="flex-1 flex items-center justify-center gap-1 bg-blue-500 hover:bg-blue-600 text-white px-3 py-2 rounded-lg transition-colors text-sm"
+                  >
+                    <Plus className="w-3 h-3" />
+                    Tempo
+                  </button>
+                  <button
+                    onClick={() => onAddPeriod('extra')}
+                    className="flex-1 flex items-center justify-center gap-1 bg-purple-500 hover:bg-purple-600 text-white px-3 py-2 rounded-lg transition-colors text-sm"
+                  >
+                    <Plus className="w-3 h-3" />
+                    Extra
+                  </button>
+                </div>
+                
+                <div className="flex gap-2 mb-4">
+                  <button
+                    onClick={onRemoveLastPeriod}
+                    disabled={!match.periods || match.periods.length <= 1}
+                    className="flex-1 flex items-center justify-center gap-1 bg-red-500 hover:bg-red-600 disabled:bg-gray-300 text-white px-3 py-2 rounded-lg transition-colors text-sm"
+                  >
+                    <Minus className="w-3 h-3" />
+                    Rimuovi
+                  </button>
+                  <button
+                    onClick={onFinishMatch}
+                    className="flex-1 flex items-center justify-center gap-1 bg-gray-600 hover:bg-gray-700 text-white px-3 py-2 rounded-lg transition-colors text-sm"
+                  >
+                    <Square className="w-3 h-3" />
+                    Termina
+                  </button>
+                </div>                <div className="space-y-2">
+                  {match.periods?.slice().reverse().map((period, reverseIndex) => {
+                    const index = match.periods!.length - 1 - reverseIndex; // Calcola l'indice originale
                     const isCurrent = index === currentPeriodIndex;
                     return (
                       <div
@@ -396,79 +460,8 @@ export function MatchManagement({
                     );
                   })}
                 </div>
-                
-                {/* Period controls */}
-                <div className="flex gap-2 mt-4">
-                  <button
-                    onClick={() => onAddPeriod('regular')}
-                    className="flex-1 flex items-center justify-center gap-1 bg-blue-500 hover:bg-blue-600 text-white px-3 py-2 rounded-lg transition-colors text-sm"
-                  >
-                    <Plus className="w-3 h-3" />
-                    Tempo
-                  </button>
-                  <button
-                    onClick={() => onAddPeriod('extra')}
-                    className="flex-1 flex items-center justify-center gap-1 bg-purple-500 hover:bg-purple-600 text-white px-3 py-2 rounded-lg transition-colors text-sm"
-                  >
-                    <Plus className="w-3 h-3" />
-                    Extra
-                  </button>
-                </div>
-                
-                <div className="flex gap-2 mt-2">
-                  <button
-                    onClick={onRemoveLastPeriod}
-                    disabled={!match.periods || match.periods.length <= 1}
-                    className="flex-1 flex items-center justify-center gap-1 bg-red-500 hover:bg-red-600 disabled:bg-gray-300 text-white px-3 py-2 rounded-lg transition-colors text-sm"
-                  >
-                    <Minus className="w-3 h-3" />
-                    Rimuovi
-                  </button>
-                  <button
-                    onClick={onFinishMatch}
-                    className="flex-1 flex items-center justify-center gap-1 bg-gray-600 hover:bg-gray-700 text-white px-3 py-2 rounded-lg transition-colors text-sm"
-                  >
-                    <Square className="w-3 h-3" />
-                    Termina
-                  </button>
-                </div>
               </div>
             )}
-
-            {/* Eventi recenti */}
-            <div className="bg-white rounded-xl shadow-lg p-6">
-              <h3 className="text-lg font-semibold text-gray-800 mb-4">Eventi Recenti</h3>
-              <div className="space-y-3">
-                {recentEvents.length === 0 ? (
-                  <p className="text-gray-500 text-sm text-center py-4">Nessun evento registrato</p>
-                ) : (
-                  recentEvents.map(event => (
-                    <div key={event.id} className="flex items-center gap-3 p-3 bg-gray-50 rounded-lg">
-                      <div className="flex-shrink-0 w-12 text-center">
-                        <span className="text-xs font-bold text-gray-600">
-                          {event.minute}:{(event.second || 0).toString().padStart(2, '0')}
-                        </span>
-                      </div>
-                      <div className="flex-1 text-sm text-gray-800">
-                        {event.description || 
-                          (event.type === 'substitution' && 'Sostituzione') ||
-                          'Evento'
-                        }
-                      </div>
-                      <button
-                        onClick={() => event.type === 'substitution' 
-                          ? onRemoveSubstitution(event.id)
-                          : onRemoveEvent(event.id)
-                        }
-                        className="flex-shrink-0 p-1 text-red-500 hover:bg-red-100 rounded-full transition-colors"
-                      >
-                        <Trash2 className="w-3 h-3" />
-                      </button>
-                    </div>
-                  ))
-                )}
-              </div>
-            </div>
           </div>
         </div>
       )}
@@ -715,11 +708,10 @@ function EventsTimeline({
                       {event.type === 'substitution' ? 'Sostituzione' : event.type}
                     </span>
                   </div>
-                  
-                  <p className="text-gray-700">
-                    {event.description || 
-                      (event.category === 'substitution' && 'Sostituzione effettuata') ||
-                      'Evento registrato'
+                    <p className="text-gray-700">
+                    {event.category === 'substitution' 
+                      ? 'Sostituzione effettuata'
+                      : (event.description || 'Evento registrato')
                     }
                   </p>
                 </div>
