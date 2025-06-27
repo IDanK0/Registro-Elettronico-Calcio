@@ -12,6 +12,7 @@ import { TrainingList } from './components/TrainingList';
 import { MatchForm } from './components/MatchForm';
 import { MatchList } from './components/MatchList';
 import { MatchTimer } from './components/MatchTimer';
+import { EnhancedMatchManagement } from './components/EnhancedMatchManagement';
 import { SubstitutionModal } from './components/SubstitutionModal';
 import { StatsOverview } from './components/StatsOverview';
 import { GoalCounter } from './components/GoalCounter';
@@ -77,6 +78,8 @@ function App() {
 
   // Stato per errori di gestione partita
   const [manageError, setManageError] = useState<string | null>(null);
+  // Stato per la nuova interfaccia
+  const [useEnhancedInterface, setUseEnhancedInterface] = useState(true);
   // Database hook
   const database = useDatabase();
   // Session hook
@@ -818,7 +821,73 @@ function App() {
     }
 
     if (currentView === 'manage' && managingMatch) {
-      return (
+      if (useEnhancedInterface) {
+        return (
+          <>
+            <EnhancedMatchManagement
+              match={managingMatch}
+              players={players}
+              users={users}
+              currentPeriodIndex={currentPeriodIndex}
+              isTimerRunning={timer.isRunning}
+              currentTime={timer.time}
+              onTimerStart={handleStartPeriod}
+              onTimerPause={handlePausePeriod}
+              onTimerInterval={handleInterval}
+              onAddPeriod={handleAddPeriod}
+              onRemoveLastPeriod={handleRemoveLastPeriod}
+              onFinishMatch={handleFinishMatchDynamic}
+              onHomeGoal={handleHomeGoal}
+              onAwayGoal={handleAwayGoal}
+              onHomeGoalRemove={handleHomeGoalRemove}
+              onAwayGoalRemove={handleAwayGoalRemove}
+              onSubstitution={() => setShowSubstitutionModal(true)}
+              onAmmonition={() => setShowAmmonitionModal(true)}
+              onOtherEvents={() => setShowOtherEventsModal(true)}
+              selectedHomeScorer={selectedHomeScorer}
+              selectedAwayScorer={selectedAwayScorer}
+              onSelectHomeScorer={setSelectedHomeScorer}
+              onSelectAwayScorer={setSelectedAwayScorer}
+              formatTime={timer.formatTime}
+              getPlayersOnField={getPlayersOnField}
+              getPlayersOnBench={getPlayersOnBench}
+              getPlayerJerseyNumber={getPlayerJerseyNumber}
+              manageError={manageError}
+            />
+            
+            {/* Mantieni i modali esistenti */}
+            <SubstitutionModal
+              isOpen={showSubstitutionModal}
+              onClose={() => setShowSubstitutionModal(false)}
+              playersOnField={getPlayersOnField()}
+              playersOnBench={getPlayersOnBench()}
+              onSubstitute={handleSubstitution}
+              currentMinute={Math.floor(timer.time / 60)}
+              playerJerseyNumbers={managingMatch.playerJerseyNumbers}
+            />
+
+            <AmmonitionModal
+              isOpen={showAmmonitionModal}
+              onClose={() => setShowAmmonitionModal(false)}
+              playersOnField={getPlayersOnField()}
+              opponentLineup={managingMatch.opponentLineup}
+              onAmmonition={handleAmmonition}
+              currentMinute={Math.floor(timer.time / 60)}
+            />
+
+            <OtherEventsModal
+              isOpen={showOtherEventsModal}
+              onClose={() => setShowOtherEventsModal(false)}
+              players={players}
+              lineup={managingMatch.lineup}
+              currentTimeInSeconds={timer.time}
+              onEventAdd={handleOtherEvent}
+            />
+          </>
+        );
+      } else {
+        // Interfaccia originale
+        return (
         <div className="space-y-6">
           {manageError && (
             <div className="bg-red-100 text-red-700 px-4 py-2 rounded-lg font-semibold">
@@ -1151,7 +1220,8 @@ function App() {
             onEventAdd={handleOtherEvent}
           />
         </div>
-      );
+        );
+      }
     }    // List views
     if (currentView === 'csv') {
       return (
@@ -1646,7 +1716,19 @@ function App() {
                   <p className="text-gray-600 mt-1">
                     {currentView === 'form' ? 
                       (editingItem ? 'Modifica' : 'Aggiungi nuovo') :
-                      currentView === 'manage' ? 'Gestione partita in corso' :
+                      currentView === 'manage' ? (
+                        <span className="flex items-center gap-2">
+                          Gestione partita in corso
+                          {managingMatch && (
+                            <button
+                              onClick={() => setUseEnhancedInterface(!useEnhancedInterface)}
+                              className="text-xs bg-blue-100 text-blue-700 px-2 py-1 rounded-full hover:bg-blue-200 transition-colors"
+                            >
+                              {useEnhancedInterface ? 'Vista Classica' : 'Vista Migliorata'}
+                            </button>
+                          )}
+                        </span>
+                      ) :
                       'Gestisci e visualizza'
                     }
                   </p>
