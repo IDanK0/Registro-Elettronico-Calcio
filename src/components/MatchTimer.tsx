@@ -139,11 +139,10 @@ export function MatchTimer({
                   <Play className="w-5 h-5" />
                   Riprendi
                 </button>
-              )}
-
-              <button
+              )}              <button
                 onClick={onInterval}
-                className="flex items-center gap-2 bg-orange-600 text-white px-6 py-3 rounded-lg hover:bg-orange-700 transition-colors font-medium"
+                disabled={!hasMatchStarted}
+                className="flex items-center gap-2 bg-orange-600 text-white px-6 py-3 rounded-lg hover:bg-orange-700 disabled:bg-gray-300 transition-colors font-medium"
               >
                 <Clock className="w-5 h-5" />
                 Intervallo
@@ -152,10 +151,10 @@ export function MatchTimer({
           )}
         </div>        {/* Period Management Controls - Mostra solo dopo che la partita è iniziata */}
         {hasMatchStarted && (
-          <div className="flex flex-wrap gap-3 justify-center">
-            <button
+          <div className="flex flex-wrap gap-3 justify-center">            <button
               onClick={() => onAddPeriod('regular')}
-              className="flex items-center gap-2 bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 transition-colors"
+              disabled={!hasMatchStarted}
+              className="flex items-center gap-2 bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 disabled:bg-gray-300 transition-colors"
             >
               <Plus className="w-4 h-4" />
               Aggiungi Tempo
@@ -163,7 +162,8 @@ export function MatchTimer({
             
             <button
               onClick={() => onAddPeriod('extra')}
-              className="flex items-center gap-2 bg-purple-600 text-white px-4 py-2 rounded-lg hover:bg-purple-700 transition-colors"
+              disabled={!hasMatchStarted}
+              className="flex items-center gap-2 bg-purple-600 text-white px-4 py-2 rounded-lg hover:bg-purple-700 disabled:bg-gray-300 transition-colors"
             >
               <Plus className="w-4 h-4" />
               Supplementare
@@ -172,7 +172,8 @@ export function MatchTimer({
             {canRemovePeriod && (
               <button
                 onClick={(e) => onRemoveLastPeriod(e)}
-                className="flex items-center gap-2 bg-red-600 text-white px-4 py-2 rounded-lg hover:bg-red-700 transition-colors"
+                disabled={!hasMatchStarted}
+                className="flex items-center gap-2 bg-red-600 text-white px-4 py-2 rounded-lg hover:bg-red-700 disabled:bg-gray-300 transition-colors"
               >
                 <Minus className="w-4 h-4" />
                 Rimuovi Ultimo
@@ -181,7 +182,8 @@ export function MatchTimer({
 
             <button
               onClick={(e) => onFinish(e)}
-              className="flex items-center gap-2 bg-gray-600 text-white px-4 py-2 rounded-lg hover:bg-gray-700 transition-colors"
+              disabled={!hasMatchStarted}
+              className="flex items-center gap-2 bg-gray-600 text-white px-4 py-2 rounded-lg hover:bg-gray-700 disabled:bg-gray-300 transition-colors"
             >
               <Square className="w-4 h-4" />
               Termina Partita

@@ -184,11 +184,11 @@ export function EnhancedMatchManagement({
                   >
                     <Play className="w-4 h-4" />
                     Riprendi
-                  </button>
-                )}
+                  </button>                )}
                 <button
                   onClick={onTimerInterval}
-                  className="flex items-center gap-2 bg-orange-500 hover:bg-orange-600 text-white px-6 py-3 rounded-lg transition-all duration-200 font-medium shadow-lg"
+                  disabled={!hasMatchStarted}
+                  className="flex items-center gap-2 bg-orange-500 hover:bg-orange-600 disabled:bg-gray-300 text-white px-6 py-3 rounded-lg transition-all duration-200 font-medium shadow-lg"
                 >
                   <Timer className="w-4 h-4" />
                   Intervallo
@@ -264,13 +264,12 @@ export function EnhancedMatchManagement({
                   <div className="text-5xl font-bold text-blue-600 mb-4">
                     {match.homeAway === 'home' ? match.homeScore : match.awayScore}
                   </div>
-                </div>
-                <div className="space-y-4">
+                </div>                <div className="space-y-4">
                   <select
                     value={selectedHomeScorer}
                     onChange={e => onSelectHomeScorer(e.target.value)}
                     className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-sm"
-                    disabled={match.status === 'finished' || currentPeriod?.type === 'interval'}
+                    disabled={!hasMatchStarted || match.status === 'finished' || currentPeriod?.type === 'interval'}
                   >
                     <option value="">Seleziona marcatore</option>
                     {match.lineup.map(matchPlayer => {
@@ -286,7 +285,7 @@ export function EnhancedMatchManagement({
                   <div className="flex gap-3">
                     <button
                       onClick={onHomeGoal}
-                      disabled={!selectedHomeScorer || match.status === 'finished' || currentPeriod?.type === 'interval'}
+                      disabled={!hasMatchStarted || !selectedHomeScorer || match.status === 'finished' || currentPeriod?.type === 'interval'}
                       className="flex-1 flex items-center justify-center gap-2 bg-green-500 hover:bg-green-600 disabled:bg-gray-300 text-white px-4 py-3 rounded-lg transition-all duration-200 font-medium shadow-md"
                     >
                       <Plus className="w-4 h-4" />
@@ -294,7 +293,7 @@ export function EnhancedMatchManagement({
                     </button>
                     <button
                       onClick={onHomeGoalRemove}
-                      disabled={match.status === 'finished' || (match.homeAway === 'home' ? match.homeScore : match.awayScore) === 0}
+                      disabled={!hasMatchStarted || match.status === 'finished' || (match.homeAway === 'home' ? match.homeScore : match.awayScore) === 0}
                       className="flex items-center justify-center gap-2 bg-red-500 hover:bg-red-600 disabled:bg-gray-300 text-white px-4 py-3 rounded-lg transition-all duration-200 font-medium shadow-md"
                     >
                       <Minus className="w-4 h-4" />
@@ -310,13 +309,12 @@ export function EnhancedMatchManagement({
                   <div className="text-5xl font-bold text-red-600 mb-4">
                     {match.homeAway === 'home' ? match.awayScore : match.homeScore}
                   </div>
-                </div>
-                <div className="space-y-4">
+                </div>                <div className="space-y-4">
                   <select
                     value={selectedAwayScorer}
                     onChange={e => onSelectAwayScorer(Number(e.target.value))}
                     className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-red-500 text-sm"
-                    disabled={match.status === 'finished' || currentPeriod?.type === 'interval'}
+                    disabled={!hasMatchStarted || match.status === 'finished' || currentPeriod?.type === 'interval'}
                   >
                     <option value="">Maglia avversaria</option>
                     {match.opponentLineup.map(num => (
@@ -326,7 +324,7 @@ export function EnhancedMatchManagement({
                   <div className="flex gap-3">
                     <button
                       onClick={onAwayGoal}
-                      disabled={!selectedAwayScorer || match.status === 'finished' || currentPeriod?.type === 'interval'}
+                      disabled={!hasMatchStarted || !selectedAwayScorer || match.status === 'finished' || currentPeriod?.type === 'interval'}
                       className="flex-1 flex items-center justify-center gap-2 bg-green-500 hover:bg-green-600 disabled:bg-gray-300 text-white px-4 py-3 rounded-lg transition-all duration-200 font-medium shadow-md"
                     >
                       <Plus className="w-4 h-4" />
@@ -334,7 +332,7 @@ export function EnhancedMatchManagement({
                     </button>
                     <button
                       onClick={onAwayGoalRemove}
-                      disabled={match.status === 'finished' || (match.homeAway === 'home' ? match.awayScore : match.homeScore) === 0}
+                      disabled={!hasMatchStarted || match.status === 'finished' || (match.homeAway === 'home' ? match.awayScore : match.homeScore) === 0}
                       className="flex items-center justify-center gap-2 bg-red-500 hover:bg-red-600 disabled:bg-gray-300 text-white px-4 py-3 rounded-lg transition-all duration-200 font-medium shadow-md"
                     >
                       <Minus className="w-4 h-4" />
@@ -429,19 +427,20 @@ export function EnhancedMatchManagement({
                     </span>
                   )}
                 </h3>
-                
-                {/* Controlli periodo - Spostati sopra l'elenco dei periodi */}
+                  {/* Controlli periodo - Spostati sopra l'elenco dei periodi */}
                 <div className="grid grid-cols-2 gap-3 mb-6">
                   <button
                     onClick={() => onAddPeriod('regular')}
-                    className="flex items-center justify-center gap-2 bg-blue-500 hover:bg-blue-600 text-white px-4 py-3 rounded-lg transition-all duration-200 font-medium shadow-md text-sm"
+                    disabled={!hasMatchStarted}
+                    className="flex items-center justify-center gap-2 bg-blue-500 hover:bg-blue-600 disabled:bg-gray-300 text-white px-4 py-3 rounded-lg transition-all duration-200 font-medium shadow-md text-sm"
                   >
                     <Plus className="w-4 h-4" />
                     Tempo
                   </button>
                   <button
                     onClick={() => onAddPeriod('extra')}
-                    className="flex items-center justify-center gap-2 bg-purple-500 hover:bg-purple-600 text-white px-4 py-3 rounded-lg transition-all duration-200 font-medium shadow-md text-sm"
+                    disabled={!hasMatchStarted}
+                    className="flex items-center justify-center gap-2 bg-purple-500 hover:bg-purple-600 disabled:bg-gray-300 text-white px-4 py-3 rounded-lg transition-all duration-200 font-medium shadow-md text-sm"
                   >
                     <Plus className="w-4 h-4" />
                     Extra
@@ -451,7 +450,7 @@ export function EnhancedMatchManagement({
                 <div className="grid grid-cols-2 gap-3 mb-6">
                   <button
                     onClick={onRemoveLastPeriod}
-                    disabled={!match.periods || match.periods.length <= 1}
+                    disabled={!hasMatchStarted || !match.periods || match.periods.length <= 1}
                     className="flex items-center justify-center gap-2 bg-red-500 hover:bg-red-600 disabled:bg-gray-300 text-white px-4 py-3 rounded-lg transition-all duration-200 font-medium shadow-md text-sm"
                   >
                     <Minus className="w-4 h-4" />
@@ -459,12 +458,13 @@ export function EnhancedMatchManagement({
                   </button>
                   <button
                     onClick={onFinishMatch}
-                    className="flex items-center justify-center gap-2 bg-gray-600 hover:bg-gray-700 text-white px-4 py-3 rounded-lg transition-all duration-200 font-medium shadow-md text-sm"
+                    disabled={!hasMatchStarted}
+                    className="flex items-center justify-center gap-2 bg-gray-600 hover:bg-gray-700 disabled:bg-gray-300 text-white px-4 py-3 rounded-lg transition-all duration-200 font-medium shadow-md text-sm"
                   >
                     <Square className="w-4 h-4" />
                     Termina
                   </button>
-                </div>                <div className="flex-1 overflow-y-auto">
+                </div><div className="flex-1 overflow-y-auto">
                   <div className="space-y-3 max-h-96 overflow-y-auto pr-2">
                     {!hasMatchStarted ? (
                       // Periodo placeholder "Pre-Partita"
