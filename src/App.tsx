@@ -823,8 +823,7 @@ function App() {
     if (currentView === 'manage' && managingMatch) {
       if (useEnhancedInterface) {
         return (
-          <>
-            <EnhancedMatchManagement
+          <>            <EnhancedMatchManagement
               match={managingMatch}
               players={players}
               users={users}
@@ -844,6 +843,8 @@ function App() {
               onSubstitution={() => setShowSubstitutionModal(true)}
               onAmmonition={() => setShowAmmonitionModal(true)}
               onOtherEvents={() => setShowOtherEventsModal(true)}
+              onRemoveEvent={handleRemoveEvent}
+              onRemoveSubstitution={handleRemoveSubstitution}
               selectedHomeScorer={selectedHomeScorer}
               selectedAwayScorer={selectedAwayScorer}
               onSelectHomeScorer={setSelectedHomeScorer}
@@ -1370,7 +1371,6 @@ function App() {
     database.updateMatch(managingMatch.id, updatedMatch);
     loadData();
   };
-
   const handleHomeGoalRemove = () => {
     if (!managingMatch) return;
     
@@ -1379,9 +1379,32 @@ function App() {
     if (ourCurrentScore <= 0) return;
     
     const events = [...managingMatch.events];
-    const lastGoalIndex = findLastIndex(events, e => e.type === 'goal' && e.description?.includes('(nostro)'));
-    if (lastGoalIndex !== -1) {
-      events.splice(lastGoalIndex, 1);
+    const ourGoals = events.filter(e => e.type === 'goal' && e.description?.includes('(nostro)'));
+    
+    let goalToRemoveIndex = -1;
+    
+    // Se c'è un marcatore selezionato, cerca prima i suoi goal
+    if (selectedHomeScorer) {
+      const selectedPlayerGoals = ourGoals.filter(g => g.playerId === selectedHomeScorer);
+      if (selectedPlayerGoals.length > 0) {
+        // Trova il goal più recente del giocatore selezionato
+        const mostRecentPlayerGoal = selectedPlayerGoals.reduce((latest, current) => {
+          const latestTime = latest.minute * 60 + (latest.second || 0);
+          const currentTime = current.minute * 60 + (current.second || 0);
+          return currentTime > latestTime ? current : latest;
+        });
+        goalToRemoveIndex = events.findIndex(e => e.id === mostRecentPlayerGoal.id);
+      } else {
+        // Il giocatore selezionato non ha goal, rimuovi il goal più recente della squadra
+        goalToRemoveIndex = findLastIndex(events, e => e.type === 'goal' && e.description?.includes('(nostro)'));
+      }
+    } else {
+      // Nessun marcatore selezionato, rimuovi il goal più recente della squadra
+      goalToRemoveIndex = findLastIndex(events, e => e.type === 'goal' && e.description?.includes('(nostro)'));
+    }
+    
+    if (goalToRemoveIndex !== -1) {
+      events.splice(goalToRemoveIndex, 1);
     }
     
     const updatedMatch = {
@@ -1394,7 +1417,6 @@ function App() {
     database.updateMatch(managingMatch.id, updatedMatch);
     loadData();
   };
-
   const handleAwayGoalRemove = () => {
     if (!managingMatch) return;
     
@@ -1403,9 +1425,37 @@ function App() {
     if (theirCurrentScore <= 0) return;
     
     const events = [...managingMatch.events];
-    const lastGoalIndex = findLastIndex(events, e => e.type === 'goal' && e.description?.includes('avversario'));
-    if (lastGoalIndex !== -1) {
-      events.splice(lastGoalIndex, 1);
+    const theirGoals = events.filter(e => e.type === 'goal' && e.description?.includes('avversario'));
+    
+    let goalToRemoveIndex = -1;
+    
+    // Se c'è un numero maglia selezionato, cerca prima i goal di quel numero
+    if (selectedAwayScorer) {
+      const selectedJerseyGoals = theirGoals.filter(g => {
+        // Estrai il numero di maglia dalla descrizione del goal
+        const match = g.description?.match(/#(\d+)/);
+        return match && parseInt(match[1]) === selectedAwayScorer;
+      });
+      
+      if (selectedJerseyGoals.length > 0) {
+        // Trova il goal più recente del numero di maglia selezionato
+        const mostRecentJerseyGoal = selectedJerseyGoals.reduce((latest, current) => {
+          const latestTime = latest.minute * 60 + (latest.second || 0);
+          const currentTime = current.minute * 60 + (current.second || 0);
+          return currentTime > latestTime ? current : latest;
+        });
+        goalToRemoveIndex = events.findIndex(e => e.id === mostRecentJerseyGoal.id);
+      } else {
+        // Il numero di maglia selezionato non ha goal, rimuovi il goal più recente della squadra avversaria
+        goalToRemoveIndex = findLastIndex(events, e => e.type === 'goal' && e.description?.includes('avversario'));
+      }
+    } else {
+      // Nessun numero maglia selezionato, rimuovi il goal più recente della squadra avversaria
+      goalToRemoveIndex = findLastIndex(events, e => e.type === 'goal' && e.description?.includes('avversario'));
+    }
+    
+    if (goalToRemoveIndex !== -1) {
+      events.splice(goalToRemoveIndex, 1);
     }
     
     const updatedMatch = {
@@ -1417,7 +1467,7 @@ function App() {
     setManagingMatch(updatedMatch);
     database.updateMatch(managingMatch.id, updatedMatch);
     loadData();
-  };  const handleAddPeriod = (type: 'regular' | 'extra') => {
+  };const handleAddPeriod = (type: 'regular' | 'extra') => {
     if (!managingMatch) return;
     const periods = [...(managingMatch.periods || defaultPeriods)];
     const regularPeriodsCount = periods.filter(p => p.type === 'regular').length;
@@ -1427,7 +1477,7 @@ function App() {
       ? `${regularPeriodsCount + 1}° Tempo`
       : `${extraPeriodsCount + 1}° Supplementare`;
       
-    periods.push({ type, label, duration: 0 });
+    periods.push({ type, label, duration: timer.time });
     const newCurrentPeriodIndex = periods.length - 1;
     
     const updatedMatch = { 
@@ -1440,7 +1490,6 @@ function App() {
     setCurrentPeriodIndex(newCurrentPeriodIndex);
     loadData();
   };
-
   const handleRemoveLastPeriod = (event: React.MouseEvent) => {
     if (!managingMatch) return;
     let periods = [...(managingMatch.periods || defaultPeriods)];
@@ -1451,6 +1500,14 @@ function App() {
     
     periods.pop();
     const newCurrentPeriodIndex = Math.max(0, periods.length - 1);
+    
+    // Aggiorna il nuovo periodo corrente con il tempo del timer
+    if (periods[newCurrentPeriodIndex]) {
+      periods[newCurrentPeriodIndex] = {
+        ...periods[newCurrentPeriodIndex],
+        duration: timer.time
+      };
+    }
     
     const updatedMatch = { 
       ...managingMatch, 

@@ -389,12 +389,11 @@ export function MatchManagement({
               onRemoveSubstitution={onRemoveSubstitution}
               currentPeriodIndex={currentPeriodIndex}
             />
-          </div>
-
-          {/* Sidebar con eventi recenti */}
-          <div className="space-y-6">            {/* Periodi */}
+          </div>          {/* Sidebar con eventi recenti */}
+          <div className="flex flex-col h-full space-y-6">
+            {/* Periodi */}
             {hasMatchStarted && (
-              <div className="bg-white rounded-xl shadow-lg p-6">
+              <div className="bg-white rounded-xl shadow-lg p-6 flex flex-col flex-1">
                 <h3 className="text-lg font-semibold text-gray-800 mb-4">Periodi</h3>
                 
                 {/* Period controls - Spostati sopra l'elenco dei periodi */}
@@ -431,34 +430,37 @@ export function MatchManagement({
                     <Square className="w-3 h-3" />
                     Termina
                   </button>
-                </div>                <div className="space-y-2">
-                  {match.periods?.slice().reverse().map((period, reverseIndex) => {
-                    const index = match.periods!.length - 1 - reverseIndex; // Calcola l'indice originale
-                    const isCurrent = index === currentPeriodIndex;
-                    return (
-                      <div
-                        key={index}
-                        className={`p-3 rounded-lg border-2 ${
-                          isCurrent
-                            ? period.type === 'regular'
-                              ? 'border-green-400 bg-green-50'
-                              : period.type === 'interval'
-                              ? 'border-orange-400 bg-orange-50'
-                              : 'border-purple-400 bg-purple-50'
-                            : 'border-gray-200 bg-gray-50'
-                        }`}
-                      >
-                        <div className="flex justify-between items-center">
-                          <span className={`font-medium ${isCurrent ? 'text-gray-800' : 'text-gray-600'}`}>
-                            {period.label}
-                          </span>
-                          <span className={`text-sm ${isCurrent ? 'text-gray-700' : 'text-gray-500'}`}>
-                            {formatTime(period.duration)}
-                          </span>
+                </div>
+
+                <div className="flex-1 overflow-y-auto">
+                  <div className="space-y-2 pr-2">{match.periods?.slice().reverse().map((period, reverseIndex) => {
+                      const index = match.periods!.length - 1 - reverseIndex; // Calcola l'indice originale
+                      const isCurrent = index === currentPeriodIndex;
+                      return (
+                        <div
+                          key={index}
+                          className={`p-3 rounded-lg border-2 ${
+                            isCurrent
+                              ? period.type === 'regular'
+                                ? 'border-green-400 bg-green-50'
+                                : period.type === 'interval'
+                                ? 'border-orange-400 bg-orange-50'
+                                : 'border-purple-400 bg-purple-50'
+                              : 'border-gray-200 bg-gray-50'
+                          }`}
+                        >
+                          <div className="flex justify-between items-center">
+                            <span className={`font-medium ${isCurrent ? 'text-gray-800' : 'text-gray-600'}`}>
+                              {period.label}
+                            </span>
+                            <span className={`text-sm ${isCurrent ? 'text-gray-700' : 'text-gray-500'}`}>
+                              {formatTime(period.duration)}
+                            </span>
+                          </div>
                         </div>
-                      </div>
-                    );
-                  })}
+                      );
+                    })}
+                  </div>
                 </div>
               </div>
             )}
