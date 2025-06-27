@@ -38,34 +38,46 @@ export function ReportMatch({ match, players, users, onClose }: ReportMatchProps
       eventsByPeriod[index] = { goals: [], cards: [], substitutions: [], otherEvents: [] };
     });
 
-    // Funzione per determinare in quale periodo appartiene un evento basandosi sul tempo
+    // Funzione per determinare in quale periodo di gioco appartiene un evento, basandosi sul timestamp assoluto.
+    // Gli eventi non vengono mai assegnati a periodi di tipo 'interval'.
     const getEventPeriodIndex = (eventTimeInSeconds: number) => {
       let cumulativeTime = 0;
-      
-      for (let i = 0; i < periods.length; i++) {
-        const period = periods[i];
-        const periodDuration = period.duration;
-        
-        // Se l'evento è avvenuto durante questo periodo
-        if (eventTimeInSeconds >= cumulativeTime && eventTimeInSeconds < cumulativeTime + periodDuration) {
-          return i;
-        }
-        
-        // Solo i periodi regolari e supplementari contribuiscono al tempo cumulativo
-        // Gli intervalli non "consumano" tempo di gioco
+      let lastValidPeriodIndex = 0;
+
+      // Calcola i tempi di inizio e fine per ogni periodo (inclusi intervalli)
+      const periodTimings = periods.map((period, index) => {
+        const startTime = cumulativeTime;
+        cumulativeTime += period.duration;
+        const endTime = cumulativeTime;
         if (period.type !== 'interval') {
-          cumulativeTime += periodDuration;
+          lastValidPeriodIndex = index;
+        }
+        return { startTime, endTime, type: period.type, index };
+      });
+
+      // 1. Trova il periodo in cui cade l'evento in base al tempo assoluto
+      const containingPeriod = periodTimings.find(p => eventTimeInSeconds >= p.startTime && eventTimeInSeconds < p.endTime);
+
+      if (containingPeriod) {
+        // 2. Se il periodo trovato è un intervallo, non è valido.
+        // La logica cerca il *prossimo* periodo di gioco valido.
+        if (containingPeriod.type === 'interval') {
+          for (let i = containingPeriod.index + 1; i < periodTimings.length; i++) {
+            if (periodTimings[i].type !== 'interval') {
+              return i; // Trovato il prossimo periodo di gioco.
+            }
+          }
+          // Se non ci sono periodi di gioco successivi, ritorna l'ultimo valido (fallback).
+          return lastValidPeriodIndex;
+        } else {
+          // 3. Se è un periodo di gioco, l'assegnazione è corretta.
+          return containingPeriod.index;
         }
       }
-      
-      // Se non trovato, assegna all'ultimo periodo non-intervallo
-      for (let i = periods.length - 1; i >= 0; i--) {
-        if (periods[i].type !== 'interval') {
-          return i;
-        }
-      }
-      
-      return 0; // Fallback al primo periodo
+
+      // 4. Se l'evento è accaduto dopo la fine di tutti i periodi, 
+      //    assegnalo all'ultimo periodo di gioco valido.
+      return lastValidPeriodIndex;
     };
 
     // Raggruppa goal per periodo
