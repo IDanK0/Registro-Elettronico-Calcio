@@ -26,110 +26,109 @@ export function ReportMatch({ match, players, users, onClose }: ReportMatchProps
     return match.periods[periodIndex].label;
   };
 
-  // Raggruppa eventi per periodo basandosi sui tempi
+  // Raggruppa eventi per periodo basandosi sui timestamp precisi
   const getEventsByPeriod = () => {
     const eventsByPeriod: { [key: number]: { goals: any[], cards: any[], substitutions: any[], otherEvents: any[] } } = {};
     
     // Se non ci sono periodi, usa un periodo di default
     const periods = match.periods || [{ type: 'regular', label: '1° Tempo', duration: 0 }];
     
-    // Inizializza tutti i periodi
-    periods.forEach((_, index) => {
-      eventsByPeriod[index] = { goals: [], cards: [], substitutions: [], otherEvents: [] };
+    // Inizializza solo i periodi di gioco (non gli intervalli)
+    periods.forEach((period, index) => {
+      if (period.type !== 'interval') {
+        eventsByPeriod[index] = { goals: [], cards: [], substitutions: [], otherEvents: [] };
+      }
     });
 
-    // Funzione per determinare in quale periodo di gioco appartiene un evento, basandosi sul timestamp assoluto.
-    // Gli eventi non vengono mai assegnati a periodi di tipo 'interval'.
-    const getEventPeriodIndex = (eventTimeInSeconds: number) => {
-      let cumulativeTime = 0;
-      let lastValidPeriodIndex = 0;
+    /**
+     * Determina il periodo di gioco corretto per un evento basandosi sui timestamp RELATIVI.
+     * 
+     * IMPORTANTE: I timestamp degli eventi sono RELATIVI al periodo in cui sono stati registrati,
+     * NON assoluti dall'inizio della partita.
+     * 
+     * Logica:
+     * 1. Cerca il primo periodo di gioco la cui durata può contenere l'evento
+     * 2. Se nessun periodo può contenere l'evento, lo assegna al periodo più lungo
+     * 3. Esclude sempre gli intervalli dalla selezione
+     * 
+     * @param eventTimeInSeconds - Timestamp dell'evento in secondi (RELATIVO al periodo)
+     * @returns Indice del periodo di gioco a cui assegnare l'evento
+     */
+    const getEventPeriodIndex = (eventTimeInSeconds: number): number => {
+      // Filtra solo i periodi di gioco (esclude intervalli)
+      const gamePeriodsOnly = periods.filter(p => p.type !== 'interval');
+      
+      if (gamePeriodsOnly.length === 0) {
+        return 0;
+      }
 
-      // Calcola i tempi di inizio e fine per ogni periodo (inclusi intervalli)
-      const periodTimings = periods.map((period, index) => {
-        const startTime = cumulativeTime;
-        cumulativeTime += period.duration;
-        const endTime = cumulativeTime;
-        if (period.type !== 'interval') {
-          lastValidPeriodIndex = index;
-        }
-        return { startTime, endTime, type: period.type, index };
+      // Trova i periodi che possono contenere questo evento
+      const compatiblePeriods = gamePeriodsOnly.filter(period => {
+        return eventTimeInSeconds <= period.duration;
       });
 
-      // 1. Trova il periodo in cui cade l'evento in base al tempo assoluto
-      const containingPeriod = periodTimings.find(p => eventTimeInSeconds >= p.startTime && eventTimeInSeconds < p.endTime);
+      if (compatiblePeriods.length > 0) {
+        // Se ci sono periodi compatibili, scegli il primo (più probabile)
+        const chosenPeriod = compatiblePeriods[0];
+        return periods.findIndex(p => p.label === chosenPeriod.label);
+      }
 
-      if (containingPeriod) {
-        // 2. Se il periodo trovato è un intervallo, non è valido.
-        // La logica cerca il *prossimo* periodo di gioco valido.
-        if (containingPeriod.type === 'interval') {
-          for (let i = containingPeriod.index + 1; i < periodTimings.length; i++) {
-            if (periodTimings[i].type !== 'interval') {
-              return i; // Trovato il prossimo periodo di gioco.
-            }
-          }
-          // Se non ci sono periodi di gioco successivi, ritorna l'ultimo valido (fallback).
-          return lastValidPeriodIndex;
-        } else {
-          // 3. Se è un periodo di gioco, l'assegnazione è corretta.
-          return containingPeriod.index;
+      // Se nessun periodo può contenere l'evento, assegnalo al periodo più lungo
+      // (presumibilmente il periodo principale di gioco)
+      let longestPeriod = gamePeriodsOnly[0];
+      for (const period of gamePeriodsOnly) {
+        if (period.duration > longestPeriod.duration) {
+          longestPeriod = period;
         }
       }
-
-      // 4. Se l'evento è accaduto dopo la fine di tutti i periodi, 
-      //    assegnalo all'ultimo periodo di gioco valido.
-      return lastValidPeriodIndex;
+      
+      return periods.findIndex(p => p.label === longestPeriod.label);
     };
 
-    // Raggruppa goal per periodo
-    const goals = match.events.filter(e => e.type === 'goal');
-    goals.forEach(goal => {
-      const eventTimeInSeconds = (goal.minute * 60) + (goal.second || 0);
-      const periodIndex = goal.periodIndex !== undefined ? goal.periodIndex : getEventPeriodIndex(eventTimeInSeconds);
-      
-      if (!eventsByPeriod[periodIndex]) {
-        eventsByPeriod[periodIndex] = { goals: [], cards: [], substitutions: [], otherEvents: [] };
-      }
-      eventsByPeriod[periodIndex].goals.push(goal);
-    });
+    // Funzione helper per processare eventi generici
+    const processEvents = (events: any[], eventType: string) => {
+      events.forEach(event => {
+        const eventTimeInSeconds = (event.minute * 60) + (event.second || 0);
+        const periodIndex = event.periodIndex !== undefined ? event.periodIndex : getEventPeriodIndex(eventTimeInSeconds);
+        
+        // Assicurati che il periodo esista nell'oggetto risultato
+        if (!eventsByPeriod[periodIndex]) {
+          eventsByPeriod[periodIndex] = { goals: [], cards: [], substitutions: [], otherEvents: [] };
+        }
+        
+        // Aggiungi l'evento al tipo corretto
+        switch (eventType) {
+          case 'goals':
+            eventsByPeriod[periodIndex].goals.push(event);
+            break;
+          case 'cards':
+            eventsByPeriod[periodIndex].cards.push(event);
+            break;
+          case 'substitutions':
+            eventsByPeriod[periodIndex].substitutions.push(event);
+            break;
+          case 'otherEvents':
+            eventsByPeriod[periodIndex].otherEvents.push(event);
+            break;
+        }
+      });
+    };
 
-    // Raggruppa ammonizioni per periodo
+    // Processa tutti i tipi di eventi
+    const goals = match.events.filter(e => e.type === 'goal');
+    processEvents(goals, 'goals');
+
     const cards = match.events.filter(e => [
       'yellow-card','red-card','second-yellow-card','blue-card','expulsion','warning'
     ].includes(e.type));
-    cards.forEach(card => {
-      const eventTimeInSeconds = (card.minute * 60) + (card.second || 0);
-      const periodIndex = card.periodIndex !== undefined ? card.periodIndex : getEventPeriodIndex(eventTimeInSeconds);
-      
-      if (!eventsByPeriod[periodIndex]) {
-        eventsByPeriod[periodIndex] = { goals: [], cards: [], substitutions: [], otherEvents: [] };
-      }
-      eventsByPeriod[periodIndex].cards.push(card);
-    });
+    processEvents(cards, 'cards');
 
-    // Raggruppa sostituzioni per periodo
-    match.substitutions.forEach(substitution => {
-      const eventTimeInSeconds = (substitution.minute * 60) + (substitution.second || 0);
-      const periodIndex = substitution.periodIndex !== undefined ? substitution.periodIndex : getEventPeriodIndex(eventTimeInSeconds);
-      
-      if (!eventsByPeriod[periodIndex]) {
-        eventsByPeriod[periodIndex] = { goals: [], cards: [], substitutions: [], otherEvents: [] };
-      }
-      eventsByPeriod[periodIndex].substitutions.push(substitution);
-    });
+    processEvents(match.substitutions, 'substitutions');
 
-    // Raggruppa altri eventi per periodo
     const otherEvents = match.events.filter(e => [
       'foul', 'corner', 'offside', 'free-kick', 'penalty', 'throw-in', 'injury'
     ].includes(e.type));
-    otherEvents.forEach(event => {
-      const eventTimeInSeconds = (event.minute * 60) + (event.second || 0);
-      const periodIndex = event.periodIndex !== undefined ? event.periodIndex : getEventPeriodIndex(eventTimeInSeconds);
-      
-      if (!eventsByPeriod[periodIndex]) {
-        eventsByPeriod[periodIndex] = { goals: [], cards: [], substitutions: [], otherEvents: [] };
-      }
-      eventsByPeriod[periodIndex].otherEvents.push(event);
-    });
+    processEvents(otherEvents, 'otherEvents');
 
     return eventsByPeriod;
   };
@@ -529,12 +528,13 @@ export function ReportMatch({ match, players, users, onClose }: ReportMatchProps
               Eventi per Periodo
             </h3>
             
-            {(match.periods || [{ type: 'regular', label: '1° Tempo', duration: 0 }]).map((period, periodIndex) => {
-              const events = eventsByPeriod[periodIndex] || { goals: [], cards: [], substitutions: [], otherEvents: [] };
-              const hasEvents = events.goals.length > 0 || events.cards.length > 0 || events.substitutions.length > 0 || events.otherEvents.length > 0;
-              
-              // Mostra il periodo se ha eventi o se è un periodo di gioco (non intervallo)
-              if (!hasEvents && period.type === 'interval') return null;
+            {(match.periods || [{ type: 'regular', label: '1° Tempo', duration: 0 }])
+              .filter(period => period.type !== 'interval') // Mostra solo i periodi di gioco, mai gli intervalli
+              .map((period) => {
+                // Trova l'indice originale del periodo nella lista completa
+                const originalPeriodIndex = (match.periods || []).findIndex(p => p === period);
+                const events = eventsByPeriod[originalPeriodIndex] || { goals: [], cards: [], substitutions: [], otherEvents: [] };
+                const hasEvents = events.goals.length > 0 || events.cards.length > 0 || events.substitutions.length > 0 || events.otherEvents.length > 0;
               
               // Determina il colore del header in base al tipo di periodo
               let headerColorClass = '';
@@ -547,7 +547,7 @@ export function ReportMatch({ match, players, users, onClose }: ReportMatchProps
               }
               
               return (
-                <div key={periodIndex} className={`mb-4 bg-white rounded-lg border shadow-sm ${headerColorClass}`}>
+                <div key={originalPeriodIndex} className={`mb-4 bg-white rounded-lg border shadow-sm ${headerColorClass}`}>
                   <div className="p-4">
                     <h4 className="text-sm font-bold text-gray-800 mb-3 pb-2 border-b border-gray-200 flex items-center justify-between">
                       <span>{period.label}</span>
@@ -556,7 +556,7 @@ export function ReportMatch({ match, players, users, onClose }: ReportMatchProps
                       </span>
                     </h4>
                     
-                    {!hasEvents && period.type !== 'interval' ? (
+                    {!hasEvents ? (
                       <p className="text-gray-400 text-sm italic text-center py-4">Nessun evento registrato in questo periodo</p>
                     ) : (
                       <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
