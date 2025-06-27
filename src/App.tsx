@@ -823,7 +823,8 @@ function App() {
     if (currentView === 'manage' && managingMatch) {
       if (useEnhancedInterface) {
         return (
-          <>            <EnhancedMatchManagement
+          <>
+            <EnhancedMatchManagement
               match={managingMatch}
               players={players}
               users={users}
@@ -841,8 +842,7 @@ function App() {
               onHomeGoalRemove={handleHomeGoalRemove}
               onAwayGoalRemove={handleAwayGoalRemove}
               onSubstitution={() => setShowSubstitutionModal(true)}
-              onAmmonition={() => setShowAmmonitionModal(true)}
-              onOtherEvents={() => setShowOtherEventsModal(true)}
+              onAmmonition={() => setShowAmmonitionModal(true)}              onOtherEvents={() => setShowOtherEventsModal(true)}
               onRemoveEvent={handleRemoveEvent}
               onRemoveSubstitution={handleRemoveSubstitution}
               selectedHomeScorer={selectedHomeScorer}

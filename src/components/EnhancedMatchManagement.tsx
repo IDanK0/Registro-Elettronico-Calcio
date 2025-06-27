@@ -50,8 +50,7 @@ interface EnhancedMatchManagementProps {
   selectedHomeScorer: string;
   selectedAwayScorer: number | '';
   onSelectHomeScorer: (playerId: string) => void;
-  onSelectAwayScorer: (jerseyNumber: number | '') => void;
-  formatTime: (seconds: number) => string;
+  onSelectAwayScorer: (jerseyNumber: number | '') => void;  formatTime: (seconds: number) => string;
   getPlayersOnField: () => Player[];
   getPlayersOnBench: () => Player[];
   getPlayerJerseyNumber: (playerId: string) => number | null | undefined;
@@ -415,12 +414,11 @@ export function EnhancedMatchManagement({
                 })()}
               </div>
             </div>
-          </div>
-
-          {/* Sidebar migliorata */}
-          <div className="space-y-6">{/* Periodi */}
+          </div>          {/* Sidebar migliorata */}
+          <div className="space-y-6 h-full flex flex-col">
+            {/* Periodi */}
             {hasMatchStarted && (
-              <div className="bg-white rounded-2xl shadow-lg p-6 hover:shadow-xl transition-shadow">
+              <div className="bg-white rounded-2xl shadow-lg p-6 hover:shadow-xl transition-shadow h-full flex flex-col">
                 <h3 className="text-xl font-bold text-gray-800 mb-6">Periodi</h3>
                 
                 {/* Controlli periodo - Spostati sopra l'elenco dei periodi */}
@@ -457,34 +455,36 @@ export function EnhancedMatchManagement({
                     <Square className="w-4 h-4" />
                     Termina
                   </button>
-                </div>                <div className="space-y-3">
-                  {match.periods?.slice().reverse().map((period, reverseIndex) => {
-                    const index = match.periods!.length - 1 - reverseIndex; // Calcola l'indice originale
-                    const isCurrent = index === currentPeriodIndex;
-                    return (
-                      <div
-                        key={index}
-                        className={`p-4 rounded-lg border-2 transition-all duration-200 ${
-                          isCurrent
-                            ? period.type === 'regular'
-                              ? 'border-green-400 bg-green-50 shadow-md'
-                              : period.type === 'interval'
-                              ? 'border-orange-400 bg-orange-50 shadow-md'
-                              : 'border-purple-400 bg-purple-50 shadow-md'
-                            : 'border-gray-200 bg-gray-50 hover:bg-gray-100'
-                        }`}
-                      >
-                        <div className="flex justify-between items-center">
-                          <span className={`font-semibold ${isCurrent ? 'text-gray-800' : 'text-gray-600'}`}>
-                            {period.label}
-                          </span>
-                          <span className={`text-sm font-mono ${isCurrent ? 'text-gray-700' : 'text-gray-500'}`}>
-                            {formatTime(period.duration)}
-                          </span>
+                </div>                <div className="flex-1 overflow-y-auto">
+                  <div className="space-y-3 max-h-96 overflow-y-auto pr-2">
+                    {match.periods?.slice().reverse().map((period, reverseIndex) => {
+                      const index = match.periods!.length - 1 - reverseIndex; // Calcola l'indice originale
+                      const isCurrent = index === currentPeriodIndex;
+                      return (
+                        <div
+                          key={index}
+                          className={`p-4 rounded-lg border-2 transition-all duration-200 ${
+                            isCurrent
+                              ? period.type === 'regular'
+                                ? 'border-green-400 bg-green-50 shadow-md'
+                                : period.type === 'interval'
+                                ? 'border-orange-400 bg-orange-50 shadow-md'
+                                : 'border-purple-400 bg-purple-50 shadow-md'
+                              : 'border-gray-200 bg-gray-50 hover:bg-gray-100'
+                          }`}
+                        >
+                          <div className="flex justify-between items-center">
+                            <span className={`font-semibold ${isCurrent ? 'text-gray-800' : 'text-gray-600'}`}>
+                              {period.label}
+                            </span>
+                            <span className={`text-sm font-mono ${isCurrent ? 'text-gray-700' : 'text-gray-500'}`}>
+                              {formatTime(period.duration)}
+                            </span>
+                          </div>
                         </div>
-                      </div>
-                    );
-                  })}
+                      );
+                    })}
+                  </div>
                 </div>
               </div>
             )}

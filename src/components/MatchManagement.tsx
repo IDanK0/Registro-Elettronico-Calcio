@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import { 
   Clock, 
   Play, 
@@ -17,14 +17,12 @@ import {
   Ban,
   UserX,
   Calendar,
-  FileText,
-  Trash2,
-  Settings,
+  FileText,  Trash2,
   TrendingUp,
   Eye,
   EyeOff
 } from 'lucide-react';
-import { Match, Player, MatchPeriod, UserWithGroup } from '../types';
+import { Match, Player, UserWithGroup } from '../types';
 
 interface MatchManagementProps {
   match: Match;
@@ -45,23 +43,20 @@ interface MatchManagementProps {
   onAwayGoalRemove: () => void;
   onSubstitution: () => void;
   onAmmonition: () => void;
-  onOtherEvents: () => void;
-  onRemoveEvent: (eventId: string) => void;
+  onOtherEvents: () => void;  onRemoveEvent: (eventId: string) => void;
   onRemoveSubstitution: (subId: string) => void;
   selectedHomeScorer: string;
   selectedAwayScorer: number | '';
-  onSelectHomeScorer: (playerId: string) => void;
-  onSelectAwayScorer: (jerseyNumber: number | '') => void;
+  onSelectHomeScorer: (playerId: string) => void;  onSelectAwayScorer: (jerseyNumber: number | '') => void;
   formatTime: (seconds: number) => string;
-  getPlayersOnField: () => Player[];
-  getPlayersOnBench: () => Player[];
-  getPlayerJerseyNumber: (playerId: string) => number | undefined;
+  getPlayersOnField: () => Player[];  getPlayersOnBench: () => Player[];
+  getPlayerJerseyNumber: (playerId: string) => number | null | undefined;
   manageError: string | null;
 }
 
 export function MatchManagement({
   match,
-  players,
+  players, // eslint-disable-line @typescript-eslint/no-unused-vars
   currentPeriodIndex,
   isTimerRunning,
   currentTime,
@@ -82,17 +77,14 @@ export function MatchManagement({
   onRemoveSubstitution,
   selectedHomeScorer,
   selectedAwayScorer,
-  onSelectHomeScorer,
-  onSelectAwayScorer,
+  onSelectHomeScorer,  onSelectAwayScorer,
   formatTime,
   getPlayersOnField,
-  getPlayersOnBench,
-  getPlayerJerseyNumber,
+  getPlayersOnBench,  getPlayerJerseyNumber, // eslint-disable-line @typescript-eslint/no-unused-vars
   manageError
 }: MatchManagementProps) {
   const [activeView, setActiveView] = useState<'overview' | 'field' | 'events' | 'stats'>('overview');
   const [showFieldVisualization, setShowFieldVisualization] = useState(false);
-  const [compactMode, setCompactMode] = useState(false);
 
   const currentPeriod = match.periods?.[currentPeriodIndex];
   const hasMatchStarted = match.periods?.some(p => p.duration > 0) || false;
@@ -393,8 +385,8 @@ export function MatchManagement({
           <div className="flex flex-col h-full space-y-6">
             {/* Periodi */}
             {hasMatchStarted && (
-              <div className="bg-white rounded-xl shadow-lg p-6 flex flex-col flex-1">
-                <h3 className="text-lg font-semibold text-gray-800 mb-4">Periodi</h3>
+              <div className="bg-white rounded-2xl shadow-lg p-6 flex flex-col hover:shadow-xl transition-shadow h-full">
+                <h3 className="text-xl font-bold text-gray-800 mb-6">Periodi</h3>
                 
                 {/* Period controls - Spostati sopra l'elenco dei periodi */}
                 <div className="flex gap-2 mb-4">
@@ -430,23 +422,22 @@ export function MatchManagement({
                     <Square className="w-3 h-3" />
                     Termina
                   </button>
-                </div>
-
-                <div className="flex-1 overflow-y-auto">
-                  <div className="space-y-2 pr-2">{match.periods?.slice().reverse().map((period, reverseIndex) => {
+                </div>                <div className="flex-1 overflow-y-auto">
+                  <div className="space-y-3 max-h-96 overflow-y-auto pr-2">
+                    {match.periods?.slice().reverse().map((period, reverseIndex) => {
                       const index = match.periods!.length - 1 - reverseIndex; // Calcola l'indice originale
                       const isCurrent = index === currentPeriodIndex;
                       return (
                         <div
                           key={index}
-                          className={`p-3 rounded-lg border-2 ${
+                          className={`p-4 rounded-lg border-2 transition-all duration-200 ${
                             isCurrent
                               ? period.type === 'regular'
-                                ? 'border-green-400 bg-green-50'
+                                ? 'border-green-400 bg-green-50 shadow-md'
                                 : period.type === 'interval'
-                                ? 'border-orange-400 bg-orange-50'
-                                : 'border-purple-400 bg-purple-50'
-                              : 'border-gray-200 bg-gray-50'
+                                ? 'border-orange-400 bg-orange-50 shadow-md'
+                                : 'border-purple-400 bg-purple-50 shadow-md'
+                              : 'border-gray-200 bg-gray-50 hover:border-gray-300'
                           }`}
                         >
                           <div className="flex justify-between items-center">
@@ -554,14 +545,11 @@ export function MatchManagement({
         </div>
       )}
 
-      {activeView === 'events' && (
-        <EventsTimeline 
+      {activeView === 'events' && (        <EventsTimeline 
           match={match}
           players={players}
           onRemoveEvent={onRemoveEvent}
           onRemoveSubstitution={onRemoveSubstitution}
-          formatTime={formatTime}
-          getPlayerJerseyNumber={getPlayerJerseyNumber}
         />
       )}
 
@@ -580,7 +568,7 @@ function FieldVisualization({
 }: { 
   match: Match; 
   players: Player[]; 
-  getPlayerJerseyNumber: (playerId: string) => number | undefined;
+  getPlayerJerseyNumber: (playerId: string) => number | null | undefined;
 }) {
   return (
     <div className="bg-white rounded-xl shadow-lg p-6">
@@ -648,16 +636,12 @@ function EventsTimeline({
   match, 
   players, 
   onRemoveEvent, 
-  onRemoveSubstitution, 
-  formatTime,
-  getPlayerJerseyNumber 
+  onRemoveSubstitution
 }: {
   match: Match;
   players: Player[];
   onRemoveEvent: (eventId: string) => void;
   onRemoveSubstitution: (subId: string) => void;
-  formatTime: (seconds: number) => string;
-  getPlayerJerseyNumber: (playerId: string) => number | undefined;
 }) {
   const allEvents = [
     ...match.events.map(e => ({ ...e, category: 'event' as const })),
