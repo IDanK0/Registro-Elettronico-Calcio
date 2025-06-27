@@ -228,10 +228,9 @@ export function EnhancedMatchManagement({
             {/* Azioni Rapide - spostate sopra i goal */}
             <div className="bg-white rounded-2xl shadow-lg p-6 hover:shadow-xl transition-shadow">
               <h3 className="text-xl font-bold text-gray-800 mb-6">Azioni Rapide</h3>
-              <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-                <button
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">                <button
                   onClick={onSubstitution}
-                  disabled={match.status === 'finished' || currentPeriod?.type === 'interval'}
+                  disabled={!hasMatchStarted || match.status === 'finished' || currentPeriod?.type === 'interval'}
                   className="flex items-center justify-center gap-3 bg-blue-500 hover:bg-blue-600 disabled:bg-gray-300 text-white px-6 py-4 rounded-lg transition-all duration-200 font-medium shadow-md hover:shadow-lg"
                 >
                   <ArrowLeftRight className="w-5 h-5" />
@@ -239,7 +238,7 @@ export function EnhancedMatchManagement({
                 </button>
                 <button
                   onClick={onAmmonition}
-                  disabled={match.status === 'finished' || currentPeriod?.type === 'interval'}
+                  disabled={!hasMatchStarted || match.status === 'finished' || currentPeriod?.type === 'interval'}
                   className="flex items-center justify-center gap-3 bg-yellow-500 hover:bg-yellow-600 disabled:bg-gray-300 text-white px-6 py-4 rounded-lg transition-all duration-200 font-medium shadow-md hover:shadow-lg"
                 >
                   <AlertTriangle className="w-5 h-5" />
@@ -247,7 +246,7 @@ export function EnhancedMatchManagement({
                 </button>
                 <button
                   onClick={onOtherEvents}
-                  disabled={match.status === 'finished' || currentPeriod?.type === 'interval'}
+                  disabled={!hasMatchStarted || match.status === 'finished' || currentPeriod?.type === 'interval'}
                   className="flex items-center justify-center gap-3 bg-purple-500 hover:bg-purple-600 disabled:bg-gray-300 text-white px-6 py-4 rounded-lg transition-all duration-200 font-medium shadow-md hover:shadow-lg"
                 >
                   <Flag className="w-5 h-5" />
@@ -417,10 +416,8 @@ export function EnhancedMatchManagement({
               </div>
             </div>
           </div>          {/* Sidebar migliorata */}
-          <div className="space-y-6 h-full flex flex-col">
-            {/* Periodi */}
-            {hasMatchStarted && (
-              <div className="bg-white rounded-2xl shadow-lg p-6 hover:shadow-xl transition-shadow h-full flex flex-col">
+          <div className="space-y-6 h-full flex flex-col">            {/* Periodi */}
+            <div className="bg-white rounded-2xl shadow-lg p-6 hover:shadow-xl transition-shadow h-full flex flex-col">
                 <h3 className="text-xl font-bold text-gray-800 mb-6 flex items-center gap-2">
                   Periodi
                   {!isMobile && (
@@ -469,37 +466,45 @@ export function EnhancedMatchManagement({
                   </button>
                 </div>                <div className="flex-1 overflow-y-auto">
                   <div className="space-y-3 max-h-96 overflow-y-auto pr-2">
-                    {match.periods?.slice().reverse().map((period, reverseIndex) => {
-                      const index = match.periods!.length - 1 - reverseIndex; // Calcola l'indice originale
-                      const isCurrent = index === currentPeriodIndex;
-                      return (
-                        <div
-                          key={index}
-                          className={`p-4 rounded-lg border-2 transition-all duration-200 ${
-                            isCurrent
-                              ? period.type === 'regular'
-                                ? 'border-green-400 bg-green-50 shadow-md'
-                                : period.type === 'interval'
-                                ? 'border-orange-400 bg-orange-50 shadow-md'
-                                : 'border-purple-400 bg-purple-50 shadow-md'
-                              : 'border-gray-200 bg-gray-50 hover:bg-gray-100'
-                          }`}
-                        >
-                          <div className="flex justify-between items-center">
-                            <span className={`font-semibold ${isCurrent ? 'text-gray-800' : 'text-gray-600'}`}>
-                              {period.label}
-                            </span>
-                            <span className={`text-sm font-mono ${isCurrent ? 'text-gray-700' : 'text-gray-500'}`}>
-                              {formatTime(period.duration)}
-                            </span>
-                          </div>
+                    {!hasMatchStarted ? (
+                      // Periodo placeholder "Pre-Partita"
+                      <div className="p-4 rounded-lg border-2 border-gray-400 bg-gray-50 shadow-md transition-all duration-200">
+                        <div className="flex justify-between items-center">
+                          <span className="font-semibold text-gray-800">Pre-Partita</span>
+                          <span className="text-sm font-mono text-gray-700">00:00</span>
                         </div>
-                      );
-                    })}
-                  </div>
+                      </div>
+                    ) : (
+                      match.periods?.slice().reverse().map((period, reverseIndex) => {
+                        const index = match.periods!.length - 1 - reverseIndex; // Calcola l'indice originale
+                        const isCurrent = index === currentPeriodIndex;
+                        return (
+                          <div
+                            key={index}
+                            className={`p-4 rounded-lg border-2 transition-all duration-200 ${
+                              isCurrent
+                                ? period.type === 'regular'
+                                  ? 'border-green-400 bg-green-50 shadow-md'
+                                  : period.type === 'interval'
+                                  ? 'border-orange-400 bg-orange-50 shadow-md'
+                                  : 'border-purple-400 bg-purple-50 shadow-md'
+                                : 'border-gray-200 bg-gray-50 hover:bg-gray-100'
+                            }`}
+                          >
+                            <div className="flex justify-between items-center">
+                              <span className={`font-semibold ${isCurrent ? 'text-gray-800' : 'text-gray-600'}`}>
+                                {period.label}
+                              </span>
+                              <span className={`text-sm font-mono ${isCurrent ? 'text-gray-700' : 'text-gray-500'}`}>
+                                {formatTime(period.duration)}
+                              </span>
+                            </div>
+                          </div>
+                        );
+                      })
+                    )}                  </div>
                 </div>
               </div>
-            )}
           </div>
         </div>
       )}
@@ -590,10 +595,8 @@ export function EnhancedMatchManagement({
           onRemoveSubstitution={onRemoveSubstitution}
           currentPeriodIndex={currentPeriodIndex}
         />
-      )}
-
-      {activeView === 'stats' && (
-        <MatchStats match={match} />
+      )}      {activeView === 'stats' && (
+        <MatchStats match={match} hasMatchStarted={hasMatchStarted} />
       )}
     </div>
   );
@@ -1024,7 +1027,7 @@ function FieldVisualization({
 }
 
 // Componente per le statistiche della partita
-function MatchStats({ match }: { match: Match }) {
+function MatchStats({ match, hasMatchStarted }: { match: Match; hasMatchStarted: boolean }) {
   // Calcola le statistiche di base
   const ourGoals = match.events.filter(e => e.type === 'goal' && e.description?.includes('(nostro)')).length;
   const opponentGoals = match.events.filter(e => e.type === 'goal' && e.description?.includes('avversario')).length;
@@ -1106,19 +1109,25 @@ function MatchStats({ match }: { match: Match }) {
           );
         })}
       </div>
-      
-      {/* Riassunto tempo */}
+        {/* Riassunto tempo */}
       <div className="mt-8 p-4 bg-gray-50 rounded-xl">
         <h4 className="font-semibold text-gray-800 mb-3">Riepilogo Tempi</h4>
         <div className="space-y-2">
-          {match.periods?.map((period, index) => (
-            <div key={index} className="flex justify-between text-sm">
-              <span className="text-gray-600">{period.label}:</span>
-              <span className="font-mono font-medium">
-                {Math.floor(period.duration / 60)}:{(period.duration % 60).toString().padStart(2, '0')}
-              </span>
+          {!hasMatchStarted ? (
+            <div className="flex justify-between text-sm">
+              <span className="text-gray-600">Pre-Partita:</span>
+              <span className="font-mono font-medium">0:00</span>
             </div>
-          ))}
+          ) : (
+            match.periods?.map((period, index) => (
+              <div key={index} className="flex justify-between text-sm">
+                <span className="text-gray-600">{period.label}:</span>
+                <span className="font-mono font-medium">
+                  {Math.floor(period.duration / 60)}:{(period.duration % 60).toString().padStart(2, '0')}
+                </span>
+              </div>
+            ))
+          )}
         </div>
       </div>
     </div>
