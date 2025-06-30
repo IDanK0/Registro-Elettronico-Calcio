@@ -277,14 +277,14 @@ export function ReportMatch({ match, players, users, onClose }: ReportMatchProps
     });
     
     // Statistiche
-    csvRows.push('STATISTICHE PARTITA');
-    csvRows.push('Statistica,Squadra,Avversario');
-    csvRows.push(`Possesso palla,${match.possessionHome || 0}%,${match.possessionAway || 0}%`);
-    csvRows.push(`Tiri totali,${match.totalShotsHome || 0},${match.totalShotsAway || 0}`);
-    csvRows.push(`Tiri in porta,${match.shotsOnTargetHome || 0},${match.shotsOnTargetAway || 0}`);
-    csvRows.push(`Falli commessi,${match.foulsCommittedHome || 0},${match.foulsCommittedAway || 0}`);
-    csvRows.push(`Calci d'angolo,${match.cornersHome || 0},${match.cornersAway || 0}`);
-    csvRows.push(`Fuorigioco,${match.offsideHome || 0},${match.offsideAway || 0}`);
+    // csvRows.push('STATISTICHE PARTITA');
+    // csvRows.push('Statistica,Squadra,Avversario');
+    // csvRows.push(`Possesso palla,${match.possessionHome || 0}%,${match.possessionAway || 0}%`);
+    // csvRows.push(`Tiri totali,${match.totalShotsHome || 0},${match.totalShotsAway || 0}`);
+    // csvRows.push(`Tiri in porta,${match.shotsOnTargetHome || 0},${match.shotsOnTargetAway || 0}`);
+    // csvRows.push(`Falli commessi,${match.foulsCommittedHome || 0},${match.foulsCommittedAway || 0}`);
+    // csvRows.push(`Calci d'angolo,${match.cornersHome || 0},${match.cornersAway || 0}`);
+    // csvRows.push(`Fuorigioco,${match.offsideHome || 0},${match.offsideAway || 0}`);
     
     const csvContent = csvRows.join('\n');
     const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
@@ -432,20 +432,19 @@ export function ReportMatch({ match, players, users, onClose }: ReportMatchProps
     XLSX.utils.book_append_sheet(wb, wsEvents, 'Eventi per Periodo');
     
     // Foglio 3: Statistiche
-    const statsData = [
-      ['STATISTICHE PARTITA'],
-      [],
-      ['Statistica', 'Squadra', 'Avversario'],
-      ['Possesso palla (%)', match.possessionHome || 0, match.possessionAway || 0],
-      ['Tiri totali', match.totalShotsHome || 0, match.totalShotsAway || 0],
-      ['Tiri in porta', match.shotsOnTargetHome || 0, match.shotsOnTargetAway || 0],
-      ['Falli commessi', match.foulsCommittedHome || 0, match.foulsCommittedAway || 0],
-      ['Calci d\'angolo', match.cornersHome || 0, match.cornersAway || 0],
-      ['Fuorigioco', match.offsideHome || 0, match.offsideAway || 0]
-    ];
-    
-    const wsStats = XLSX.utils.aoa_to_sheet(statsData);
-    XLSX.utils.book_append_sheet(wb, wsStats, 'Statistiche');
+    // const statsData = [
+    //   ['STATISTICHE PARTITA'],
+    //   [],
+    //   ['Statistica', 'Squadra', 'Avversario'],
+    //   ['Possesso palla (%)', match.possessionHome || 0, match.possessionAway || 0],
+    //   ['Tiri totali', match.totalShotsHome || 0, match.totalShotsAway || 0],
+    //   ['Tiri in porta', match.shotsOnTargetHome || 0, match.shotsOnTargetAway || 0],
+    //   ['Falli commessi', match.foulsCommittedHome || 0, match.foulsCommittedAway || 0],
+    //   ['Calci d\'angolo', match.cornersHome || 0, match.cornersAway || 0],
+    //   ['Fuorigioco', match.offsideHome || 0, match.offsideAway || 0]
+    // ];
+    // const wsStats = XLSX.utils.aoa_to_sheet(statsData);
+    // XLSX.utils.book_append_sheet(wb, wsStats, 'Statistiche');
     
     XLSX.writeFile(wb, `report-partita-${match.date}-${match.opponent.replace(/\s+/g, '-')}.xlsx`);
   };
@@ -790,95 +789,6 @@ export function ReportMatch({ match, players, users, onClose }: ReportMatchProps
               </div>
             </div>
           )}
-
-          {/* Statistiche dettagliate */}
-          <div className="mb-6">
-            <h3 className="text-base font-bold text-gray-800 mb-3 flex items-center gap-2">
-              <Target className="w-4 h-4 text-blue-600" />
-              Statistiche Dettagliate
-            </h3>
-            
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
-              {/* Possesso palla */}
-              <div className="bg-white rounded-lg p-3 border border-gray-200 shadow-sm">
-                <h4 className="font-medium text-gray-800 mb-3 text-center text-sm">Possesso Palla</h4>
-                <div className="space-y-2">
-                  <div>
-                    <div className="flex justify-between items-center mb-1">
-                      <span className="text-xs font-medium text-blue-600">Squadra</span>
-                      <span className="text-sm font-bold text-blue-600">{match.possessionHome || 0}%</span>
-                    </div>
-                    <div className="w-full bg-gray-200 rounded-full h-2">
-                      <div className="bg-blue-600 h-2 rounded-full transition-all duration-500" style={{ width: `${match.possessionHome || 0}%` }}></div>
-                    </div>
-                  </div>
-                  <div>
-                    <div className="flex justify-between items-center mb-1">
-                      <span className="text-xs font-medium text-red-600">Avversario</span>
-                      <span className="text-sm font-bold text-red-600">{match.possessionAway || 0}%</span>
-                    </div>
-                    <div className="w-full bg-gray-200 rounded-full h-2">
-                      <div className="bg-red-600 h-2 rounded-full transition-all duration-500" style={{ width: `${match.possessionAway || 0}%` }}></div>
-                    </div>
-                  </div>
-                </div>
-              </div>
-
-              {/* Tiri */}
-              <div className="bg-white rounded-lg p-3 border border-gray-200 shadow-sm">
-                <h4 className="font-medium text-gray-800 mb-3 text-center text-sm">Tiri</h4>
-                <div className="space-y-2">
-                  <div className="flex justify-between items-center">
-                    <span className="text-xs text-gray-600">Tiri Totali</span>
-                    <div className="flex gap-2">
-                      <span className="text-blue-600 font-bold text-sm">{match.totalShotsHome || 0}</span>
-                      <span className="text-gray-400">-</span>
-                      <span className="text-red-600 font-bold text-sm">{match.totalShotsAway || 0}</span>
-                    </div>
-                  </div>
-                  <div className="flex justify-between items-center">
-                    <span className="text-xs text-gray-600">Tiri in Porta</span>
-                    <div className="flex gap-2">
-                      <span className="text-blue-600 font-bold text-sm">{match.shotsOnTargetHome || 0}</span>
-                      <span className="text-gray-400">-</span>
-                      <span className="text-red-600 font-bold text-sm">{match.shotsOnTargetAway || 0}</span>
-                    </div>
-                  </div>
-                </div>
-              </div>
-
-              {/* Altre statistiche */}
-              <div className="bg-white rounded-lg p-3 border border-gray-200 shadow-sm">
-                <h4 className="font-medium text-gray-800 mb-3 text-center text-sm">Altre Statistiche</h4>
-                <div className="space-y-2">
-                  <div className="flex justify-between items-center">
-                    <span className="text-xs text-gray-600">Falli</span>
-                    <div className="flex gap-2">
-                      <span className="text-blue-600 font-bold text-sm">{match.foulsCommittedHome || 0}</span>
-                      <span className="text-gray-400">-</span>
-                      <span className="text-red-600 font-bold text-sm">{match.foulsCommittedAway || 0}</span>
-                    </div>
-                  </div>
-                  <div className="flex justify-between items-center">
-                    <span className="text-xs text-gray-600">Calci d'angolo</span>
-                    <div className="flex gap-2">
-                      <span className="text-blue-600 font-bold text-sm">{match.cornersHome || 0}</span>
-                      <span className="text-gray-400">-</span>
-                      <span className="text-red-600 font-bold text-sm">{match.cornersAway || 0}</span>
-                    </div>
-                  </div>
-                  <div className="flex justify-between items-center">
-                    <span className="text-xs text-gray-600">Fuorigioco</span>
-                    <div className="flex gap-2">
-                      <span className="text-blue-600 font-bold text-sm">{match.offsideHome || 0}</span>
-                      <span className="text-gray-400">-</span>
-                      <span className="text-red-600 font-bold text-sm">{match.offsideAway || 0}</span>
-                    </div>
-                  </div>
-                </div>
-              </div>
-            </div>
-          </div>
 
           {/* Pulsanti di azione */}
           <div className="flex justify-end gap-3 items-center pt-4 border-t border-gray-200">
