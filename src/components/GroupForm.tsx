@@ -46,7 +46,9 @@ export function GroupForm({ group, onSubmit, onCancel }: GroupFormProps) {
       teamManagement: false,
       matchManagement: false,
       resultsView: false,
-      statisticsView: false
+      statisticsView: false,
+      userManagement: false,
+      groupManagement: false
     }
   });
   useEffect(() => {
@@ -89,13 +91,17 @@ export function GroupForm({ group, onSubmit, onCancel }: GroupFormProps) {
     teamManagement: 'Gestione Squadra',
     matchManagement: 'Gestione Partite',
     resultsView: 'Visualizzazione Risultati',
-    statisticsView: 'Visualizzazione Statistiche'
+    statisticsView: 'Visualizzazione Statistiche',
+    userManagement: 'Gestione Utenti',
+    groupManagement: 'Gestione Gruppi'
   };
   const permissionDescriptions = {
     teamManagement: 'Permette di aggiungere, modificare ed eliminare giocatori e staff',
     matchManagement: 'Permette di creare, modificare ed eliminare partite e allenamenti',
     resultsView: 'Permette di visualizzare i risultati delle partite',
-    statisticsView: 'Permette di visualizzare le statistiche dei giocatori e della squadra'
+    statisticsView: 'Permette di visualizzare le statistiche dei giocatori e della squadra',
+    userManagement: 'Permette di gestire gli utenti del sistema',
+    groupManagement: 'Permette di gestire i gruppi e i loro permessi'
   };
 
   // Catalogo icone disponibili

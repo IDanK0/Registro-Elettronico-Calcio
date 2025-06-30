@@ -564,8 +564,9 @@ function App() {
       case 'stats':
         return hasPermission('statisticsView') || hasPermission('resultsView');
       case 'users':
+        return hasPermission('userManagement');
       case 'groups':
-        return currentUser.group.id === 'admin'; // Only admin can manage users and groups
+        return hasPermission('groupManagement');
       default:
         return false;
     }

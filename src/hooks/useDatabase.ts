@@ -231,6 +231,24 @@ export function useDatabase() {
         // ignore if exists
       }
 
+      // Migrazione: aggiungi i nuovi permessi per gestione utenti e gruppi
+      try {
+        database.run("ALTER TABLE groups ADD COLUMN userManagement BOOLEAN NOT NULL DEFAULT 0");
+        database.run("ALTER TABLE groups ADD COLUMN groupManagement BOOLEAN NOT NULL DEFAULT 0");
+        // Assegna i nuovi permessi ai gruppi esistenti
+        database.run("UPDATE groups SET userManagement = 1, groupManagement = 1 WHERE id = 'admin'");
+        // Per sicurezza, aggiorna anche gli altri gruppi con i permessi appropriati
+        database.run("UPDATE groups SET userManagement = 0, groupManagement = 0 WHERE id != 'admin'");
+      } catch (e) {
+        // ignore if exists - ma assicuriamoci che i permessi siano comunque aggiornati
+        try {
+          database.run("UPDATE groups SET userManagement = 1, groupManagement = 1 WHERE id = 'admin'");
+          database.run("UPDATE groups SET userManagement = 0, groupManagement = 0 WHERE id != 'admin'");
+        } catch (updateError) {
+          console.log('Failed to update group permissions:', updateError);
+        }
+      }
+
       // Migrazione: aggiungi campi contatto ai giocatori
       try {
         database.run("ALTER TABLE players ADD COLUMN phone TEXT");
@@ -469,6 +487,8 @@ export function useDatabase() {
         matchManagement BOOLEAN NOT NULL DEFAULT 0,
         resultsView BOOLEAN NOT NULL DEFAULT 0,
         statisticsView BOOLEAN NOT NULL DEFAULT 0,
+        userManagement BOOLEAN NOT NULL DEFAULT 0,
+        groupManagement BOOLEAN NOT NULL DEFAULT 0,
         createdAt DATETIME DEFAULT CURRENT_TIMESTAMP
       )
     `);
@@ -492,24 +512,24 @@ export function useDatabase() {
       )
     `);    // Inserisci gruppo amministratore di default se non esiste
     database.run(`
-      INSERT OR IGNORE INTO groups (id, name, description, teamManagement, matchManagement, resultsView, statisticsView)
-      VALUES ('admin', 'Amministratori', 'Gruppo con tutti i permessi', 1, 1, 1, 1)
+      INSERT OR IGNORE INTO groups (id, name, description, teamManagement, matchManagement, resultsView, statisticsView, userManagement, groupManagement)
+      VALUES ('admin', 'Amministratori', 'Gruppo con tutti i permessi', 1, 1, 1, 1, 1, 1)
     `);
 
     // Inserisci gruppi di base se non esistono
     database.run(`
-      INSERT OR IGNORE INTO groups (id, name, description, teamManagement, matchManagement, resultsView, statisticsView)
-      VALUES ('allenatore', 'Allenatore', 'Gestione completa squadra e partite', 1, 1, 1, 1)
+      INSERT OR IGNORE INTO groups (id, name, description, teamManagement, matchManagement, resultsView, statisticsView, userManagement, groupManagement)
+      VALUES ('allenatore', 'Allenatore', 'Gestione completa squadra e partite', 1, 1, 1, 1, 0, 0)
     `);
 
     database.run(`
-      INSERT OR IGNORE INTO groups (id, name, description, teamManagement, matchManagement, resultsView, statisticsView)
-      VALUES ('dirigente', 'Dirigente', 'Gestione amministrativa e visualizzazione', 0, 1, 1, 1)
+      INSERT OR IGNORE INTO groups (id, name, description, teamManagement, matchManagement, resultsView, statisticsView, userManagement, groupManagement)
+      VALUES ('dirigente', 'Dirigente', 'Gestione amministrativa e visualizzazione', 0, 1, 1, 1, 0, 0)
     `);
 
     database.run(`
-      INSERT OR IGNORE INTO groups (id, name, description, teamManagement, matchManagement, resultsView, statisticsView)
-      VALUES ('massaggiatore', 'Massaggiatore', 'Solo visualizzazione risultati e statistiche', 0, 0, 1, 1)
+      INSERT OR IGNORE INTO groups (id, name, description, teamManagement, matchManagement, resultsView, statisticsView, userManagement, groupManagement)
+      VALUES ('massaggiatore', 'Massaggiatore', 'Solo visualizzazione risultati e statistiche', 0, 0, 1, 1, 0, 0)
     `);
 
     // Inserisci utente admin di default se non esiste
@@ -1002,7 +1022,9 @@ export function useDatabase() {
           teamManagement: Boolean(row.teamManagement),
           matchManagement: Boolean(row.matchManagement),
           resultsView: Boolean(row.resultsView),
-          statisticsView: Boolean(row.statisticsView)
+          statisticsView: Boolean(row.statisticsView),
+          userManagement: Boolean(row.userManagement),
+          groupManagement: Boolean(row.groupManagement)
         },
         createdAt: row.createdAt as string
       });
@@ -1016,8 +1038,8 @@ export function useDatabase() {
     
     const id = Date.now().toString();
     db.run(
-      'INSERT INTO groups (id, name, description, icon, teamManagement, matchManagement, resultsView, statisticsView) VALUES (?, ?, ?, ?, ?, ?, ?, ?)',
-      [id, group.name, group.description || '', group.icon || 'Users', group.permissions.teamManagement ? 1 : 0, group.permissions.matchManagement ? 1 : 0, group.permissions.resultsView ? 1 : 0, group.permissions.statisticsView ? 1 : 0]
+      'INSERT INTO groups (id, name, description, icon, teamManagement, matchManagement, resultsView, statisticsView, userManagement, groupManagement) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)',
+      [id, group.name, group.description || '', group.icon || 'Users', group.permissions.teamManagement ? 1 : 0, group.permissions.matchManagement ? 1 : 0, group.permissions.resultsView ? 1 : 0, group.permissions.statisticsView ? 1 : 0, group.permissions.userManagement ? 1 : 0, group.permissions.groupManagement ? 1 : 0]
     );
     saveDatabase();
     return id;
@@ -1026,8 +1048,8 @@ export function useDatabase() {
     if (!db) return;
     
     db.run(
-      'UPDATE groups SET name = ?, description = ?, icon = ?, teamManagement = ?, matchManagement = ?, resultsView = ?, statisticsView = ? WHERE id = ?',
-      [group.name, group.description || '', group.icon || 'Users', group.permissions.teamManagement ? 1 : 0, group.permissions.matchManagement ? 1 : 0, group.permissions.resultsView ? 1 : 0, group.permissions.statisticsView ? 1 : 0, id]
+      'UPDATE groups SET name = ?, description = ?, icon = ?, teamManagement = ?, matchManagement = ?, resultsView = ?, statisticsView = ?, userManagement = ?, groupManagement = ? WHERE id = ?',
+      [group.name, group.description || '', group.icon || 'Users', group.permissions.teamManagement ? 1 : 0, group.permissions.matchManagement ? 1 : 0, group.permissions.resultsView ? 1 : 0, group.permissions.statisticsView ? 1 : 0, group.permissions.userManagement ? 1 : 0, group.permissions.groupManagement ? 1 : 0, id]
     );
     saveDatabase();
   };
@@ -1056,6 +1078,7 @@ export function useDatabase() {
     const stmt = db.prepare(`
       SELECT u.*, g.name as groupName, g.description as groupDescription, g.icon as groupIcon,
              g.teamManagement, g.matchManagement, g.resultsView, g.statisticsView,
+             g.userManagement, g.groupManagement,
              g.createdAt as groupCreatedAt
       FROM users u 
       JOIN groups g ON u.groupId = g.id 
@@ -1086,7 +1109,9 @@ export function useDatabase() {
             teamManagement: Boolean(row.teamManagement),
             matchManagement: Boolean(row.matchManagement),
             resultsView: Boolean(row.resultsView),
-            statisticsView: Boolean(row.statisticsView)
+            statisticsView: Boolean(row.statisticsView),
+            userManagement: Boolean(row.userManagement),
+            groupManagement: Boolean(row.groupManagement)
           },
           createdAt: row.groupCreatedAt as string
         }
@@ -1131,6 +1156,7 @@ export function useDatabase() {
       const stmt = db.prepare(`
       SELECT u.*, g.name as groupName, g.description as groupDescription, g.icon as groupIcon,
              g.teamManagement, g.matchManagement, g.resultsView, g.statisticsView,
+             g.userManagement, g.groupManagement,
              g.createdAt as groupCreatedAt
       FROM users u 
       JOIN groups g ON u.groupId = g.id 
@@ -1162,7 +1188,9 @@ export function useDatabase() {
             teamManagement: Boolean(row.teamManagement),
             matchManagement: Boolean(row.matchManagement),
             resultsView: Boolean(row.resultsView),
-            statisticsView: Boolean(row.statisticsView)
+            statisticsView: Boolean(row.statisticsView),
+            userManagement: Boolean(row.userManagement),
+            groupManagement: Boolean(row.groupManagement)
           },
           createdAt: row.groupCreatedAt as string
         }

@@ -114,6 +114,8 @@ export interface Permission {
   matchManagement: boolean;
   resultsView: boolean;
   statisticsView: boolean;
+  userManagement: boolean;
+  groupManagement: boolean;
 }
 
 export interface Group {
