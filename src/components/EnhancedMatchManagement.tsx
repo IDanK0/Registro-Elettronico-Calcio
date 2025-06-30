@@ -616,6 +616,12 @@ function MatchEventChronologies({
   onRemoveSubstitution: (subId: string) => void;
   currentPeriodIndex: number;
 }) {
+  // Funzione per ottenere il numero di maglia di un giocatore
+  const getPlayerJerseyNumber = (playerId: string) => {
+    const matchPlayer = match.lineup.find(lp => lp.playerId === playerId);
+    return matchPlayer?.jerseyNumber;
+  };
+
   // Filtra goal
   const goals = match.events.filter(e => e.type === 'goal');
   
@@ -812,17 +818,27 @@ function MatchEventChronologies({
                           Sostituzione
                         </span>
                       </div>
-                      <div className="space-y-1">
-                        <div className="flex items-center gap-2 text-sm">
+                      <div className="space-y-1">                        <div className="flex items-center gap-2 text-sm">
                           <span className="text-red-600 font-medium">Esce:</span>
                           <span className="text-gray-800">
-                            {sub.playerOutJerseyNumber ? `#${sub.playerOutJerseyNumber}` : '#'} {playerOut ? `${playerOut.firstName} ${playerOut.lastName}` : sub.playerOut}
+                            {sub.playerOutJerseyNumber ? 
+                              `#${sub.playerOutJerseyNumber}` : 
+                              (match.playerJerseyNumbers && match.playerJerseyNumbers[sub.playerOut] ? 
+                                `#${match.playerJerseyNumbers[sub.playerOut]}` : 
+                                (getPlayerJerseyNumber(sub.playerOut) ? `#${getPlayerJerseyNumber(sub.playerOut)}` : '#')
+                              )
+                            } {playerOut ? `${playerOut.firstName} ${playerOut.lastName}` : sub.playerOut}
                           </span>
                         </div>
                         <div className="flex items-center gap-2 text-sm">
                           <span className="text-green-600 font-medium">Entra:</span>
                           <span className="text-gray-800">
-                            {sub.playerInJerseyNumber ? `#${sub.playerInJerseyNumber}` : '#'} {playerIn ? `${playerIn.firstName} ${playerIn.lastName}` : sub.playerIn}
+                            {sub.playerInJerseyNumber ? 
+                              `#${sub.playerInJerseyNumber}` : 
+                              (match.playerJerseyNumbers && match.playerJerseyNumbers[sub.playerIn] ? 
+                                `#${match.playerJerseyNumbers[sub.playerIn]}` : '#'
+                              )
+                            } {playerIn ? `${playerIn.firstName} ${playerIn.lastName}` : sub.playerIn}
                           </span>
                         </div>
                       </div>

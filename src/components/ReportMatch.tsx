@@ -217,13 +217,22 @@ export function ReportMatch({ match, players, users, onClose }: ReportMatchProps
       // Sostituzioni del periodo
       if (events.substitutions.length > 0) {
         csvRows.push('Sostituzioni');
-        csvRows.push('Minuto,Esce,Entra');
-        events.substitutions.forEach(s => {
+        csvRows.push('Minuto,Esce,Entra');        events.substitutions.forEach(s => {
           const timeStr = `${s.minute}${s.second !== null && s.second !== undefined ? ':' + s.second.toString().padStart(2, '0') : ''}`;
           const out = players.find(p => p.id === s.playerOut);
           const inP = players.find(p => p.id === s.playerIn);
-          const outDisplay = `${s.playerOutJerseyNumber ? `#${s.playerOutJerseyNumber}` : '#'} ${out ? out.lastName : s.playerOut}`;
-          const inDisplay = `${s.playerInJerseyNumber ? `#${s.playerInJerseyNumber}` : '#'} ${inP ? inP.lastName : s.playerIn}`;
+          
+          // Logica di fallback per il numero di maglia del giocatore che esce
+          const outJerseyNumber = s.playerOutJerseyNumber || 
+            (match.playerJerseyNumbers && match.playerJerseyNumbers[s.playerOut]) || 
+            getPlayerJerseyNumber(s.playerOut);
+          
+          // Logica di fallback per il numero di maglia del giocatore che entra
+          const inJerseyNumber = s.playerInJerseyNumber || 
+            (match.playerJerseyNumbers && match.playerJerseyNumbers[s.playerIn]);
+          
+          const outDisplay = `${outJerseyNumber ? `#${outJerseyNumber}` : '#'} ${out ? out.lastName : s.playerOut}`;
+          const inDisplay = `${inJerseyNumber ? `#${inJerseyNumber}` : '#'} ${inP ? inP.lastName : s.playerIn}`;
           csvRows.push(`${timeStr},"${outDisplay}","${inDisplay}"`);
         });
         csvRows.push('');
@@ -361,13 +370,22 @@ export function ReportMatch({ match, players, users, onClose }: ReportMatchProps
       
       if (events.substitutions.length > 0) {
         eventsData.push(['Sostituzioni']);
-        eventsData.push(['Minuto', 'Esce', 'Entra']);
-        events.substitutions.forEach(s => {
+        eventsData.push(['Minuto', 'Esce', 'Entra']);        events.substitutions.forEach(s => {
           const timeStr = `${s.minute}${s.second !== null && s.second !== undefined ? ':' + s.second.toString().padStart(2, '0') : ''}`;
           const out = players.find(p => p.id === s.playerOut);
           const inP = players.find(p => p.id === s.playerIn);
-          const outDisplay = `${s.playerOutJerseyNumber ? `#${s.playerOutJerseyNumber}` : '#'} ${out ? out.lastName : s.playerOut}`;
-          const inDisplay = `${s.playerInJerseyNumber ? `#${s.playerInJerseyNumber}` : '#'} ${inP ? inP.lastName : s.playerIn}`;
+          
+          // Logica di fallback per il numero di maglia del giocatore che esce
+          const outJerseyNumber = s.playerOutJerseyNumber || 
+            (match.playerJerseyNumbers && match.playerJerseyNumbers[s.playerOut]) || 
+            getPlayerJerseyNumber(s.playerOut);
+          
+          // Logica di fallback per il numero di maglia del giocatore che entra
+          const inJerseyNumber = s.playerInJerseyNumber || 
+            (match.playerJerseyNumbers && match.playerJerseyNumbers[s.playerIn]);
+          
+          const outDisplay = `${outJerseyNumber ? `#${outJerseyNumber}` : '#'} ${out ? out.lastName : s.playerOut}`;
+          const inDisplay = `${inJerseyNumber ? `#${inJerseyNumber}` : '#'} ${inP ? inP.lastName : s.playerIn}`;
           eventsData.push([timeStr, outDisplay, inDisplay]);
         });
         eventsData.push([]);
@@ -643,17 +661,27 @@ export function ReportMatch({ match, players, users, onClose }: ReportMatchProps
                                         {s.minute}{s.second !== null && s.second !== undefined ? `:${s.second.toString().padStart(2, '0')}` : ''}
                                       </span>
                                     </div>
-                                    <div className="text-xs space-y-0.5">
-                                      <div className="flex items-center gap-1">
+                                    <div className="text-xs space-y-0.5">                                      <div className="flex items-center gap-1">
                                         <span className="text-red-600 font-medium">Esce:</span>
                                         <span className="text-gray-700">
-                                          {s.playerOutJerseyNumber ? `#${s.playerOutJerseyNumber}` : '#'} {out ? out.lastName : s.playerOut}
+                                          {s.playerOutJerseyNumber ? 
+                                            `#${s.playerOutJerseyNumber}` : 
+                                            (match.playerJerseyNumbers && match.playerJerseyNumbers[s.playerOut] ? 
+                                              `#${match.playerJerseyNumbers[s.playerOut]}` : 
+                                              (getPlayerJerseyNumber(s.playerOut) ? `#${getPlayerJerseyNumber(s.playerOut)}` : '#')
+                                            )
+                                          } {out ? out.lastName : s.playerOut}
                                         </span>
                                       </div>
                                       <div className="flex items-center gap-1">
                                         <span className="text-green-600 font-medium">Entra:</span>
                                         <span className="text-gray-700">
-                                          {s.playerInJerseyNumber ? `#${s.playerInJerseyNumber}` : '#'} {inP ? inP.lastName : s.playerIn}
+                                          {s.playerInJerseyNumber ? 
+                                            `#${s.playerInJerseyNumber}` : 
+                                            (match.playerJerseyNumbers && match.playerJerseyNumbers[s.playerIn] ? 
+                                              `#${match.playerJerseyNumbers[s.playerIn]}` : '#'
+                                            )
+                                          } {inP ? inP.lastName : s.playerIn}
                                         </span>
                                       </div>
                                     </div>

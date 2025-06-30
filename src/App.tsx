@@ -243,12 +243,13 @@ function App() {
       opponentLineup: matchData.opponentLineup || [],
       periods: editingItem?.periods || defaultPeriods,
       currentPeriodIndex: editingItem?.currentPeriodIndex || 0,
-    };
-
-    if (editingItem) {
+    };    if (editingItem) {
       database.updateMatch(editingItem.id, newMatch);
     } else {
       database.addMatch(newMatch);
+      // Reset selezione marcatori quando viene creata una nuova partita
+      setSelectedHomeScorer('');
+      setSelectedAwayScorer('');
     }
     loadData();
     setCurrentView('list');
@@ -631,16 +632,17 @@ function App() {
         case 'blue-card': description = `Blu a maglia avversaria #${jersey}`; break;
         case 'expulsion': description = `Espulsione maglia avversaria #${jersey}`; break;
         case 'warning': description = `Richiamo a maglia avversaria #${jersey}`; break;
-      }
-    } else {
+      }    } else {
       const player = players.find(p => p.id === playerId);
+      const jerseyNumber = getPlayerJerseyNumber(playerId);
+      const jerseyDisplay = jerseyNumber ? `#${jerseyNumber} ` : '';
       switch (type) {
-        case 'yellow-card': description = `Giallo a ${player ? player.lastName : ''}`; break;
-        case 'second-yellow-card': description = `Secondo giallo a ${player ? player.lastName : ''}`; break;
-        case 'red-card': description = `Rosso a ${player ? player.lastName : ''}`; break;
-        case 'blue-card': description = `Blu a ${player ? player.lastName : ''}`; break;
-        case 'expulsion': description = `Espulsione ${player ? player.lastName : ''}`; break;
-        case 'warning': description = `Richiamo a ${player ? player.lastName : ''}`; break;
+        case 'yellow-card': description = `Giallo a ${jerseyDisplay}${player ? player.lastName : ''}`; break;
+        case 'second-yellow-card': description = `Secondo giallo a ${jerseyDisplay}${player ? player.lastName : ''}`; break;
+        case 'red-card': description = `Rosso a ${jerseyDisplay}${player ? player.lastName : ''}`; break;
+        case 'blue-card': description = `Blu a ${jerseyDisplay}${player ? player.lastName : ''}`; break;
+        case 'expulsion': description = `Espulsione ${jerseyDisplay}${player ? player.lastName : ''}`; break;
+        case 'warning': description = `Richiamo a ${jerseyDisplay}${player ? player.lastName : ''}`; break;
       }
     }
     const ammonitionEvent = {
@@ -981,15 +983,18 @@ function App() {
           minute: Math.floor(nowSeconds / 60),
           second: nowSeconds % 60,
           playerId: scorerId,
-          description: `Goal di ${players.find(p => p.id === scorerId)?.lastName || ''} (nostro)`
+          description: `Goal di #${getPlayerJerseyNumber(scorerId) || '?'} ${players.find(p => p.id === scorerId)?.lastName || ''} (nostro)`
         }
       ]
     };
     setManagingMatch(updatedMatch);
     database.updateMatch(managingMatch.id, updatedMatch);
+    
+    // Reset selezione marcatore
+    setSelectedHomeScorer('');
+    
     loadData();
   };
-
   const handleAwayGoal = () => {
     if (!managingMatch) return;
     const jerseyNumber = selectedAwayScorer;
@@ -1016,6 +1021,10 @@ function App() {
     };
     setManagingMatch(updatedMatch);
     database.updateMatch(managingMatch.id, updatedMatch);
+    
+    // Reset selezione marcatore
+    setSelectedAwayScorer('');
+    
     loadData();
   };
   const handleHomeGoalRemove = () => {

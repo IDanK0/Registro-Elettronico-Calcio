@@ -122,7 +122,7 @@ export function OtherEventsModal({ isOpen, onClose, players, lineup, currentTime
     if (teamType === 'own' && selectedPlayer) {
       const player = playersInLineup.find(p => p.id === selectedPlayer);
       if (player) {
-        description = `${selectedEvent?.label}: ${player.firstName} ${player.lastName}`;
+        description = `${selectedEvent?.label}: #${player.jerseyNumber} ${player.firstName} ${player.lastName}`;
       }
     } else if (teamType === 'opponent') {
       description = `${selectedEvent?.label} (Avversari)`;
