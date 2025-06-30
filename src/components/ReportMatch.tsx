@@ -233,8 +233,46 @@ export function ReportMatch({ match, players, users, onClose }: ReportMatchProps
     
     const allEvents: any[] = [];
     
+    // Calcola le durate cumulative per ogni periodo
+    const calculateCumulativeDurations = () => {
+      const periods = match.periods || [{ type: 'regular', label: '1° Tempo', duration: 0 }];
+      const cumulativeDurations: number[] = [];
+      let cumulative = 0;
+      
+      periods.forEach((period, index) => {
+        cumulativeDurations[index] = cumulative;
+        cumulative += period.duration;
+      });
+      
+      return cumulativeDurations;
+    };
+    
+    const cumulativeDurations = calculateCumulativeDurations();
+    const periods = match.periods || [{ type: 'regular', label: '1° Tempo', duration: 0 }];
+    
+    // Aggiungi eventi degli intervalli alla cronologia
+    periods.forEach((period, periodIndex) => {
+      if (period.type === 'interval') {
+        const startTime = cumulativeDurations[periodIndex];
+        
+        allEvents.push({
+          periodName: period.label,
+          minute: Math.floor(period.duration / 60),
+          second: period.duration % 60,
+          tipoEvento: 'Intervallo',
+          squadra: '-',
+          giocatorePrincipale: '-',
+          giocatoreSecondario: '-',
+          note: '-',
+          cumulativeDuration: startTime
+        });
+      }
+    });
+    
+    // Aggiungi gli eventi di gioco esistenti con durata cumulativa corretta
     Object.entries(eventsByPeriod).forEach(([periodIndex, events]) => {
       const periodName = getPeriodName(parseInt(periodIndex));
+      const periodStartTime = cumulativeDurations[parseInt(periodIndex)] || 0;
       
       events.goals.forEach(g => {
         const squadra = g.teamType === 'opponent' ? opponentName : teamName;
@@ -246,7 +284,20 @@ export function ReportMatch({ match, players, users, onClose }: ReportMatchProps
           const numMatch = g.description?.match(/#(\d+)/);
           giocatorePrincipale = numMatch ? `Avversario #${numMatch[1]}` : 'Avversario';
         }
-        allEvents.push({ periodName, minute: g.minute, second: g.second, tipoEvento: 'Gol', squadra, giocatorePrincipale, giocatoreSecondario: '', note: g.description || '' });
+        const eventTimeInPeriod = (g.minute * 60) + (g.second || 0);
+        const cumulativeDuration = periodStartTime + eventTimeInPeriod;
+        
+        allEvents.push({ 
+          periodName, 
+          minute: g.minute, 
+          second: g.second, 
+          tipoEvento: 'Gol', 
+          squadra, 
+          giocatorePrincipale, 
+          giocatoreSecondario: '', 
+          note: g.description || '',
+          cumulativeDuration
+        });
       });
       
       events.cards.forEach(c => {
@@ -263,7 +314,21 @@ export function ReportMatch({ match, players, users, onClose }: ReportMatchProps
         if (c.type === 'red-card' || c.type === 'expulsion') tipoEvento = 'Espulsione';
         else if (c.type === 'second-yellow-card') tipoEvento = 'Seconda Gialla';
         else if (c.type === 'blue-card') tipoEvento = 'Cartellino Blu';
-        allEvents.push({ periodName, minute: c.minute, second: c.second, tipoEvento, squadra, giocatorePrincipale, giocatoreSecondario: '', note: c.description || '' });
+        
+        const eventTimeInPeriod = (c.minute * 60) + (c.second || 0);
+        const cumulativeDuration = periodStartTime + eventTimeInPeriod;
+        
+        allEvents.push({ 
+          periodName, 
+          minute: c.minute, 
+          second: c.second, 
+          tipoEvento, 
+          squadra, 
+          giocatorePrincipale, 
+          giocatoreSecondario: '', 
+          note: c.description || '',
+          cumulativeDuration
+        });
       });
       
       events.substitutions.forEach(s => {
@@ -271,7 +336,21 @@ export function ReportMatch({ match, players, users, onClose }: ReportMatchProps
         const inP = players.find(p => p.id === s.playerIn);
         const outName = out ? `${out.firstName} ${out.lastName}` : 'N/A';
         const inName = inP ? `${inP.firstName} ${inP.lastName}` : 'N/A';
-        allEvents.push({ periodName, minute: s.minute, second: s.second, tipoEvento: 'Sostituzione', squadra: teamName, giocatorePrincipale: `${outName} (esce)`, giocatoreSecondario: `${inName} (entra)`, note: '' });
+        
+        const eventTimeInPeriod = (s.minute * 60) + (s.second || 0);
+        const cumulativeDuration = periodStartTime + eventTimeInPeriod;
+        
+        allEvents.push({ 
+          periodName, 
+          minute: s.minute, 
+          second: s.second, 
+          tipoEvento: 'Sostituzione', 
+          squadra: teamName, 
+          giocatorePrincipale: `${outName} (esce)`, 
+          giocatoreSecondario: `${inName} (entra)`, 
+          note: '',
+          cumulativeDuration
+        });
       });
       
       events.otherEvents.forEach(e => {
@@ -294,23 +373,34 @@ export function ReportMatch({ match, players, users, onClose }: ReportMatchProps
           const numMatch = e.description?.match(/#(\d+)/);
           giocatorePrincipale = numMatch ? `Avversario #${numMatch[1]}` : 'Avversario';
         }
-        allEvents.push({ periodName, minute: e.minute, second: e.second, tipoEvento, squadra, giocatorePrincipale, giocatoreSecondario: '', note: e.description || '' });
+        
+        const eventTimeInPeriod = (e.minute * 60) + (e.second || 0);
+        const cumulativeDuration = periodStartTime + eventTimeInPeriod;
+        
+        allEvents.push({ 
+          periodName, 
+          minute: e.minute, 
+          second: e.second, 
+          tipoEvento, 
+          squadra, 
+          giocatorePrincipale, 
+          giocatoreSecondario: '', 
+          note: e.description || '',
+          cumulativeDuration
+        });
       });
     });
     
+    // Ordinamento basato sulla durata cumulativa dall'inizio della partita
     allEvents.sort((a, b) => {
-      const getPeriodOrder = (periodName: string) => {
-        if (periodName.includes('1°')) return 1;
-        if (periodName.includes('2°')) return 2;
-        if (periodName.includes('Supplementare')) return periodName.includes('1°') ? 3 : 4;
-        if (periodName.includes('Rigori')) return 5;
-        return 0;
-      };
-      const orderA = getPeriodOrder(a.periodName);
-      const orderB = getPeriodOrder(b.periodName);
-      if (orderA !== orderB) return orderA - orderB;
-      const timeA = a.minute * 60 + (a.second || 0);
-      const timeB = b.minute * 60 + (b.second || 0);
+      // Prima priorità: durata cumulativa
+      if (a.cumulativeDuration !== b.cumulativeDuration) {
+        return a.cumulativeDuration - b.cumulativeDuration;
+      }
+      
+      // Seconda priorità: tempo all'interno dello stesso momento
+      const timeA = (a.minute * 60) + (a.second || 0);
+      const timeB = (b.minute * 60) + (b.second || 0);
       return timeA - timeB;
     });
     
