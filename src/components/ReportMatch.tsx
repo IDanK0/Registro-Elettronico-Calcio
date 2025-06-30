@@ -560,17 +560,20 @@ export function ReportMatch({ match, players, users, onClose }: ReportMatchProps
                 } else if (period.type === 'extra') {
                   headerColorClass = 'bg-purple-50 border-purple-200';
                 }
-                // Se è un intervallo, mostra una card dedicata
+                // Se è un intervallo, mostra una card dedicata con layout coerente
                 if (period.type === 'interval') {
                   return (
                     <div key={originalPeriodIndex} className={`mb-4 bg-white rounded-lg border shadow-sm ${headerColorClass}`}>
-                      <div className="p-4 flex flex-col items-center justify-center">
-                        <h4 className="text-sm font-bold text-orange-700 mb-2 flex items-center gap-2">
-                          <Timer className="w-4 h-4 text-orange-600" />
-                          {period.label || 'Intervallo'}
+                      <div className="p-4">
+                        <h4 className="text-sm font-bold text-orange-700 flex items-center justify-between">
+                          <span className="flex items-center gap-2">
+                            <Timer className="w-4 h-4 text-orange-600" />
+                            {period.label || 'Intervallo'}
+                          </span>
+                          <span className="text-xs text-gray-500 font-normal">
+                            Durata: {Math.floor(period.duration / 60)}:{(period.duration % 60).toString().padStart(2, '0')}
+                          </span>
                         </h4>
-                        <div className="text-xs text-gray-500 mb-1">Durata: {Math.floor(period.duration / 60)}:{(period.duration % 60).toString().padStart(2, '0')}</div>
-                        <div className="text-xs text-gray-400 italic text-center">Nessun evento durante l'intervallo</div>
                       </div>
                     </div>
                   );
