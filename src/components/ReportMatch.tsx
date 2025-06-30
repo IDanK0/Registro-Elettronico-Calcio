@@ -348,7 +348,7 @@ export function ReportMatch({ match, players, users, onClose }: ReportMatchProps
         eventsData.push(['Goal']);
         eventsData.push(['Minuto', 'Descrizione']);
         events.goals.forEach(g => {
-          const timeStr = `${g.minute}${g.second !== null && g.second !== undefined ? ':' + g.second.toString().padStart(2, '0') : ''}`;
+          const timeStr = `${g.minute}${g.second !== null && g.second !== undefined ? `:${g.second.toString().padStart(2, '0')}` : ''}`;
           eventsData.push([timeStr, g.description || '']);
         });
         eventsData.push([]);
@@ -358,7 +358,7 @@ export function ReportMatch({ match, players, users, onClose }: ReportMatchProps
         eventsData.push(['Ammonizioni/Espulsioni']);
         eventsData.push(['Minuto', 'Tipo', 'Descrizione']);
         events.cards.forEach(c => {
-          const timeStr = `${c.minute}${c.second !== null && c.second !== undefined ? ':' + c.second.toString().padStart(2, '0') : ''}`;
+          const timeStr = `${c.minute}${c.second !== null && c.second !== undefined ? `:${c.second.toString().padStart(2, '0')}` : ''}`;
           let tipo = 'Ammonizione';
           if (c.type === 'red-card' || c.type === 'expulsion') tipo = 'Espulsione';
           else if (c.type === 'second-yellow-card') tipo = 'Seconda Gialla';
@@ -371,7 +371,7 @@ export function ReportMatch({ match, players, users, onClose }: ReportMatchProps
       if (events.substitutions.length > 0) {
         eventsData.push(['Sostituzioni']);
         eventsData.push(['Minuto', 'Esce', 'Entra']);        events.substitutions.forEach(s => {
-          const timeStr = `${s.minute}${s.second !== null && s.second !== undefined ? ':' + s.second.toString().padStart(2, '0') : ''}`;
+          const timeStr = `${s.minute}${s.second !== null && s.second !== undefined ? `:${s.second.toString().padStart(2, '0')}` : ''}`;
           const out = players.find(p => p.id === s.playerOut);
           const inP = players.find(p => p.id === s.playerIn);
           
@@ -395,7 +395,7 @@ export function ReportMatch({ match, players, users, onClose }: ReportMatchProps
         eventsData.push(['Altri Eventi']);
         eventsData.push(['Minuto', 'Tipo', 'Giocatore', 'Descrizione']);
         events.otherEvents.forEach(e => {
-          const timeStr = `${e.minute}${e.second !== null && e.second !== undefined ? ':' + e.second.toString().padStart(2, '0') : ''}`;
+          const timeStr = `${e.minute}${e.second !== null && e.second !== undefined ? `:${e.second.toString().padStart(2, '0')}` : ''}`;
           let tipo = '';
           switch (e.type) {
             case 'foul': tipo = 'Fallo'; break;
@@ -544,45 +544,51 @@ export function ReportMatch({ match, players, users, onClose }: ReportMatchProps
               <Timer className="w-4 h-4 text-blue-600" />
               Eventi per Periodo
             </h3>
-            
+            {/* Mostra TUTTI i periodi, inclusi gli intervalli */}
             {(match.periods || [{ type: 'regular', label: '1° Tempo', duration: 0 }])
-              .filter(period => period.type !== 'interval') // Mostra solo i periodi di gioco, mai gli intervalli
-              .map((period) => {
+              .map((period, idx) => {
                 // Trova l'indice originale del periodo nella lista completa
                 const originalPeriodIndex = (match.periods || []).findIndex(p => p === period);
                 const events = eventsByPeriod[originalPeriodIndex] || { goals: [], cards: [], substitutions: [], otherEvents: [] };
                 const hasEvents = events.goals.length > 0 || events.cards.length > 0 || events.substitutions.length > 0 || events.otherEvents.length > 0;
-              
-              // Determina il colore del header in base al tipo di periodo
-              let headerColorClass = '';
-              if (period.type === 'regular') {
-                headerColorClass = 'bg-green-50 border-green-200';
-              } else if (period.type === 'interval') {
-                headerColorClass = 'bg-orange-50 border-orange-200';
-              } else if (period.type === 'extra') {
-                headerColorClass = 'bg-purple-50 border-purple-200';
-              }
-              
-              return (
-                <div key={originalPeriodIndex} className={`mb-4 bg-white rounded-lg border shadow-sm ${headerColorClass}`}>
-                  <div className="p-4">
-                    <h4 className="text-sm font-bold text-gray-800 mb-3 pb-2 border-b border-gray-200 flex items-center justify-between">
-                      <span>{period.label}</span>
-                      <span className="text-xs text-gray-500 font-normal">
-                        Durata: {Math.floor(period.duration / 60)}:{(period.duration % 60).toString().padStart(2, '0')}
-                      </span>
-                    </h4>
-                    
-                    {!hasEvents ? (
-                      <p className="text-gray-400 text-sm italic text-center py-4">Nessun evento registrato in questo periodo</p>
-                    ) : (
-                      <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
-                        {/* Goal del periodo */}
-                        <div>
-                          <h5 className="text-xs font-semibold mb-2 text-green-700 flex items-center gap-1">
-                            <Target className="w-3 h-3" />
-                            Goal ({events.goals.length})
-                          </h5>
+                // Determina il colore del header in base al tipo di periodo
+                let headerColorClass = '';
+                if (period.type === 'regular') {
+                  headerColorClass = 'bg-green-50 border-green-200';
+                } else if (period.type === 'interval') {
+                  headerColorClass = 'bg-orange-50 border-orange-200';
+                } else if (period.type === 'extra') {
+                  headerColorClass = 'bg-purple-50 border-purple-200';
+                }
+                // Se è un intervallo, mostra una card dedicata
+                if (period.type === 'interval') {
+                  return (
+                    <div key={originalPeriodIndex} className={`mb-4 bg-white rounded-lg border shadow-sm ${headerColorClass}`}>
+                      <div className="p-4 flex flex-col items-center justify-center">
+                        <h4 className="text-sm font-bold text-orange-700 mb-2 flex items-center gap-2">
+                          <Timer className="w-4 h-4 text-orange-600" />
+                          {period.label || 'Intervallo'}
+                        </h4>
+                        <div className="text-xs text-gray-500 mb-1">Durata: {Math.floor(period.duration / 60)}:{(period.duration % 60).toString().padStart(2, '0')}</div>
+                        <div className="text-xs text-gray-400 italic text-center">Nessun evento durante l'intervallo</div>
+                      </div>
+                    </div>
+                  );
+                }
+                return (
+                  <div key={originalPeriodIndex} className={`mb-4 bg-white rounded-lg border shadow-sm ${headerColorClass}`}>
+                    <div className="p-4">
+                      <h4 className="text-sm font-bold text-gray-800 mb-3 pb-2 border-b border-gray-200 flex items-center justify-between">
+                        <span>{period.label}</span>
+                        <span className="text-xs text-gray-500 font-normal">
+                          Durata: {Math.floor(period.duration / 60)}:{(period.duration % 60).toString().padStart(2, '0')}
+                        </span>
+                      </h4>
+                      {!hasEvents ? (
+                        <p className="text-gray-400 text-sm italic text-center py-4">Nessun evento registrato in questo periodo</p>
+                      ) : (
+                        <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
+                          {/* Goal del periodo */}
                           {events.goals.length === 0 ? (
                             <p className="text-gray-400 text-xs italic">Nessun goal</p>
                           ) : (
@@ -602,154 +608,144 @@ export function ReportMatch({ match, players, users, onClose }: ReportMatchProps
                               })}
                             </div>
                           )}
-                        </div>
-
-                        {/* Ammonizioni del periodo */}
-                        <div>
-                          <h5 className="text-xs font-semibold mb-2 text-yellow-700 flex items-center gap-1">
-                            <AlertTriangle className="w-3 h-3" />
-                            Ammonizioni ({events.cards.length})
-                          </h5>
-                          {events.cards.length === 0 ? (
-                            <p className="text-gray-400 text-xs italic">Nessuna ammonizione</p>
-                          ) : (
-                            <div className="space-y-1">
-                              {events.cards.map(c => {
-                                let colorClass = 'bg-yellow-50 border-yellow-200';
-                                let badgeClass = 'bg-yellow-100 text-yellow-700';
-                                if (c.type === 'red-card' || c.type === 'expulsion') {
-                                  colorClass = 'bg-red-50 border-red-200';
-                                  badgeClass = 'bg-red-100 text-red-700';
-                                } else if (c.type === 'blue-card') {
-                                  colorClass = 'bg-blue-50 border-blue-200';
-                                  badgeClass = 'bg-blue-100 text-blue-700';
-                                }
-                                
-                                return (
-                                  <div key={c.id} className={`p-2 rounded border ${colorClass}`}>
-                                    <div className="flex items-center gap-1">
-                                      <span className={`text-xs font-bold px-1 py-0.5 rounded ${badgeClass}`}>
-                                        {c.minute}{c.second !== null && c.second !== undefined ? `:${c.second.toString().padStart(2, '0')}` : ''}
-                                      </span>
-                                      <span className="text-gray-700 text-xs">{c.description}</span>
-                                    </div>
-                                  </div>
-                                );
-                              })}
-                            </div>
-                          )}
-                        </div>
-
-                        {/* Sostituzioni del periodo */}
-                        <div>
-                          <h5 className="text-xs font-semibold mb-2 text-blue-700 flex items-center gap-1">
-                            <RotateCcw className="w-3 h-3" />
-                            Sostituzioni ({events.substitutions.length})
-                          </h5>
-                          {events.substitutions.length === 0 ? (
-                            <p className="text-gray-400 text-xs italic">Nessuna sostituzione</p>
-                          ) : (
-                            <div className="space-y-1">
-                              {events.substitutions.map(s => {
-                                const out = players.find(p => p.id === s.playerOut);
-                                const inP = players.find(p => p.id === s.playerIn);
-                                return (
-                                  <div key={s.id} className="p-2 rounded border bg-blue-50 border-blue-200">
-                                    <div className="flex items-center gap-1 mb-1">
-                                      <span className="text-xs font-bold px-1 py-0.5 rounded bg-blue-100 text-blue-700">
-                                        {s.minute}{s.second !== null && s.second !== undefined ? `:${s.second.toString().padStart(2, '0')}` : ''}
-                                      </span>
-                                    </div>
-                                    <div className="text-xs space-y-0.5">                                      <div className="flex items-center gap-1">
-                                        <span className="text-red-600 font-medium">Esce:</span>
-                                        <span className="text-gray-700">
-                                          {s.playerOutJerseyNumber ? 
-                                            `#${s.playerOutJerseyNumber}` : 
-                                            (match.playerJerseyNumbers && match.playerJerseyNumbers[s.playerOut] ? 
-                                              `#${match.playerJerseyNumbers[s.playerOut]}` : 
-                                              (getPlayerJerseyNumber(s.playerOut) ? `#${getPlayerJerseyNumber(s.playerOut)}` : '#')
-                                            )
-                                          } {out ? out.lastName : s.playerOut}
-                                        </span>
-                                      </div>
+                          {/* Ammonizioni del periodo */}
+                          <div>
+                            <h5 className="text-xs font-semibold mb-2 text-yellow-700 flex items-center gap-1">
+                              <AlertTriangle className="w-3 h-3" />
+                              Ammonizioni ({events.cards.length})
+                            </h5>
+                            {events.cards.length === 0 ? (
+                              <p className="text-gray-400 text-xs italic">Nessuna ammonizione</p>
+                            ) : (
+                              <div className="space-y-1">
+                                {events.cards.map(c => {
+                                  let colorClass = 'bg-yellow-50 border-yellow-200';
+                                  let badgeClass = 'bg-yellow-100 text-yellow-700';
+                                  if (c.type === 'red-card' || c.type === 'expulsion') {
+                                    colorClass = 'bg-red-50 border-red-200';
+                                    badgeClass = 'bg-red-100 text-red-700';
+                                  } else if (c.type === 'blue-card') {
+                                    colorClass = 'bg-blue-50 border-blue-200';
+                                    badgeClass = 'bg-blue-100 text-blue-700';
+                                  }
+                                  return (
+                                    <div key={c.id} className={`p-2 rounded border ${colorClass}`}>
                                       <div className="flex items-center gap-1">
-                                        <span className="text-green-600 font-medium">Entra:</span>
-                                        <span className="text-gray-700">
-                                          {s.playerInJerseyNumber ? 
-                                            `#${s.playerInJerseyNumber}` : 
-                                            (match.playerJerseyNumbers && match.playerJerseyNumbers[s.playerIn] ? 
-                                              `#${match.playerJerseyNumbers[s.playerIn]}` : '#'
-                                            )
-                                          } {inP ? inP.lastName : s.playerIn}
+                                        <span className={`text-xs font-bold px-1 py-0.5 rounded ${badgeClass}`}>
+                                          {c.minute}{c.second !== null && c.second !== undefined ? `:${c.second.toString().padStart(2, '0')}` : ''}
                                         </span>
+                                        <span className="text-gray-700 text-xs">{c.description}</span>
                                       </div>
                                     </div>
-                                  </div>
-                                );
-                              })}
-                            </div>
-                          )}
-                        </div>
-                      </div>
-                    )}
-                    
-                    {/* Altri Eventi del periodo */}
-                    {events.otherEvents.length > 0 && (
-                      <div className="p-3 bg-gray-50 rounded-lg">
-                        <div>
-                          <h5 className="text-xs font-semibold mb-2 text-gray-700 flex items-center gap-1">
-                            <FileText className="w-3 h-3" />
-                            Altri Eventi ({events.otherEvents.length})
-                          </h5>
-                          <div className="space-y-1">
-                            {events.otherEvents.map(e => {
-                              // Funzione per ottenere l'icona e il colore dell'evento
-                              const getEventIcon = (type: string) => {
-                                switch (type) {
-                                  case 'foul': return { icon: AlertTriangle, color: 'text-orange-600', bg: 'bg-orange-50', border: 'border-orange-200' };
-                                  case 'corner': return { icon: Flag, color: 'text-blue-600', bg: 'bg-blue-50', border: 'border-blue-200' };
-                                  case 'offside': return { icon: Ban, color: 'text-red-600', bg: 'bg-red-50', border: 'border-red-200' };
-                                  case 'free-kick': return { icon: Zap, color: 'text-green-600', bg: 'bg-green-50', border: 'border-green-200' };
-                                  case 'penalty': return { icon: Calendar, color: 'text-purple-600', bg: 'bg-purple-50', border: 'border-purple-200' };
-                                  case 'throw-in': return { icon: UserX, color: 'text-gray-600', bg: 'bg-gray-50', border: 'border-gray-200' };
-                                  case 'injury': return { icon: UserX, color: 'text-red-500', bg: 'bg-red-50', border: 'border-red-200' };
-                                  default: return { icon: FileText, color: 'text-gray-600', bg: 'bg-gray-50', border: 'border-gray-200' };
-                                }
-                              };
-
-                              const { icon: Icon, color, bg, border } = getEventIcon(e.type);
-
-                              // Ottieni il numero di maglia del giocatore se disponibile
-                              const jerseyNumber = e.playerId ? getPlayerJerseyNumber(e.playerId) : null;
-
-                              return (
-                                <div key={e.id} className={`p-2 rounded border ${bg} ${border}`}>
-                                  <div className="flex items-center gap-1 mb-1">
-                                    <span className="text-xs font-bold px-1 py-0.5 rounded bg-gray-100 text-gray-700">
-                                      {e.minute}{e.second !== null && e.second !== undefined ? `:${e.second.toString().padStart(2, '0')}` : ''}
-                                    </span>
-                                    <Icon className={`w-3 h-3 ${color}`} />
-                                    {/* Mostra numero di maglia se disponibile */}
-                                    {jerseyNumber && (
-                                      <span className="text-xs font-bold px-1 py-0.5 rounded bg-blue-100 text-blue-700">
-                                        #{jerseyNumber}
-                                      </span>
-                                    )}
-                                  </div>
-                                  <div className="text-xs text-gray-700">
-                                    {e.description}
-                                  </div>
-                                </div>
-                              );
-                            })}
+                                  );
+                                })}
+                              </div>
+                            )}
+                          </div>
+                          {/* Sostituzioni del periodo */}
+                          <div>
+                            <h5 className="text-xs font-semibold mb-2 text-blue-700 flex items-center gap-1">
+                              <RotateCcw className="w-3 h-3" />
+                              Sostituzioni ({events.substitutions.length})
+                            </h5>
+                            {events.substitutions.length === 0 ? (
+                              <p className="text-gray-400 text-xs italic">Nessuna sostituzione</p>
+                            ) : (
+                              <div className="space-y-1">
+                                {events.substitutions.map(s => {
+                                  const out = players.find(p => p.id === s.playerOut);
+                                  const inP = players.find(p => p.id === s.playerIn);
+                                  return (
+                                    <div key={s.id} className="p-2 rounded border bg-blue-50 border-blue-200">
+                                      <div className="flex items-center gap-1 mb-1">
+                                        <span className="text-xs font-bold px-1 py-0.5 rounded bg-blue-100 text-blue-700">
+                                          {s.minute}{s.second !== null && s.second !== undefined ? `:${s.second.toString().padStart(2, '0')}` : ''}
+                                        </span>
+                                      </div>
+                                      <div className="text-xs space-y-0.5">
+                                        <div className="flex items-center gap-1">
+                                          <span className="text-red-600 font-medium">Esce:</span>
+                                          <span className="text-gray-700">
+                                            {s.playerOutJerseyNumber ? 
+                                              `#${s.playerOutJerseyNumber}` : 
+                                              (match.playerJerseyNumbers && match.playerJerseyNumbers[s.playerOut] ? 
+                                                `#${match.playerJerseyNumbers[s.playerOut]}` : 
+                                                (getPlayerJerseyNumber(s.playerOut) ? `#${getPlayerJerseyNumber(s.playerOut)}` : '#')
+                                              )
+                                            } {out ? out.lastName : s.playerOut}
+                                          </span>
+                                        </div>
+                                        <div className="flex items-center gap-1">
+                                          <span className="text-green-600 font-medium">Entra:</span>
+                                          <span className="text-gray-700">
+                                            {s.playerInJerseyNumber ? 
+                                              `#${s.playerInJerseyNumber}` : 
+                                              (match.playerJerseyNumbers && match.playerJerseyNumbers[s.playerIn] ? 
+                                                `#${match.playerJerseyNumbers[s.playerIn]}` : '#'
+                                              )
+                                            } {inP ? inP.lastName : s.playerIn}
+                                          </span>
+                                        </div>
+                                      </div>
+                                    </div>
+                                  );
+                                })}
+                              </div>
+                            )}
                           </div>
                         </div>
-                      </div>
-                    )}
+                      )}
+                      {/* Altri Eventi del periodo */}
+                      {events.otherEvents.length > 0 && (
+                        <div className="p-3 bg-gray-50 rounded-lg">
+                          <div>
+                            <h5 className="text-xs font-semibold mb-2 text-gray-700 flex items-center gap-1">
+                              <FileText className="w-3 h-3" />
+                              Altri Eventi ({events.otherEvents.length})
+                            </h5>
+                            <div className="space-y-1">
+                              {events.otherEvents.map(e => {
+                                const getEventIcon = (type: string) => {
+                                  switch (type) {
+                                    case 'foul': return { icon: AlertTriangle, color: 'text-orange-600', bg: 'bg-orange-50', border: 'border-orange-200' };
+                                    case 'corner': return { icon: Flag, color: 'text-blue-600', bg: 'bg-blue-50', border: 'border-blue-200' };
+                                    case 'offside': return { icon: Ban, color: 'text-red-600', bg: 'bg-red-50', border: 'border-red-200' };
+                                    case 'free-kick': return { icon: Zap, color: 'text-green-600', bg: 'bg-green-50', border: 'border-green-200' };
+                                    case 'penalty': return { icon: Calendar, color: 'text-purple-600', bg: 'bg-purple-50', border: 'border-purple-200' };
+                                    case 'throw-in': return { icon: UserX, color: 'text-gray-600', bg: 'bg-gray-50', border: 'border-gray-200' };
+                                    case 'injury': return { icon: UserX, color: 'text-red-500', bg: 'bg-red-50', border: 'border-red-200' };
+                                    default: return { icon: FileText, color: 'text-gray-600', bg: 'bg-gray-50', border: 'border-gray-200' };
+                                  }
+                                };
+                                const { icon: Icon, color, bg, border } = getEventIcon(e.type);
+                                const jerseyNumber = e.playerId ? getPlayerJerseyNumber(e.playerId) : null;
+                                return (
+                                  <div key={e.id} className={`p-2 rounded border ${bg} ${border}`}>
+                                    <div className="flex items-center gap-1 mb-1">
+                                      <span className="text-xs font-bold px-1 py-0.5 rounded bg-gray-100 text-gray-700">
+                                        {e.minute}{e.second !== null && e.second !== undefined ? `:${e.second.toString().padStart(2, '0')}` : ''}
+                                      </span>
+                                      <Icon className={`w-3 h-3 ${color}`} />
+                                      {jerseyNumber && (
+                                        <span className="text-xs font-bold px-1 py-0.5 rounded bg-blue-100 text-blue-700">
+                                          #{jerseyNumber}
+                                        </span>
+                                      )}
+                                    </div>
+                                    <div className="text-xs text-gray-700">
+                                      {e.description}
+                                    </div>
+                                  </div>
+                                );
+                              })}
+                            </div>
+                          </div>
+                        </div>
+                      )}
+                    </div>
                   </div>
-                </div>
-              );
-            })}
+                );
+              })}
           </div>
 
           {/* Staff tecnico */}
