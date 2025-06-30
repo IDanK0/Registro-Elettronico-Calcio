@@ -1,7 +1,6 @@
 import { useState } from 'react';
 import { Match, Player, UserWithGroup } from '../types';
 import { Download, FileText, Calendar, MapPin, Users, Trophy, Timer, Target, AlertTriangle, RotateCcw, Flag, Ban, Zap, UserX } from 'lucide-react';
-import * as XLSX from 'xlsx';
 
 interface ReportMatchProps {
   match: Match;
@@ -143,316 +142,275 @@ export function ReportMatch({ match, players, users, onClose }: ReportMatchProps
     });
   };
 
-  // CSV migliorato con suddivisione per periodi
+  // Funzione helper per convertire minuti e secondi in formato mm:ss
+  const formatGameTime = (minute: number, second?: number): string => {
+    const totalSeconds = minute * 60 + (second || 0);
+    const minutes = Math.floor(totalSeconds / 60);
+    const seconds = totalSeconds % 60;
+    return `${minutes}:${seconds.toString().padStart(2, '0')}`;
+  };
+
+  // CSV migliorato - Genera due file separati seguendo la guida fornita
   const exportCSV = () => {
-    const csvRows: string[] = [];
+    // Genera il primo file: partecipanti_partita.csv
+    const participantsRows: string[] = [];
+    participantsRows.push('"Squadra","NomeCognome","Ruolo"');
     
-    // Header generale
-    csvRows.push('REPORT PARTITA');
-    csvRows.push('');
-    csvRows.push(`Data,${match.date}`);
-    csvRows.push(`Ora,${match.time || 'Non specificata'}`);
-    csvRows.push(`Avversario,${match.opponent}`);
-    csvRows.push(`Tipo,${match.homeAway === 'home' ? 'Casa' : 'Trasferta'}`);
-    if (match.location) csvRows.push(`Luogo,${match.location}`);
-    if (match.field) csvRows.push(`Campo,${match.field}`);
-    csvRows.push(`Risultato finale,${match.homeAway === 'home' ? match.homeScore : match.awayScore}-${match.homeAway === 'home' ? match.awayScore : match.homeScore}`);
-    csvRows.push('');
+    // Determina il nome della squadra
+    const teamName = "ASD Pietra Ligure Calcio"; // Nome fisso per ora
+    const opponentName = match.opponent || "vs.oldT";
     
-    // Staff tecnico
-    if (match.coaches?.length > 0 || match.managers?.length > 0) {
-      csvRows.push('STAFF TECNICO');
-      if (match.coaches?.length > 0) {
-        csvRows.push('Allenatori');
-        getStaffNames(match.coaches).forEach(name => csvRows.push(`,${name}`));
-      }
-      if (match.managers?.length > 0) {
-        csvRows.push('Dirigenti');
-        getStaffNames(match.managers).forEach(name => csvRows.push(`,${name}`));
-      }
-      csvRows.push('');
-    }
-    
-    // Formazione titolare
-    csvRows.push('FORMAZIONE TITOLARE');
-    csvRows.push('Numero,Nome,Cognome,Posizione');
+    // Aggiungi i giocatori titolari
     lineupPlayers.forEach(p => {
-      const matchPlayer = match.lineup.find(lp => lp.playerId === p.id);
-      csvRows.push(`${matchPlayer?.jerseyNumber || ''},${p.firstName},${p.lastName},${matchPlayer?.position || ''}`);
-    });
-    csvRows.push('');
-    
-    // Eventi per periodo
-    Object.entries(eventsByPeriod).forEach(([periodIndex, events]) => {
-      const periodName = getPeriodName(parseInt(periodIndex));
-      csvRows.push(`PERIODO: ${periodName}`);
-      csvRows.push('');
-      
-      // Goal del periodo
-      if (events.goals.length > 0) {
-        csvRows.push('Goal');
-        csvRows.push('Minuto,Descrizione');
-        events.goals.forEach(g => {
-          const timeStr = `${g.minute}${g.second !== null && g.second !== undefined ? ':' + g.second.toString().padStart(2, '0') : ''}`;
-          csvRows.push(`${timeStr},"${g.description || ''}"`);
-        });
-        csvRows.push('');
-      }
-      
-      // Ammonizioni del periodo
-      if (events.cards.length > 0) {
-        csvRows.push('Ammonizioni/Espulsioni');
-        csvRows.push('Minuto,Tipo,Descrizione');
-        events.cards.forEach(c => {
-          const timeStr = `${c.minute}${c.second !== null && c.second !== undefined ? ':' + c.second.toString().padStart(2, '0') : ''}`;
-          let tipo = 'Ammonizione';
-          if (c.type === 'red-card' || c.type === 'expulsion') tipo = 'Espulsione';
-          else if (c.type === 'second-yellow-card') tipo = 'Seconda Gialla';
-          else if (c.type === 'blue-card') tipo = 'Cartellino Blu';
-          csvRows.push(`${timeStr},${tipo},"${c.description || ''}"`);
-        });
-        csvRows.push('');
-      }
-      
-      // Sostituzioni del periodo
-      if (events.substitutions.length > 0) {
-        csvRows.push('Sostituzioni');
-        csvRows.push('Minuto,Esce,Entra');        events.substitutions.forEach(s => {
-          const timeStr = `${s.minute}${s.second !== null && s.second !== undefined ? ':' + s.second.toString().padStart(2, '0') : ''}`;
-          const out = players.find(p => p.id === s.playerOut);
-          const inP = players.find(p => p.id === s.playerIn);
-          
-          // Logica di fallback per il numero di maglia del giocatore che esce
-          const outJerseyNumber = s.playerOutJerseyNumber || 
-            (match.playerJerseyNumbers && match.playerJerseyNumbers[s.playerOut]) || 
-            getPlayerJerseyNumber(s.playerOut);
-          
-          // Logica di fallback per il numero di maglia del giocatore che entra
-          const inJerseyNumber = s.playerInJerseyNumber || 
-            (match.playerJerseyNumbers && match.playerJerseyNumbers[s.playerIn]);
-          
-          const outDisplay = `${outJerseyNumber ? `#${outJerseyNumber}` : '#'} ${out ? out.lastName : s.playerOut}`;
-          const inDisplay = `${inJerseyNumber ? `#${inJerseyNumber}` : '#'} ${inP ? inP.lastName : s.playerIn}`;
-          csvRows.push(`${timeStr},"${outDisplay}","${inDisplay}"`);
-        });
-        csvRows.push('');
-      }
-      
-      // Altri eventi del periodo
-      if (events.otherEvents.length > 0) {
-        csvRows.push('Altri Eventi');
-        csvRows.push('Minuto,Tipo,Giocatore,Descrizione');
-        events.otherEvents.forEach(e => {
-          const timeStr = `${e.minute}${e.second !== null && e.second !== undefined ? ':' + e.second.toString().padStart(2, '0') : ''}`;
-          let tipo = '';
-          switch (e.type) {
-            case 'foul': tipo = 'Fallo'; break;
-            case 'corner': tipo = 'Calcio d\'angolo'; break;
-            case 'offside': tipo = 'Fuorigioco'; break;
-            case 'free-kick': tipo = 'Calcio di punizione'; break;
-            case 'penalty': tipo = 'Rigore'; break;
-            case 'throw-in': tipo = 'Rimessa laterale'; break;
-            case 'injury': tipo = 'Infortunio'; break;
-            default: tipo = 'Evento'; break;
-          }
-          
-          // Ottieni informazioni giocatore
-          let playerInfo = '';
-          if (e.playerId && e.teamType === 'own') {
-            const player = players.find(p => p.id === e.playerId);
-            const jerseyNumber = getPlayerJerseyNumber(e.playerId);
-            if (player && jerseyNumber) {
-              playerInfo = `#${jerseyNumber} ${player.lastName}`;
-            } else if (player) {
-              playerInfo = player.lastName;
-            }
-          } else if (e.teamType === 'opponent') {
-            playerInfo = 'Avversario';
-          }
-          
-          csvRows.push(`${timeStr},${tipo},"${playerInfo}","${e.description || ''}"`);
-        });
-        csvRows.push('');
-      }
+      participantsRows.push(`"${teamName}","${p.firstName} ${p.lastName}","Titolare"`);
     });
     
-    // Statistiche
-    // csvRows.push('STATISTICHE PARTITA');
-    // csvRows.push('Statistica,Squadra,Avversario');
-    // csvRows.push(`Possesso palla,${match.possessionHome || 0}%,${match.possessionAway || 0}%`);
-    // csvRows.push(`Tiri totali,${match.totalShotsHome || 0},${match.totalShotsAway || 0}`);
-    // csvRows.push(`Tiri in porta,${match.shotsOnTargetHome || 0},${match.shotsOnTargetAway || 0}`);
-    // csvRows.push(`Falli commessi,${match.foulsCommittedHome || 0},${match.foulsCommittedAway || 0}`);
-    // csvRows.push(`Calci d'angolo,${match.cornersHome || 0},${match.cornersAway || 0}`);
-    // csvRows.push(`Fuorigioco,${match.offsideHome || 0},${match.offsideAway || 0}`);
-    
-    const csvContent = csvRows.join('\n');
-    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = `report-partita-${match.date}-${match.opponent.replace(/\s+/g, '-')}.csv`;
-    a.click();
-    URL.revokeObjectURL(url);
-  };
+    // Aggiungi i giocatori in panchina (se presenti)
+    const benchPlayers = players.filter(p => 
+      p.isActive && 
+      !match.lineup.find(lp => lp.playerId === p.id)
+    );
+    benchPlayers.forEach(p => {
+      participantsRows.push(`"${teamName}","${p.firstName} ${p.lastName}","Panchina"`);
+    });
 
-  // XLSX migliorato con fogli multipli
-  const exportXLSX = () => {
-    const wb = XLSX.utils.book_new();
-    
-    // Foglio 1: Informazioni generali
-    const infoData = [
-      ['REPORT PARTITA'],
-      [],
-      ['Data', match.date],
-      ['Ora', match.time || 'Non specificata'],
-      ['Avversario', match.opponent],
-      ['Tipo', match.homeAway === 'home' ? 'Casa' : 'Trasferta'],
-      ...(match.location ? [['Luogo', match.location]] : []),
-      ...(match.field ? [['Campo', match.field]] : []),
-      ['Risultato finale', `${match.homeAway === 'home' ? match.homeScore : match.awayScore}-${match.homeAway === 'home' ? match.awayScore : match.homeScore}`],
-      [],
-      ['FORMAZIONE TITOLARE'],
-      ['Numero', 'Nome', 'Cognome', 'Posizione'],
-      ...lineupPlayers.map(p => {
-        const matchPlayer = match.lineup.find(lp => lp.playerId === p.id);
-        return [matchPlayer?.jerseyNumber || '', p.firstName, p.lastName, matchPlayer?.position || ''];
-      })
-    ];
-    
-    if (match.coaches?.length > 0 || match.managers?.length > 0) {
-      infoData.push([]);
-      infoData.push(['STAFF TECNICO']);
-      if (match.coaches?.length > 0) {
-        infoData.push(['Allenatori']);
-        getStaffNames(match.coaches).forEach(name => infoData.push(['', name]));
+    // Aggiungi gli avversari dalla formazione avversaria
+    if (match.opponentLineup && Array.isArray(match.opponentLineup) && match.opponentLineup.length > 0) {
+      match.opponentLineup.forEach(jerseyNumber => {
+        const playerName = `Avversario #${jerseyNumber}`;
+        const playerRole = "Titolare"; // Non abbiamo info su titolare/panchina per avversari
+        participantsRows.push(`"${opponentName}","${playerName}","${playerRole}"`);
+      });
+    } else {
+      // Fallback se opponentLineup non è disponibile o è vuoto
+      const opponentPlayers = new Set<string>();
+      if (match.events && Array.isArray(match.events)) {
+        match.events.forEach(event => {
+          if (event.teamType === 'opponent' && event.description) {
+            const match = event.description.match(/#(\d+)/) || event.description.match(/avversario\s(.+?)(?:\s|$|,|\.)/i);
+            if (match && match[1]) {
+              opponentPlayers.add(match[1].trim());
+            }
+          }
+        });
       }
-      if (match.managers?.length > 0) {
-        infoData.push(['Dirigenti']);
-        getStaffNames(match.managers).forEach(name => infoData.push(['', name]));
+      if (opponentPlayers.size === 0) {
+        opponentPlayers.add('Avversario 1');
+        opponentPlayers.add('Avversario 2');
       }
+      Array.from(opponentPlayers).slice(0, 11).forEach(playerName => {
+        participantsRows.push(`"${opponentName}","${playerName}","Titolare"`);
+      });
+    }
+
+    // Aggiungi lo staff tecnico
+    if (match.coaches?.length > 0) {
+      getStaffNames(match.coaches).forEach(name => {
+        participantsRows.push(`"${teamName}","${name}","Allenatore"`);
+      });
     }
     
-    const wsInfo = XLSX.utils.aoa_to_sheet(infoData);
-    XLSX.utils.book_append_sheet(wb, wsInfo, 'Informazioni Partita');
+    if (match.managers?.length > 0) {
+      getStaffNames(match.managers).forEach(name => {
+        participantsRows.push(`"${teamName}","${name}","Dirigente"`);
+      });
+    }
     
-    // Foglio 2: Eventi per periodo
-    const eventsData = [['EVENTI PER PERIODO'], []];
+    // Genera il secondo file: eventi_partita.csv
+    const eventsRows: string[] = [];
+    eventsRows.push('"Periodo","TempoDiGioco","TipoEvento","Squadra","GiocatorePrincipale","GiocatoreSecondario","Note"');
+    
+    // Raccogli tutti gli eventi in un array unico per ordinamento
+    const allEvents: any[] = [];
     
     Object.entries(eventsByPeriod).forEach(([periodIndex, events]) => {
       const periodName = getPeriodName(parseInt(periodIndex));
-      eventsData.push([`PERIODO: ${periodName}`]);
-      eventsData.push([]);
       
-      if (events.goals.length > 0) {
-        eventsData.push(['Goal']);
-        eventsData.push(['Minuto', 'Descrizione']);
-        events.goals.forEach(g => {
-          const timeStr = `${g.minute}${g.second !== null && g.second !== undefined ? `:${g.second.toString().padStart(2, '0')}` : ''}`;
-          eventsData.push([timeStr, g.description || '']);
-        });
-        eventsData.push([]);
-      }
-      
-      if (events.cards.length > 0) {
-        eventsData.push(['Ammonizioni/Espulsioni']);
-        eventsData.push(['Minuto', 'Tipo', 'Descrizione']);
-        events.cards.forEach(c => {
-          const timeStr = `${c.minute}${c.second !== null && c.second !== undefined ? `:${c.second.toString().padStart(2, '0')}` : ''}`;
-          let tipo = 'Ammonizione';
-          if (c.type === 'red-card' || c.type === 'expulsion') tipo = 'Espulsione';
-          else if (c.type === 'second-yellow-card') tipo = 'Seconda Gialla';
-          else if (c.type === 'blue-card') tipo = 'Cartellino Blu';
-          eventsData.push([timeStr, tipo, c.description || '']);
-        });
-        eventsData.push([]);
-      }
-      
-      if (events.substitutions.length > 0) {
-        eventsData.push(['Sostituzioni']);
-        eventsData.push(['Minuto', 'Esce', 'Entra']);        events.substitutions.forEach(s => {
-          const timeStr = `${s.minute}${s.second !== null && s.second !== undefined ? `:${s.second.toString().padStart(2, '0')}` : ''}`;
-          const out = players.find(p => p.id === s.playerOut);
-          const inP = players.find(p => p.id === s.playerIn);
-          
-          // Logica di fallback per il numero di maglia del giocatore che esce
-          const outJerseyNumber = s.playerOutJerseyNumber || 
-            (match.playerJerseyNumbers && match.playerJerseyNumbers[s.playerOut]) || 
-            getPlayerJerseyNumber(s.playerOut);
-          
-          // Logica di fallback per il numero di maglia del giocatore che entra
-          const inJerseyNumber = s.playerInJerseyNumber || 
-            (match.playerJerseyNumbers && match.playerJerseyNumbers[s.playerIn]);
-          
-          const outDisplay = `${outJerseyNumber ? `#${outJerseyNumber}` : '#'} ${out ? out.lastName : s.playerOut}`;
-          const inDisplay = `${inJerseyNumber ? `#${inJerseyNumber}` : '#'} ${inP ? inP.lastName : s.playerIn}`;
-          eventsData.push([timeStr, outDisplay, inDisplay]);
-        });
-        eventsData.push([]);
-      }
-      
-      if (events.otherEvents.length > 0) {
-        eventsData.push(['Altri Eventi']);
-        eventsData.push(['Minuto', 'Tipo', 'Giocatore', 'Descrizione']);
-        events.otherEvents.forEach(e => {
-          const timeStr = `${e.minute}${e.second !== null && e.second !== undefined ? `:${e.second.toString().padStart(2, '0')}` : ''}`;
-          let tipo = '';
-          switch (e.type) {
-            case 'foul': tipo = 'Fallo'; break;
-            case 'corner': tipo = 'Calcio d\'angolo'; break;
-            case 'offside': tipo = 'Fuorigioco'; break;
-            case 'free-kick': tipo = 'Calcio di punizione'; break;
-            case 'penalty': tipo = 'Rigore'; break;
-            case 'throw-in': tipo = 'Rimessa laterale'; break;
-            case 'injury': tipo = 'Infortunio'; break;
-            default: tipo = 'Evento'; break;
+      // Aggiungi goal
+      events.goals.forEach(g => {
+        const squadra = g.description?.toLowerCase().includes('avversario') ? opponentName : teamName;
+        let giocatorePrincipale = '';
+        let note = g.description || '';
+        
+        if (g.playerId && g.teamType === 'own') {
+          const player = players.find(p => p.id === g.playerId);
+          if (player) {
+            giocatorePrincipale = `${player.firstName} ${player.lastName}`;
           }
-          
-          // Ottieni informazioni giocatore
-          let playerInfo = '';
-          if (e.playerId && e.teamType === 'own') {
-            const player = players.find(p => p.id === e.playerId);
-            const jerseyNumber = getPlayerJerseyNumber(e.playerId);
-            if (player && jerseyNumber) {
-              playerInfo = `#${jerseyNumber} ${player.lastName}`;
-            } else if (player) {
-              playerInfo = player.lastName;
-            }
-          } else if (e.teamType === 'opponent') {
-            playerInfo = 'Avversario';
+        } else if (g.teamType === 'opponent') {
+          giocatorePrincipale = 'avversario';
+          // Cerca pattern specifici negli avversari
+          const opponentMatch = g.description?.match(/avversario\s+(\w+)/i);
+          if (opponentMatch) {
+            giocatorePrincipale = `avversario ${opponentMatch[1]}`;
           }
-          
-          eventsData.push([timeStr, tipo, playerInfo, e.description || '']);
+        }
+        
+        allEvents.push({
+          periodName,
+          minute: g.minute,
+          second: g.second,
+          tipoEvento: 'Gol',
+          squadra,
+          giocatorePrincipale,
+          giocatoreSecondario: '',
+          note
         });
-        eventsData.push([]);
-      }
+      });
+      
+      // Aggiungi ammonizioni/espulsioni
+      events.cards.forEach(c => {
+        const squadra = c.teamType === 'opponent' ? opponentName : teamName;
+        let giocatorePrincipale = '';
+        let tipoEvento = 'Ammonizione';
+        
+        if (c.type === 'red-card' || c.type === 'expulsion') tipoEvento = 'Espulsione';
+        else if (c.type === 'second-yellow-card') tipoEvento = 'Seconda Gialla';
+        else if (c.type === 'blue-card') tipoEvento = 'Cartellino Blu';
+        
+        if (c.playerId && c.teamType === 'own') {
+          const player = players.find(p => p.id === c.playerId);
+          if (player) {
+            giocatorePrincipale = `${player.firstName} ${player.lastName}`;
+          }
+        } else if (c.teamType === 'opponent') {
+          giocatorePrincipale = 'avversario';
+          const opponentMatch = c.description?.match(/avversario\s+(\w+)/i);
+          if (opponentMatch) {
+            giocatorePrincipale = `avversario ${opponentMatch[1]}`;
+          }
+        }
+        
+        allEvents.push({
+          periodName,
+          minute: c.minute,
+          second: c.second,
+          tipoEvento,
+          squadra,
+          giocatorePrincipale,
+          giocatoreSecondario: '',
+          note: c.description || ''
+        });
+      });
+      
+      // Aggiungi sostituzioni
+      events.substitutions.forEach(s => {
+        const out = players.find(p => p.id === s.playerOut);
+        const inP = players.find(p => p.id === s.playerIn);
+        
+        const outName = out ? `${out.firstName} ${out.lastName}` : s.playerOut;
+        const inName = inP ? `${inP.firstName} ${inP.lastName}` : s.playerIn;
+        
+        allEvents.push({
+          periodName,
+          minute: s.minute,
+          second: s.second,
+          tipoEvento: 'Sostituzione',
+          squadra: teamName,
+          giocatorePrincipale: `${outName} (esce)`,
+          giocatoreSecondario: `${inName} (entra)`,
+          note: ''
+        });
+      });
+      
+      // Aggiungi altri eventi
+      events.otherEvents.forEach(e => {
+        let tipoEvento = 'Evento';
+        switch (e.type) {
+          case 'foul': tipoEvento = 'Fallo'; break;
+          case 'corner': tipoEvento = 'Calcio d\'angolo'; break;
+          case 'offside': tipoEvento = 'Fuorigioco'; break;
+          case 'free-kick': tipoEvento = 'Calcio di punizione'; break;
+          case 'penalty': tipoEvento = 'Rigore'; break;
+          case 'throw-in': tipoEvento = 'Rimessa laterale'; break;
+          case 'injury': tipoEvento = 'Infortunio'; break;
+        }
+        
+        const squadra = e.teamType === 'opponent' ? opponentName : teamName;
+        let giocatorePrincipale = '';
+        
+        if (e.playerId && e.teamType === 'own') {
+          const player = players.find(p => p.id === e.playerId);
+          if (player) {
+            giocatorePrincipale = `${player.firstName} ${player.lastName}`;
+          }
+        } else if (e.teamType === 'opponent') {
+          giocatorePrincipale = 'avversario';
+        }
+        
+        allEvents.push({
+          periodName,
+          minute: e.minute,
+          second: e.second,
+          tipoEvento,
+          squadra,
+          giocatorePrincipale,
+          giocatoreSecondario: '',
+          note: e.description || ''
+        });
+      });
     });
     
-    const wsEvents = XLSX.utils.aoa_to_sheet(eventsData);
-    XLSX.utils.book_append_sheet(wb, wsEvents, 'Eventi per Periodo');
+    // Ordina tutti gli eventi per periodo e tempo (cronologicamente) - CSV
+    allEvents.sort((a, b) => {
+      // Prima ordina per tipo di periodo (tempi regolari prima di supplementari)
+      const getPeriodOrder = (periodName: string) => {
+        if (periodName.includes('1°')) return 1;
+        if (periodName.includes('2°')) return 2;
+        if (periodName.includes('Supplementare') || periodName.includes('Extra')) {
+          if (periodName.includes('1°')) return 3;
+          if (periodName.includes('2°')) return 4;
+          return 5;
+        }
+        if (periodName.includes('Rigori')) return 6;
+        return 0;
+      };
+      
+      const orderA = getPeriodOrder(a.periodName);
+      const orderB = getPeriodOrder(b.periodName);
+      
+      if (orderA !== orderB) {
+        return orderA - orderB;
+      }
+      
+      // Poi ordina per tempo all'interno dello stesso periodo
+      const timeA = a.minute * 60 + (a.second || 0);
+      const timeB = b.minute * 60 + (b.second || 0);
+      return timeA - timeB;
+    });
     
-    // Foglio 3: Statistiche
-    // const statsData = [
-    //   ['STATISTICHE PARTITA'],
-    //   [],
-    //   ['Statistica', 'Squadra', 'Avversario'],
-    //   ['Possesso palla (%)', match.possessionHome || 0, match.possessionAway || 0],
-    //   ['Tiri totali', match.totalShotsHome || 0, match.totalShotsAway || 0],
-    //   ['Tiri in porta', match.shotsOnTargetHome || 0, match.shotsOnTargetAway || 0],
-    //   ['Falli commessi', match.foulsCommittedHome || 0, match.foulsCommittedAway || 0],
-    //   ['Calci d\'angolo', match.cornersHome || 0, match.cornersAway || 0],
-    //   ['Fuorigioco', match.offsideHome || 0, match.offsideAway || 0]
-    // ];
-    // const wsStats = XLSX.utils.aoa_to_sheet(statsData);
-    // XLSX.utils.book_append_sheet(wb, wsStats, 'Statistiche');
+    // Aggiungi gli eventi ordinati al CSV
+    allEvents.forEach(event => {
+      const tempoDiGioco = formatGameTime(event.minute, event.second);
+      eventsRows.push(`"${event.periodName}","${tempoDiGioco}","${event.tipoEvento}","${event.squadra}","${event.giocatorePrincipale}","${event.giocatoreSecondario}","${event.note}"`);
+    });
     
-    XLSX.writeFile(wb, `report-partita-${match.date}-${match.opponent.replace(/\s+/g, '-')}.xlsx`);
+    // Scarica il file partecipanti
+    const participantsContent = participantsRows.join('\n');
+    const participantsBlob = new Blob(['\ufeff' + participantsContent], { type: 'text/csv;charset=utf-8;' });
+    const participantsUrl = URL.createObjectURL(participantsBlob);
+    const participantsLink = document.createElement('a');
+    participantsLink.href = participantsUrl;
+    participantsLink.download = `partecipanti_partita_${match.date}_${match.opponent.replace(/\s+/g, '-')}.csv`;
+    participantsLink.click();
+    URL.revokeObjectURL(participantsUrl);
+    
+    // Scarica il file eventi (con un piccolo ritardo per evitare conflitti)
+    setTimeout(() => {
+      const eventsContent = eventsRows.join('\n');
+      const eventsBlob = new Blob(['\ufeff' + eventsContent], { type: 'text/csv;charset=utf-8;' });
+      const eventsUrl = URL.createObjectURL(eventsBlob);
+      const eventsLink = document.createElement('a');
+      eventsLink.href = eventsUrl;
+      eventsLink.download = `eventi_partita_${match.date}_${match.opponent.replace(/\s+/g, '-')}.csv`;
+      eventsLink.click();
+      URL.revokeObjectURL(eventsUrl);
+    }, 500);
   };
 
-  const handleExport = (format: 'csv' | 'xlsx') => {
+  const handleExport = () => {
     setShowExportMenu(false);
-    if (format === 'csv') exportCSV();
-    if (format === 'xlsx') exportXLSX();
+    exportCSV();
   };
 
   return (
@@ -546,7 +504,7 @@ export function ReportMatch({ match, players, users, onClose }: ReportMatchProps
             </h3>
             {/* Mostra TUTTI i periodi, inclusi gli intervalli */}
             {(match.periods || [{ type: 'regular', label: '1° Tempo', duration: 0 }])
-              .map((period, idx) => {
+              .map((period) => {
                 // Trova l'indice originale del periodo nella lista completa
                 const originalPeriodIndex = (match.periods || []).findIndex(p => p === period);
                 const events = eventsByPeriod[originalPeriodIndex] || { goals: [], cards: [], substitutions: [], otherEvents: [] };
@@ -797,7 +755,7 @@ export function ReportMatch({ match, players, users, onClose }: ReportMatchProps
                 className="flex items-center gap-2 bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 shadow-sm font-medium transition-colors"
               >
                 <Download className="w-4 h-4" />
-                Esporta Dati
+                Esporta CSV
               </button>
               {showExportMenu && (
                 <>
@@ -808,23 +766,13 @@ export function ReportMatch({ match, players, users, onClose }: ReportMatchProps
                   <div className="fixed top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 bg-white border border-gray-200 rounded-lg shadow-lg z-[1200] min-w-[200px] p-3">
                     <h3 className="text-sm font-medium text-gray-800 mb-3 text-center">Esporta Report</h3>
                     <button
-                      onClick={() => handleExport('csv')}
-                      className="flex items-center gap-2 w-full px-3 py-2 hover:bg-blue-50 text-blue-700 text-left rounded-md transition-colors text-sm mb-1"
-                    >
-                      <FileText className="w-4 h-4" /> 
-                      <div>
-                        <div className="font-medium">CSV</div>
-                        <div className="text-xs text-gray-500">File separato da virgole</div>
-                      </div>
-                    </button>
-                    <button
-                      onClick={() => handleExport('xlsx')}
+                      onClick={() => handleExport()}
                       className="flex items-center gap-2 w-full px-3 py-2 hover:bg-blue-50 text-blue-700 text-left rounded-md transition-colors text-sm"
                     >
                       <FileText className="w-4 h-4" /> 
                       <div>
-                        <div className="font-medium">Excel</div>
-                        <div className="text-xs text-gray-500">Fogli multipli</div>
+                        <div className="font-medium">CSV (2 files)</div>
+                        <div className="text-xs text-gray-500">Partecipanti + Eventi</div>
                       </div>
                     </button>
                   </div>
