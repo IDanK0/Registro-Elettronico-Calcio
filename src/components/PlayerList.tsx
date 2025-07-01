@@ -261,7 +261,7 @@ export function PlayerList({ players, onEdit, onDelete, onImportPlayers }: Playe
                 onClick={() => setShowCSVMenu(!showCSVMenu)}
                 className="bg-green-600 text-white px-4 py-2 rounded-lg font-semibold shadow hover:bg-green-700 transition-colors flex items-center gap-2"
               >
-                <Download className="w-4 h-4" />
+                <FileText className="w-4 h-4" />
                 CSV
               </button>
               {showCSVMenu && (
