@@ -109,14 +109,6 @@ export function LoginForm({ onLogin, error, isLoading }: LoginFormProps) {
             )}
           </button>
         </form>
-
-        <div className="mt-6 p-4 bg-gray-50 rounded-lg">
-          <h4 className="text-sm font-medium text-gray-700 mb-2">Credenziali di default:</h4>
-          <p className="text-sm text-gray-600">
-            <strong>Username:</strong> admin<br />
-            <strong>Password:</strong> admin123
-          </p>
-        </div>
       </div>
     </div>
   );
