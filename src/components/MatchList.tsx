@@ -1,6 +1,6 @@
 import { useState, useMemo } from 'react';
 import { Match, Player } from '../types';
-import { Calendar, Clock, Edit2, Trash2, Home, Plane, Trophy, Target, Search, X, Users, ChevronDown } from 'lucide-react';
+import { Calendar, Clock, Edit2, Trash2, Home, Plane, Trophy, Target, Search, X, Users, ChevronDown, Activity, Award } from 'lucide-react';
 import useIsMobile from '../hooks/useIsMobile';
 
 interface MatchListProps {
@@ -15,6 +15,8 @@ interface MatchListProps {
 export function MatchList({ matches, players, onEdit, onDelete, onManage, onReport }: MatchListProps) {
   const isMobile = useIsMobile();
   const [searchTerm, setSearchTerm] = useState('');
+  const [statusFilter, setStatusFilter] = useState<'all' | 'scheduled' | 'active' | 'finished'>('all');
+  const [sortBy, setSortBy] = useState<'date' | 'opponent' | 'status'>('date');
 
   const formatDate = (dateString: string) => {
     const date = new Date(dateString);
@@ -123,22 +125,22 @@ export function MatchList({ matches, players, onEdit, onDelete, onManage, onRepo
     return null;
   };
 
-  const getResultColor = (match: Match) => {
-    const result = getResult(match);
-    switch (result) {
-      case 'Vittoria': return 'text-green-600';
-      case 'Sconfitta': return 'text-red-600';
-      case 'Pareggio': return 'text-yellow-600';
-      default: return 'text-gray-600';
-    }
-  };
-
   const filteredAndSortedMatches = useMemo(() => {
     let filtered = matches;
 
+    // Filter by status
+    if (statusFilter !== 'all') {
+      if (statusFilter === 'active') {
+        filtered = matches.filter(match => match.status !== 'scheduled' && match.status !== 'finished');
+      } else {
+        filtered = matches.filter(match => match.status === statusFilter);
+      }
+    }
+
+    // Filter by search term
     if (searchTerm.trim()) {
       const search = searchTerm.toLowerCase().trim();
-      filtered = matches.filter(match => {
+      filtered = filtered.filter(match => {
         // Search in opponent name
         if (match.opponent.toLowerCase().includes(search)) return true;
         
@@ -166,45 +168,138 @@ export function MatchList({ matches, players, onEdit, onDelete, onManage, onRepo
       });
     }
 
-    // Sort by date (newest first)
-    return [...filtered].sort((a, b) => 
-      new Date(b.date).getTime() - new Date(a.date).getTime()
-    );
-  }, [matches, searchTerm]);
+    // Sort matches
+    return [...filtered].sort((a, b) => {
+      switch (sortBy) {
+        case 'opponent':
+          return a.opponent.localeCompare(b.opponent);
+        case 'status':
+          if (a.status === b.status) {
+            return new Date(b.date).getTime() - new Date(a.date).getTime();
+          }
+          // Priority: active > scheduled > finished
+          const statusPriority = { 'active': 3, 'scheduled': 2, 'finished': 1 };
+          const aPriority = a.status === 'scheduled' || a.status === 'finished' ? statusPriority[a.status] : statusPriority.active;
+          const bPriority = b.status === 'scheduled' || b.status === 'finished' ? statusPriority[b.status] : statusPriority.active;
+          return bPriority - aPriority;
+        case 'date':
+        default:
+          return new Date(b.date).getTime() - new Date(a.date).getTime();
+      }
+    });
+  }, [matches, searchTerm, statusFilter, sortBy]);
 
   if (isMobile) {
     return (
       <div className="space-y-4">
-        {/* Search Bar */}
-        <div className="relative">
-          <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-5 h-5" />
-          <input
-            type="text"
-            placeholder="Cerca partite per avversario, data, stato..."
-            value={searchTerm}
-            onChange={(e) => setSearchTerm(e.target.value)}
-            className="w-full pl-10 pr-10 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-          />
-          {searchTerm && (
-            <button
-              onClick={() => setSearchTerm('')}
-              className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400 hover:text-gray-600"
+        {/* Header */}
+        <div className="bg-white rounded-xl shadow-lg p-4">
+          <h2 className="text-2xl font-bold text-gray-800 flex items-center gap-3 mb-4">
+            <Trophy className="w-7 h-7 text-blue-600" />
+            <span>Partite</span>
+          </h2>
+          
+          {/* Filters and Search */}
+          <div className="space-y-3">
+            {/* Search Bar */}
+            <div className="relative">
+              <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-5 h-5" />
+              <input
+                type="text"
+                placeholder="Cerca partite per avversario, data, stato..."
+                value={searchTerm}
+                onChange={(e) => setSearchTerm(e.target.value)}
+                className="w-full pl-10 pr-10 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+              />
+              {searchTerm && (
+                <button
+                  onClick={() => setSearchTerm('')}
+                  className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400 hover:text-gray-600"
+                >
+                  <X className="w-5 h-5" />
+                </button>
+              )}
+            </div>
+
+            {/* Status Filter */}
+            <div className="flex rounded-lg shadow-sm border border-gray-300 overflow-hidden">
+              {[
+                { key: 'all', label: 'Tutte', icon: Trophy },
+                { key: 'scheduled', label: 'Programmate', icon: Calendar },
+                { key: 'active', label: 'Live', icon: Activity },
+                { key: 'finished', label: 'Finite', icon: Award }
+              ].map(({ key, label, icon: Icon }) => (
+                <button 
+                  key={key}
+                  onClick={() => setStatusFilter(key as any)} 
+                  className={`flex-1 px-2 py-2 text-xs font-medium transition-colors flex items-center justify-center gap-1 ${
+                    statusFilter === key 
+                      ? 'bg-blue-600 text-white' 
+                      : 'bg-white text-gray-700 hover:bg-gray-100'
+                  }`}
+                >
+                  <Icon className="w-3 h-3" />
+                  <span>{label}</span>
+                </button>
+              ))}
+            </div>
+
+            {/* Sort Options */}
+            <select 
+              value={sortBy}
+              onChange={(e) => setSortBy(e.target.value as any)}
+              className="w-full bg-white border border-gray-300 hover:border-gray-400 px-3 py-2 rounded-lg shadow-sm text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
             >
-              <X className="w-5 h-5" />
-            </button>
+              <option value="date">Ordina per Data</option>
+              <option value="opponent">Ordina per Avversario</option>
+              <option value="status">Ordina per Stato</option>
+            </select>
+          </div>
+
+          {/* Stats Summary */}
+          {matches.length > 0 && (
+            <div className="mt-4 pt-4 border-t border-gray-200">
+              <div className="grid grid-cols-3 gap-4 text-center">
+                <div>
+                  <div className="text-lg font-bold text-blue-600">{matches.filter(m => m.status === 'scheduled').length}</div>
+                  <div className="text-xs text-gray-600">Programmate</div>
+                </div>
+                <div>
+                  <div className="text-lg font-bold text-green-600">{matches.filter(m => m.status !== 'scheduled' && m.status !== 'finished').length}</div>
+                  <div className="text-xs text-gray-600">In corso</div>
+                </div>
+                <div>
+                  <div className="text-lg font-bold text-gray-600">{matches.filter(m => m.status === 'finished').length}</div>
+                  <div className="text-xs text-gray-600">Terminate</div>
+                </div>
+              </div>
+            </div>
           )}
         </div>
 
         {/* Match Cards */}
         {filteredAndSortedMatches.length === 0 ? (
           <div className="bg-white rounded-xl shadow-md p-8 text-center">
-            <Target className="w-16 h-16 text-gray-300 mx-auto mb-4" />
-            <p className="text-gray-500 text-lg">
-              {searchTerm ? 'Nessuna partita trovata' : 'Nessuna partita registrata'}
+            <Trophy className="w-16 h-16 text-gray-300 mx-auto mb-4" />
+            <h3 className="text-lg font-semibold text-gray-600 mb-2">
+              {searchTerm || statusFilter !== 'all' ? 'Nessuna partita trovata' : 'Nessuna partita registrata'}
+            </h3>
+            <p className="text-gray-500 text-sm mb-4">
+              {searchTerm || statusFilter !== 'all' 
+                ? 'Prova a modificare i filtri di ricerca' 
+                : 'Aggiungi la prima partita per iniziare'}
             </p>
-            <p className="text-gray-400">
-              {searchTerm ? 'Prova a modificare i termini di ricerca' : 'Aggiungi la prima partita per iniziare'}
-            </p>
+            {(searchTerm || statusFilter !== 'all') && (
+              <button
+                onClick={() => {
+                  setSearchTerm('');
+                  setStatusFilter('all');
+                }}
+                className="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 transition-colors text-sm"
+              >
+                Mostra tutte le partite
+              </button>
+            )}
           </div>
         ) : (
           filteredAndSortedMatches.map(match => {
@@ -326,14 +421,6 @@ export function MatchList({ matches, players, onEdit, onDelete, onManage, onRepo
 
                 {/* Match Info */}
                 <div className="space-y-3 mb-4">
-                  <div className="flex items-center justify-between p-3 bg-blue-50 rounded-lg">
-                    <div className="flex items-center gap-2">
-                      <Users className="w-5 h-5 text-blue-600" />
-                      <span className="font-medium text-blue-800">Formazione</span>
-                    </div>
-                    <span className="font-bold text-blue-900">{match.lineup.length}</span>
-                  </div>
-                  
                   {match.substitutions.length > 0 && (
                     <div className="flex items-center justify-between p-3 bg-orange-50 rounded-lg">
                       <div className="flex items-center gap-2">
@@ -348,23 +435,32 @@ export function MatchList({ matches, players, onEdit, onDelete, onManage, onRepo
                 {/* Collapsible Details */}
                 {lineupPlayers.length > 0 && (
                   <details className="mb-4">
-                    <summary className="cursor-pointer text-sm font-medium text-gray-700 hover:text-gray-900 flex items-center gap-1">
-                      <ChevronDown className="w-4 h-4" />
-                      Dettagli formazione
+                    <summary className="cursor-pointer text-sm font-medium text-gray-700 hover:text-gray-900 flex items-center gap-2 p-3 bg-gray-50 rounded-lg hover:bg-gray-100 transition-colors">
+                      <ChevronDown className="w-4 h-4 transition-transform duration-200 [details[open]_&]:rotate-180" />
+                      <Users className="w-4 h-4" />
+                      <span>Dettagli formazione ({match.lineup.length})</span>
+                      {match.substitutions.length > 0 && (
+                        <span className="text-xs text-gray-500">
+                          • {match.substitutions.length} sost.
+                        </span>
+                      )}
                     </summary>
-                    <div className="mt-3 space-y-2">
+                    <div className="mt-3 space-y-3 p-3 bg-gray-50 rounded-lg">
                       <div>
-                        <h5 className="text-xs font-medium text-blue-700 mb-2 uppercase tracking-wide">Giocatori in campo</h5>
+                        <div className="flex items-center gap-2 mb-2">
+                          <Users className="w-4 h-4 text-blue-600" />
+                          <h5 className="text-xs font-medium text-blue-700 uppercase tracking-wide">Giocatori in campo</h5>
+                        </div>
                         <div className="grid grid-cols-1 gap-2">
                           {match.lineup.map(matchPlayer => {
                             const player = players.find(p => p.id === matchPlayer.playerId);
                             return (
-                              <div key={matchPlayer.playerId} className="flex items-center gap-2 text-xs text-gray-600 bg-blue-50 p-2 rounded">
+                              <div key={matchPlayer.playerId} className="flex items-center gap-2 text-xs bg-white p-2 rounded border border-blue-100">
                                 <span className="w-6 h-6 bg-blue-600 text-white rounded-full flex items-center justify-center text-xs font-bold">
                                   {matchPlayer.jerseyNumber}
                                 </span>
-                                <span className="font-medium">{player?.firstName} {player?.lastName}</span>
-                                <span className="text-gray-400">• {matchPlayer.position}</span>
+                                <span className="font-medium flex-1">{player?.firstName} {player?.lastName}</span>
+                                <span className="text-gray-400 text-xs">{matchPlayer.position}</span>
                               </div>
                             );
                           })}
@@ -373,31 +469,42 @@ export function MatchList({ matches, players, onEdit, onDelete, onManage, onRepo
                       
                       {match.substitutions.length > 0 && (
                         <div>
-                          <h5 className="text-xs font-medium text-orange-700 mb-2 uppercase tracking-wide">Sostituzioni</h5>
-                          <div className="space-y-1">
+                          <div className="flex items-center gap-2 mb-2">
+                            <Target className="w-4 h-4 text-orange-600" />
+                            <h5 className="text-xs font-medium text-orange-700 uppercase tracking-wide">Sostituzioni</h5>
+                          </div>
+                          <div className="space-y-2">
                             {match.substitutions.map((sub, index) => {
                               const playerOut = players.find(p => p.id === sub.playerOut);
                               const playerIn = players.find(p => p.id === sub.playerIn);
                               return (
-                                <div key={index} className="text-xs text-gray-600 bg-orange-50 p-2 rounded flex items-center gap-2">
-                                  <div className="flex items-center gap-1">
-                                    {sub.playerOutJerseyNumber && (
-                                      <span className="w-5 h-5 bg-red-500 text-white rounded-full flex items-center justify-center text-xs font-bold">
-                                        {sub.playerOutJerseyNumber}
+                                <div key={index} className="bg-white p-2 rounded border border-orange-100">
+                                  <div className="flex items-center justify-between text-xs">
+                                    <div className="flex items-center gap-2">
+                                      <div className="flex items-center gap-1">
+                                        {sub.playerOutJerseyNumber && (
+                                          <span className="w-5 h-5 bg-red-500 text-white rounded-full flex items-center justify-center text-xs font-bold">
+                                            {sub.playerOutJerseyNumber}
+                                          </span>
+                                        )}
+                                        <span className="font-medium">{playerOut?.firstName} {playerOut?.lastName}</span>
+                                      </div>
+                                      <span className="mx-1 text-gray-400">→</span>
+                                      <div className="flex items-center gap-1">
+                                        {sub.playerInJerseyNumber && (
+                                          <span className="w-5 h-5 bg-green-500 text-white rounded-full flex items-center justify-center text-xs font-bold">
+                                            {sub.playerInJerseyNumber}
+                                          </span>
+                                        )}
+                                        <span className="font-medium">{playerIn?.firstName} {playerIn?.lastName}</span>
+                                      </div>
+                                    </div>
+                                    {sub.minute && (
+                                      <span className="text-gray-500 bg-gray-100 px-1.5 py-0.5 rounded text-xs">
+                                        {sub.minute}'
                                       </span>
                                     )}
-                                    <span className="font-medium">{playerOut?.firstName} {playerOut?.lastName}</span>
                                   </div>
-                                  <span className="mx-1">→</span>
-                                  <div className="flex items-center gap-1">
-                                    {sub.playerInJerseyNumber && (
-                                      <span className="w-5 h-5 bg-green-500 text-white rounded-full flex items-center justify-center text-xs font-bold">
-                                        {sub.playerInJerseyNumber}
-                                      </span>
-                                    )}
-                                    <span className="font-medium">{playerIn?.firstName} {playerIn?.lastName}</span>
-                                  </div>
-                                  {sub.minute && <span className="ml-auto text-gray-500">({sub.minute}')</span>}
                                 </div>
                               );
                             })}
@@ -452,36 +559,146 @@ export function MatchList({ matches, players, onEdit, onDelete, onManage, onRepo
   }
 
   return (
-    <div className="space-y-4">
-      {/* Search Bar */}
-      <div className="relative">
-        <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-5 h-5" />
-        <input
-          type="text"
-          placeholder="Cerca partite per avversario, data, stato..."
-          value={searchTerm}
-          onChange={(e) => setSearchTerm(e.target.value)}
-          className="w-full pl-10 pr-10 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-        />
-        {searchTerm && (
-          <button
-            onClick={() => setSearchTerm('')}
-            className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400 hover:text-gray-600"
+    <div className="space-y-6">
+      {/* Header */}
+      <div className="bg-white rounded-xl shadow-lg p-6">
+        <h2 className="text-2xl font-bold text-gray-800 flex items-center gap-3 mb-6">
+          <Trophy className="w-7 h-7 text-blue-600" />
+          <span>Partite</span>
+        </h2>
+        
+        {/* Filters and Controls */}
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 mb-6">
+          {/* Search Bar */}
+          <div className="lg:col-span-2">
+            <div className="relative">
+              <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-5 h-5" />
+              <input
+                type="text"
+                placeholder="Cerca partite per avversario, data, stato o location..."
+                value={searchTerm}
+                onChange={(e) => setSearchTerm(e.target.value)}
+                className="w-full pl-10 pr-10 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+              />
+              {searchTerm && (
+                <button
+                  onClick={() => setSearchTerm('')}
+                  className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400 hover:text-gray-600"
+                >
+                  <X className="w-5 h-5" />
+                </button>
+              )}
+            </div>
+          </div>
+
+          {/* Sort Options */}
+          <div>
+            <select 
+              value={sortBy}
+              onChange={(e) => setSortBy(e.target.value as any)}
+              className="w-full bg-white border border-gray-300 hover:border-gray-400 px-3 py-3 rounded-lg shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+            >
+              <option value="date">Ordina per Data</option>
+              <option value="opponent">Ordina per Avversario</option>
+              <option value="status">Ordina per Stato</option>
+            </select>
+          </div>
+        </div>
+
+        {/* Status Filter */}
+        <div className="flex flex-wrap gap-2 mb-6">
+          <button 
+            onClick={() => setStatusFilter('all')} 
+            className={`flex items-center gap-2 px-4 py-2 rounded-lg font-medium transition-colors ${
+              statusFilter === 'all' 
+                ? 'bg-gray-600 text-white' 
+                : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+            }`}
           >
-            <X className="w-5 h-5" />
+            <Trophy className="w-4 h-4" />
+            <span>Tutte le Partite</span>
           </button>
+          <button 
+            onClick={() => setStatusFilter('scheduled')} 
+            className={`flex items-center gap-2 px-4 py-2 rounded-lg font-medium transition-colors ${
+              statusFilter === 'scheduled' 
+                ? 'bg-blue-600 text-white' 
+                : 'bg-blue-100 text-blue-700 hover:bg-blue-200'
+            }`}
+          >
+            <Calendar className="w-4 h-4" />
+            <span>Programmate</span>
+          </button>
+          <button 
+            onClick={() => setStatusFilter('active')} 
+            className={`flex items-center gap-2 px-4 py-2 rounded-lg font-medium transition-colors ${
+              statusFilter === 'active' 
+                ? 'bg-green-600 text-white' 
+                : 'bg-green-100 text-green-700 hover:bg-green-200'
+            }`}
+          >
+            <Activity className="w-4 h-4" />
+            <span>In Corso</span>
+          </button>
+          <button 
+            onClick={() => setStatusFilter('finished')} 
+            className={`flex items-center gap-2 px-4 py-2 rounded-lg font-medium transition-colors ${
+              statusFilter === 'finished' 
+                ? 'bg-purple-600 text-white' 
+                : 'bg-purple-100 text-purple-700 hover:bg-purple-200'
+            }`}
+          >
+            <Award className="w-4 h-4" />
+            <span>Terminate</span>
+          </button>
+        </div>
+
+        {/* Stats Summary */}
+        {matches.length > 0 && (
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-4 p-4 bg-gray-50 rounded-lg">
+            <div className="text-center">
+              <div className="text-2xl font-bold text-blue-600">{matches.filter(m => m.status === 'scheduled').length}</div>
+              <div className="text-sm text-gray-600">Programmate</div>
+            </div>
+            <div className="text-center">
+              <div className="text-2xl font-bold text-green-600">{matches.filter(m => m.status !== 'scheduled' && m.status !== 'finished').length}</div>
+              <div className="text-sm text-gray-600">In Corso</div>
+            </div>
+            <div className="text-center">
+              <div className="text-2xl font-bold text-purple-600">{matches.filter(m => m.status === 'finished').length}</div>
+              <div className="text-sm text-gray-600">Terminate</div>
+            </div>
+            <div className="text-center">
+              <div className="text-2xl font-bold text-gray-600">{matches.length}</div>
+              <div className="text-sm text-gray-600">Totali</div>
+            </div>
+          </div>
         )}
       </div>
+
       
       {filteredAndSortedMatches.length === 0 ? (
-        <div className="text-center py-12">
-          <Target className="w-16 h-16 text-gray-300 mx-auto mb-4" />
-          <p className="text-gray-500 text-lg">
-            {searchTerm ? 'Nessuna partita trovata' : 'Nessuna partita registrata'}
+        <div className="bg-white rounded-xl shadow-md p-12 text-center">
+          <Trophy className="w-20 h-20 text-gray-300 mx-auto mb-6" />
+          <h3 className="text-xl font-semibold text-gray-600 mb-2">
+            {searchTerm || statusFilter !== 'all' ? 'Nessuna partita trovata' : 'Nessuna partita registrata'}
+          </h3>
+          <p className="text-gray-500 mb-4">
+            {searchTerm || statusFilter !== 'all' 
+              ? 'Prova a modificare i filtri di ricerca o i criteri di ordinamento' 
+              : 'Aggiungi la prima partita per iniziare a gestire il calendario della squadra'}
           </p>
-          <p className="text-gray-400">
-            {searchTerm ? 'Prova a modificare i termini di ricerca' : 'Aggiungi la prima partita per iniziare'}
-          </p>
+          {(searchTerm || statusFilter !== 'all') && (
+            <button
+              onClick={() => {
+                setSearchTerm('');
+                setStatusFilter('all');
+              }}
+              className="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 transition-colors"
+            >
+              Mostra tutte le partite
+            </button>
+          )}
         </div>
       ) : (
         filteredAndSortedMatches.map(match => {
@@ -489,11 +706,17 @@ export function MatchList({ matches, players, onEdit, onDelete, onManage, onRepo
           const ourScore = match.homeAway === 'home' ? match.homeScore : match.awayScore;
           const theirScore = match.homeAway === 'home' ? match.awayScore : match.homeScore;
 
+          // Get lineup players for details
+          const lineupPlayers = match.lineup
+            .map(matchPlayer => players.find(p => p.id === matchPlayer.playerId))
+            .filter(Boolean);
+
           return (
-            <div key={match.id} className="bg-white rounded-xl shadow-md hover:shadow-lg transition-shadow">
+            <div key={match.id} className="bg-white rounded-xl shadow-md hover:shadow-lg transition-all duration-200 border border-gray-100">
               <div className="p-6">
-                <div className="flex justify-between items-start mb-4">
-                  <div className="flex items-center gap-3">
+                {/* Header with Match Info */}
+                <div className="flex justify-between items-start mb-6">
+                  <div className="flex items-center gap-4">
                     <div className={`w-12 h-12 rounded-full flex items-center justify-center ${
                       match.homeAway === 'home' ? 'bg-green-100' : 'bg-blue-100'
                     }`}>
@@ -504,76 +727,206 @@ export function MatchList({ matches, players, onEdit, onDelete, onManage, onRepo
                       )}
                     </div>
                     <div>
-                      <h3 className="font-bold text-lg text-gray-800">
+                      <h3 className="font-bold text-xl text-gray-800 mb-1">
                         vs {match.opponent}
                       </h3>
-                      <p className="text-sm text-gray-600 flex items-center gap-1">
-                        <Calendar className="w-4 h-4" />
-                        {formatDate(match.date)}
+                      <div className="flex items-center gap-3 text-sm text-gray-600">
+                        <span className="flex items-center gap-1">
+                          <Calendar className="w-4 h-4" />
+                          {formatDate(match.date)}
+                        </span>
                         {match.time && (
-                          <span className="ml-2 inline-flex items-center gap-1">
-                            <Clock className="w-3 h-3" />
+                          <span className="flex items-center gap-1">
+                            <Clock className="w-4 h-4" />
                             {match.time}
                           </span>
                         )}
-                      </p>
+                        {match.location && (
+                          <span className="flex items-center gap-1 text-gray-500">
+                            <Target className="w-4 h-4" />
+                            {match.location}{match.field ? ` - Campo ${match.field}` : ''}
+                          </span>
+                        )}
+                      </div>
                     </div>
                   </div>
-                  <div className="flex items-center gap-2">
-                    <div className={`px-3 py-1 rounded-full text-white text-sm font-medium ${getStatusColor(match)}`}>
+                  <div className="flex items-center gap-3">
+                    <div className={`px-4 py-2 rounded-full text-white text-sm font-semibold shadow-sm ${getStatusColor(match)}`}>
                       {getStatusText(match)}
+                    </div>
+                    <div className="flex items-center gap-1 text-sm text-gray-500">
+                      <Users className="w-4 h-4" />
+                      {match.lineup.length}
                     </div>
                   </div>
                 </div>
 
+                {/* Match Result Section */}
                 {match.status === 'finished' && (
-                  <div className="mb-4 p-4 bg-gray-50 rounded-lg">
+                  <div className="mb-6 p-6 bg-gradient-to-r from-gray-50 to-gray-100 rounded-xl border border-gray-200">
                     <div className="flex items-center justify-between">
                       <div className="text-center">
-                        <p className="text-sm text-gray-600">Pietra Ligure</p>
-                        <p className="text-3xl font-bold text-gray-800">{ourScore}</p>
+                        <p className="text-sm font-medium text-gray-600 mb-2">Pietra Ligure</p>
+                        <p className="text-4xl font-bold text-gray-800">{ourScore}</p>
                       </div>
-                      <div className="text-center">
-                        <div className={`text-lg font-bold ${getResultColor(match)}`}>
+                      <div className="text-center px-6">
+                        <div className={`inline-block px-4 py-2 rounded-full text-lg font-bold ${
+                          result === 'Vittoria' ? 'bg-green-100 text-green-800' :
+                          result === 'Sconfitta' ? 'bg-red-100 text-red-800' :
+                          'bg-yellow-100 text-yellow-800'
+                        }`}>
                           {result}
                         </div>
+                        <div className="text-xs text-gray-500 mt-2">Risultato finale</div>
                       </div>
                       <div className="text-center">
-                        <p className="text-sm text-gray-600">{match.opponent}</p>
-                        <p className="text-3xl font-bold text-gray-800">{theirScore}</p>
+                        <p className="text-sm font-medium text-gray-600 mb-2">{match.opponent}</p>
+                        <p className="text-4xl font-bold text-gray-800">{theirScore}</p>
+                      </div>
+                    </div>
+                    
+                    {/* Match Stats */}
+                    {match.events.length > 0 && (
+                      <div className="mt-6 pt-4 border-t border-gray-300">
+                        <div className="grid grid-cols-3 gap-4 text-center">
+                          <div>
+                            <div className="text-lg font-bold text-blue-600">
+                              {match.events.filter(e => e.type === 'goal' && e.teamType === 'own').length}
+                            </div>
+                            <div className="text-xs text-gray-600">Gol segnati</div>
+                          </div>
+                          <div>
+                            <div className="text-lg font-bold text-yellow-600">
+                              {match.events.filter(e => ['yellow-card', 'red-card'].includes(e.type) && e.teamType === 'own').length}
+                            </div>
+                            <div className="text-xs text-gray-600">Cartellini</div>
+                          </div>
+                          <div>
+                            <div className="text-lg font-bold text-orange-600">
+                              {match.substitutions.length}
+                            </div>
+                            <div className="text-xs text-gray-600">Sostituzioni</div>
+                          </div>
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                )}
+
+                {/* Live Match Status */}
+                {match.status !== 'scheduled' && match.status !== 'finished' && (
+                  <div className="mb-6 p-4 bg-gradient-to-r from-green-50 to-emerald-50 rounded-xl border-l-4 border-green-500">
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center gap-3">
+                        <div className="w-3 h-3 bg-green-500 rounded-full animate-pulse"></div>
+                        <span className="text-base font-semibold text-green-800">Partita in corso</span>
+                        <span className="text-sm text-green-600">• {getStatusText(match)}</span>
+                      </div>
+                      <div className="text-right">
+                        <div className="text-2xl font-bold text-green-900">{ourScore} - {theirScore}</div>
                       </div>
                     </div>
                   </div>
                 )}
 
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center gap-4 text-sm text-gray-600">
-                    <span className="flex items-center gap-1">
-                      {match.homeAway === 'home' ? (
-                        <>
-                          <Home className="w-4 h-4" />
-                          Casa
-                        </>
-                      ) : (
-                        <>
-                          <Plane className="w-4 h-4" />
-                          Trasferta
-                        </>
+                {/* Collapsible Formation Details */}
+                {lineupPlayers.length > 0 && (
+                  <details className="mb-4">
+                    <summary className="cursor-pointer text-sm font-medium text-gray-700 hover:text-gray-900 flex items-center gap-2 p-3 bg-gray-50 rounded-lg hover:bg-gray-100 transition-colors">
+                      <ChevronDown className="w-4 h-4 transition-transform duration-200 [details[open]_&]:rotate-180" />
+                      <Users className="w-4 h-4" />
+                      <span>Dettagli formazione ({match.lineup.length})</span>
+                      {match.substitutions.length > 0 && (
+                        <span className="text-xs text-gray-500">
+                          • {match.substitutions.length} sostituzione{match.substitutions.length > 1 ? 'i' : ''}
+                        </span>
                       )}
-                    </span>
-                    <span>Formazione: {match.lineup.length} giocator{match.lineup.length === 1 ? 'e' : 'i'}</span>
-                    {match.substitutions.length > 0 && (
-                      <span>Sostituzioni: {match.substitutions.length}</span>
-                    )}
-                  </div>
+                    </summary>
+                    <div className="mt-4 space-y-4 p-4 bg-gray-50 rounded-lg">
+                      <div>
+                        <div className="flex items-center gap-2 mb-3">
+                          <Users className="w-5 h-5 text-blue-600" />
+                          <h5 className="text-sm font-semibold text-blue-700 uppercase tracking-wide">Formazione titolare</h5>
+                        </div>
+                        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
+                          {match.lineup.map(matchPlayer => {
+                            const player = players.find(p => p.id === matchPlayer.playerId);
+                            return (
+                              <div key={matchPlayer.playerId} className="flex items-center gap-3 text-sm bg-white p-3 rounded-lg border border-blue-100">
+                                <span className="w-8 h-8 bg-blue-600 text-white rounded-full flex items-center justify-center text-sm font-bold">
+                                  {matchPlayer.jerseyNumber}
+                                </span>
+                                <div className="flex-1">
+                                  <span className="font-medium text-gray-800">{player?.firstName} {player?.lastName}</span>
+                                  <div className="text-xs text-gray-500">{matchPlayer.position}</div>
+                                </div>
+                              </div>
+                            );
+                          })}
+                        </div>
+                      </div>
+                      
+                      {match.substitutions.length > 0 && (
+                        <div>
+                          <div className="flex items-center gap-2 mb-3">
+                            <Target className="w-5 h-5 text-orange-600" />
+                            <h5 className="text-sm font-semibold text-orange-700 uppercase tracking-wide">Sostituzioni</h5>
+                          </div>
+                          <div className="space-y-2">
+                            {match.substitutions.map((sub, index) => {
+                              const playerOut = players.find(p => p.id === sub.playerOut);
+                              const playerIn = players.find(p => p.id === sub.playerIn);
+                              return (
+                                <div key={index} className="bg-white p-3 rounded-lg border border-orange-100">
+                                  <div className="flex items-center justify-between">
+                                    <div className="flex items-center gap-4">
+                                      <div className="flex items-center gap-2">
+                                        {sub.playerOutJerseyNumber && (
+                                          <span className="w-6 h-6 bg-red-500 text-white rounded-full flex items-center justify-center text-xs font-bold">
+                                            {sub.playerOutJerseyNumber}
+                                          </span>
+                                        )}
+                                        <span className="font-medium text-gray-800">{playerOut?.firstName} {playerOut?.lastName}</span>
+                                      </div>
+                                      <span className="text-gray-400">→</span>
+                                      <div className="flex items-center gap-2">
+                                        {sub.playerInJerseyNumber && (
+                                          <span className="w-6 h-6 bg-green-500 text-white rounded-full flex items-center justify-center text-xs font-bold">
+                                            {sub.playerInJerseyNumber}
+                                          </span>
+                                        )}
+                                        <span className="font-medium text-gray-800">{playerIn?.firstName} {playerIn?.lastName}</span>
+                                      </div>
+                                    </div>
+                                    {sub.minute && (
+                                      <span className="text-sm text-gray-500 bg-gray-100 px-2 py-1 rounded">
+                                        {sub.minute}'
+                                      </span>
+                                    )}
+                                  </div>
+                                </div>
+                              );
+                            })}
+                          </div>
+                        </div>
+                      )}
+                    </div>
+                  </details>
+                )}
+
+                {/* Match Info Footer */}
+                <div className="flex items-center justify-between pt-4 border-t border-gray-200">
+                  <div></div>
+                  
+                  {/* Action Buttons */}
                   <div className="flex gap-2">
                     {match.status === 'finished' && onReport && (
                       <button
                         onClick={() => onReport(match)}
                         className="p-2 text-purple-600 hover:bg-purple-100 rounded-lg transition-colors"
-                        title="Report Partita"
+                        title="Report partita"
                       >
-                        <Trophy className="w-4 h-4" />
+                        <Trophy className="w-5 h-5" />
                       </button>
                     )}
                     {match.status !== 'finished' && (
@@ -582,7 +935,7 @@ export function MatchList({ matches, players, onEdit, onDelete, onManage, onRepo
                         className="p-2 text-green-600 hover:bg-green-100 rounded-lg transition-colors"
                         title="Gestisci partita"
                       >
-                        <Clock className="w-4 h-4" />
+                        <Clock className="w-5 h-5" />
                       </button>
                     )}
                     <button
@@ -590,14 +943,14 @@ export function MatchList({ matches, players, onEdit, onDelete, onManage, onRepo
                       className="p-2 text-blue-600 hover:bg-blue-100 rounded-lg transition-colors"
                       title="Modifica partita"
                     >
-                      <Edit2 className="w-4 h-4" />
+                      <Edit2 className="w-5 h-5" />
                     </button>
                     <button
                       onClick={() => onDelete(match.id)}
                       className="p-2 text-red-600 hover:bg-red-100 rounded-lg transition-colors"
                       title="Elimina partita"
                     >
-                      <Trash2 className="w-4 h-4" />
+                      <Trash2 className="w-5 h-5" />
                     </button>
                   </div>
                 </div>
