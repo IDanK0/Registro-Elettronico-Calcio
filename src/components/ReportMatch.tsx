@@ -229,7 +229,7 @@ export function ReportMatch({ match, players, users, onClose }: ReportMatchProps
   // Genera e scarica il file CSV degli eventi
   const exportEventsCSV = () => {
     const eventsRows: string[] = [];
-    eventsRows.push('"Periodo","TempoDiGioco","TipoEvento","Squadra","GiocatorePrincipale","GiocatoreSecondario","Note"');
+    eventsRows.push('"Periodo","TempoDiGioco","TipoEvento","Squadra","NumeroMaglia","GiocatorePrincipale","GiocatoreSecondario","Note"');
     
     const allEvents: any[] = [];
     
@@ -261,6 +261,7 @@ export function ReportMatch({ match, players, users, onClose }: ReportMatchProps
           second: period.duration % 60,
           tipoEvento: 'Intervallo',
           squadra: '-',
+          numeroMaglia: '-',
           giocatorePrincipale: '-',
           giocatoreSecondario: '-',
           note: '-',
@@ -275,15 +276,47 @@ export function ReportMatch({ match, players, users, onClose }: ReportMatchProps
       const periodStartTime = cumulativeDurations[parseInt(periodIndex)] || 0;
       
       events.goals.forEach(g => {
-        const squadra = g.teamType === 'opponent' ? opponentName : teamName;
+        // Determina la squadra usando prima teamType, poi fallback sulla descrizione
+        let squadra;
+        if (g.teamType === 'opponent') {
+          squadra = opponentName;
+        } else if (g.teamType === 'own') {
+          squadra = teamName;
+        } else {
+          // Fallback per compatibilità con dati vecchi
+          squadra = g.description?.includes('avversario') ? opponentName : teamName;
+        }
+        
         let giocatorePrincipale = '';
+        let numeroMaglia = '';
+        
         if (g.playerId && g.teamType === 'own') {
           const player = players.find(p => p.id === g.playerId);
           giocatorePrincipale = player ? `${player.firstName} ${player.lastName}` : 'Giocatore non trovato';
+          // Ottieni il numero di maglia dal giocatore
+          numeroMaglia = getPlayerJerseyNumber(g.playerId)?.toString() || '';
         } else if (g.teamType === 'opponent') {
           const numMatch = g.description?.match(/#(\d+)/);
-          giocatorePrincipale = numMatch ? `Avversario #${numMatch[1]}` : 'Avversario';
+          if (numMatch) {
+            numeroMaglia = numMatch[1];
+            giocatorePrincipale = 'Avversario';
+          } else {
+            giocatorePrincipale = 'Avversario';
+          }
+        } else {
+          // Fallback per compatibilità con dati vecchi
+          const numMatch = g.description?.match(/#(\d+)/);
+          if (numMatch) {
+            numeroMaglia = numMatch[1];
+            if (g.description?.includes('avversario')) {
+              giocatorePrincipale = 'Avversario';
+            } else {
+              const player = players.find(p => p.id === g.playerId);
+              giocatorePrincipale = player ? `${player.firstName} ${player.lastName}` : 'Giocatore non trovato';
+            }
+          }
         }
+        
         const eventTimeInPeriod = (g.minute * 60) + (g.second || 0);
         const cumulativeDuration = periodStartTime + eventTimeInPeriod;
         
@@ -293,6 +326,7 @@ export function ReportMatch({ match, players, users, onClose }: ReportMatchProps
           second: g.second, 
           tipoEvento: 'Gol', 
           squadra, 
+          numeroMaglia,
           giocatorePrincipale, 
           giocatoreSecondario: '', 
           note: g.description || '',
@@ -301,15 +335,47 @@ export function ReportMatch({ match, players, users, onClose }: ReportMatchProps
       });
       
       events.cards.forEach(c => {
-        const squadra = c.teamType === 'opponent' ? opponentName : teamName;
+        // Determina la squadra usando prima teamType, poi fallback sulla descrizione
+        let squadra;
+        if (c.teamType === 'opponent') {
+          squadra = opponentName;
+        } else if (c.teamType === 'own') {
+          squadra = teamName;
+        } else {
+          // Fallback per compatibilità con dati vecchi
+          squadra = c.description?.includes('avversario') ? opponentName : teamName;
+        }
+        
         let giocatorePrincipale = '';
+        let numeroMaglia = '';
+        
         if (c.playerId && c.teamType === 'own') {
           const player = players.find(p => p.id === c.playerId);
           giocatorePrincipale = player ? `${player.firstName} ${player.lastName}` : 'Giocatore non trovato';
+          // Ottieni il numero di maglia dal giocatore
+          numeroMaglia = getPlayerJerseyNumber(c.playerId)?.toString() || '';
         } else if (c.teamType === 'opponent') {
           const numMatch = c.description?.match(/#(\d+)/);
-          giocatorePrincipale = numMatch ? `Avversario #${numMatch[1]}` : 'Avversario';
+          if (numMatch) {
+            numeroMaglia = numMatch[1];
+            giocatorePrincipale = 'Avversario';
+          } else {
+            giocatorePrincipale = 'Avversario';
+          }
+        } else {
+          // Fallback per compatibilità con dati vecchi
+          const numMatch = c.description?.match(/#(\d+)/);
+          if (numMatch) {
+            numeroMaglia = numMatch[1];
+            if (c.description?.includes('avversario')) {
+              giocatorePrincipale = 'Avversario';
+            } else {
+              const player = players.find(p => p.id === c.playerId);
+              giocatorePrincipale = player ? `${player.firstName} ${player.lastName}` : 'Giocatore non trovato';
+            }
+          }
         }
+        
         let tipoEvento = 'Ammonizione';
         if (c.type === 'red-card' || c.type === 'expulsion') tipoEvento = 'Espulsione';
         else if (c.type === 'second-yellow-card') tipoEvento = 'Seconda Gialla';
@@ -324,6 +390,7 @@ export function ReportMatch({ match, players, users, onClose }: ReportMatchProps
           second: c.second, 
           tipoEvento, 
           squadra, 
+          numeroMaglia,
           giocatorePrincipale, 
           giocatoreSecondario: '', 
           note: c.description || '',
@@ -337,6 +404,9 @@ export function ReportMatch({ match, players, users, onClose }: ReportMatchProps
         const outName = out ? `${out.firstName} ${out.lastName}` : 'N/A';
         const inName = inP ? `${inP.firstName} ${inP.lastName}` : 'N/A';
         
+        // Per le sostituzioni, metti il numero di maglia di chi esce
+        const numeroMagliaOut = getPlayerJerseyNumber(s.playerOut)?.toString() || '';
+        
         const eventTimeInPeriod = (s.minute * 60) + (s.second || 0);
         const cumulativeDuration = periodStartTime + eventTimeInPeriod;
         
@@ -346,6 +416,7 @@ export function ReportMatch({ match, players, users, onClose }: ReportMatchProps
           second: s.second, 
           tipoEvento: 'Sostituzione', 
           squadra: teamName, 
+          numeroMaglia: numeroMagliaOut,
           giocatorePrincipale: `${outName} (esce)`, 
           giocatoreSecondario: `${inName} (entra)`, 
           note: '',
@@ -364,14 +435,45 @@ export function ReportMatch({ match, players, users, onClose }: ReportMatchProps
           case 'throw-in': tipoEvento = 'Rimessa laterale'; break;
           case 'injury': tipoEvento = 'Infortunio'; break;
         }
-        const squadra = e.teamType === 'opponent' ? opponentName : teamName;
+        // Determina la squadra usando prima teamType, poi fallback sulla descrizione
+        let squadra;
+        if (e.teamType === 'opponent') {
+          squadra = opponentName;
+        } else if (e.teamType === 'own') {
+          squadra = teamName;
+        } else {
+          // Fallback per compatibilità con dati vecchi
+          squadra = e.description?.includes('avversario') ? opponentName : teamName;
+        }
+        
         let giocatorePrincipale = '';
+        let numeroMaglia = '';
+        
         if (e.playerId && e.teamType === 'own') {
           const player = players.find(p => p.id === e.playerId);
           giocatorePrincipale = player ? `${player.firstName} ${player.lastName}` : 'Giocatore non trovato';
+          // Ottieni il numero di maglia dal giocatore
+          numeroMaglia = getPlayerJerseyNumber(e.playerId)?.toString() || '';
         } else if (e.teamType === 'opponent') {
           const numMatch = e.description?.match(/#(\d+)/);
-          giocatorePrincipale = numMatch ? `Avversario #${numMatch[1]}` : 'Avversario';
+          if (numMatch) {
+            numeroMaglia = numMatch[1];
+            giocatorePrincipale = 'Avversario';
+          } else {
+            giocatorePrincipale = 'Avversario';
+          }
+        } else {
+          // Fallback per compatibilità con dati vecchi
+          const numMatch = e.description?.match(/#(\d+)/);
+          if (numMatch) {
+            numeroMaglia = numMatch[1];
+            if (e.description?.includes('avversario')) {
+              giocatorePrincipale = 'Avversario';
+            } else {
+              const player = players.find(p => p.id === e.playerId);
+              giocatorePrincipale = player ? `${player.firstName} ${player.lastName}` : 'Giocatore non trovato';
+            }
+          }
         }
         
         const eventTimeInPeriod = (e.minute * 60) + (e.second || 0);
@@ -383,6 +485,7 @@ export function ReportMatch({ match, players, users, onClose }: ReportMatchProps
           second: e.second, 
           tipoEvento, 
           squadra, 
+          numeroMaglia,
           giocatorePrincipale, 
           giocatoreSecondario: '', 
           note: e.description || '',
@@ -406,7 +509,7 @@ export function ReportMatch({ match, players, users, onClose }: ReportMatchProps
     
     allEvents.forEach(event => {
       const tempoDiGioco = formatGameTime(event.minute, event.second);
-      eventsRows.push(`"${event.periodName}","${tempoDiGioco}","${event.tipoEvento}","${event.squadra}","${event.giocatorePrincipale}","${event.giocatoreSecondario}","${event.note}"`);
+      eventsRows.push(`"${event.periodName}","${tempoDiGioco}","${event.tipoEvento}","${event.squadra}","${event.numeroMaglia || ''}","${event.giocatorePrincipale}","${event.giocatoreSecondario}","${event.note}"`);
     });
     
     const eventsContent = eventsRows.join('\n');

@@ -317,6 +317,47 @@ export function useDatabase() {
         // ignore if exists
       }
 
+      // Migrazione: aggiorna teamType per eventi esistenti basandosi sulla descrizione
+      try {
+        // Aggiorna goal della nostra squadra
+        database.run(`
+          UPDATE match_events 
+          SET teamType = 'own' 
+          WHERE type = 'goal' 
+          AND teamType IS NULL 
+          AND (description LIKE '%nostro%' OR description NOT LIKE '%avversario%')
+        `);
+        
+        // Aggiorna goal avversari
+        database.run(`
+          UPDATE match_events 
+          SET teamType = 'opponent' 
+          WHERE type = 'goal' 
+          AND teamType IS NULL 
+          AND description LIKE '%avversario%'
+        `);
+        
+        // Aggiorna ammonizioni della nostra squadra (default se non specificato)
+        database.run(`
+          UPDATE match_events 
+          SET teamType = 'own' 
+          WHERE type IN ('yellow-card', 'red-card', 'second-yellow-card', 'blue-card', 'expulsion', 'warning')
+          AND teamType IS NULL 
+          AND (description NOT LIKE '%avversario%' OR description IS NULL)
+        `);
+        
+        // Aggiorna ammonizioni avversari
+        database.run(`
+          UPDATE match_events 
+          SET teamType = 'opponent' 
+          WHERE type IN ('yellow-card', 'red-card', 'second-yellow-card', 'blue-card', 'expulsion', 'warning')
+          AND teamType IS NULL 
+          AND description LIKE '%avversario%'
+        `);
+      } catch (e) {
+        // ignore if migration fails
+      }
+
       // Migrazione: crea tabelle per staff partita
       try {
         database.run(`

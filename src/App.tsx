@@ -1160,7 +1160,8 @@ function App() {
           minute: Math.floor(nowSeconds / 60),
           second: nowSeconds % 60,
           playerId: scorerId,
-          description: `Goal di #${getPlayerJerseyNumber(scorerId) || '?'} ${players.find(p => p.id === scorerId)?.lastName || ''} (nostro)`
+          description: `Goal di #${getPlayerJerseyNumber(scorerId) || '?'} ${players.find(p => p.id === scorerId)?.lastName || ''} (nostro)`,
+          teamType: 'own' as const
         }
       ]
     };
@@ -1192,7 +1193,8 @@ function App() {
           minute: Math.floor(nowSeconds / 60),
           second: nowSeconds % 60,
           playerId: String(jerseyNumber),
-          description: `Goal avversario #${jerseyNumber}`
+          description: `Goal avversario #${jerseyNumber}`,
+          teamType: 'opponent' as const
         }
       ]
     };
