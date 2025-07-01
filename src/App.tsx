@@ -20,6 +20,7 @@ import { UserList } from './components/UserList';
 import { GroupForm } from './components/GroupForm';
 import { GroupList } from './components/GroupList';
 import { CSVManager } from './components/CSVManager';
+import { ExportTrainingAttendanceButton } from './components/ExportTrainingAttendanceButton';
 import {
   Users,
   Dumbbell,
@@ -1476,13 +1477,28 @@ function App() {
                     </button>
                   </div>
                 ) : canAccessTab(activeTab) ? (
-                  <button
-                    onClick={() => setCurrentView('form')}
-                    className="flex items-center gap-2 bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 transition-colors font-medium"
-                  >
-                    <Plus className="w-4 h-4" />
-                    Aggiungi {activeTab === 'players' ? 'Giocatore' : activeTab === 'trainings' ? 'Allenamento' : 'Partita'}
-                  </button>
+                  activeTab === 'trainings' ? (
+                    <div className="flex items-center gap-2">
+                      {isMobile && trainings.length > 0 && (
+                        <ExportTrainingAttendanceButton trainings={trainings} players={players} />
+                      )}
+                      <button
+                        onClick={() => setCurrentView('form')}
+                        className="flex items-center gap-2 bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 transition-colors font-medium"
+                      >
+                        <Plus className="w-4 h-4" />
+                        Aggiungi Allenamento
+                      </button>
+                    </div>
+                  ) : (
+                    <button
+                      onClick={() => setCurrentView('form')}
+                      className="flex items-center gap-2 bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 transition-colors font-medium"
+                    >
+                      <Plus className="w-4 h-4" />
+                      Aggiungi {activeTab === 'players' ? 'Giocatore' : 'Partita'}
+                    </button>
+                  )
                 ) : null
               )}
             </div>
