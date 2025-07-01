@@ -1,6 +1,6 @@
-import React from 'react';
+import { useState, useMemo } from 'react';
 import { Match, Player } from '../types';
-import { Calendar, MapPin, Clock, Edit2, Trash2, Home, Plane, Trophy, Target } from 'lucide-react';
+import { Calendar, Clock, Edit2, Trash2, Home, Plane, Trophy, Target, Search, X } from 'lucide-react';
 import useIsMobile from '../hooks/useIsMobile';
 
 interface MatchListProps {
@@ -14,6 +14,7 @@ interface MatchListProps {
 
 export function MatchList({ matches, players, onEdit, onDelete, onManage, onReport }: MatchListProps) {
   const isMobile = useIsMobile();
+  const [searchTerm, setSearchTerm] = useState('');
 
   const formatDate = (dateString: string) => {
     const date = new Date(dateString);
@@ -132,14 +133,69 @@ export function MatchList({ matches, players, onEdit, onDelete, onManage, onRepo
     }
   };
 
-  const sortedMatches = [...matches].sort((a, b) => 
-    new Date(b.date).getTime() - new Date(a.date).getTime()
-  );
+  const filteredAndSortedMatches = useMemo(() => {
+    let filtered = matches;
+
+    if (searchTerm.trim()) {
+      const search = searchTerm.toLowerCase().trim();
+      filtered = matches.filter(match => {
+        // Search in opponent name
+        if (match.opponent.toLowerCase().includes(search)) return true;
+        
+        // Search in date
+        const formattedDate = formatDate(match.date).toLowerCase();
+        if (formattedDate.includes(search)) return true;
+        
+        // Search in status
+        const statusText = getStatusText(match).toLowerCase();
+        if (statusText.includes(search)) return true;
+        
+        // Search in location
+        if (match.location && match.location.toLowerCase().includes(search)) return true;
+        
+        // Search in field
+        if (match.field && match.field.toLowerCase().includes(search)) return true;
+        
+        // Search in result type for finished matches
+        if (match.status === 'finished') {
+          const result = getResult(match);
+          if (result && result.toLowerCase().includes(search)) return true;
+        }
+        
+        return false;
+      });
+    }
+
+    // Sort by date (newest first)
+    return [...filtered].sort((a, b) => 
+      new Date(b.date).getTime() - new Date(a.date).getTime()
+    );
+  }, [matches, searchTerm]);
 
   if (isMobile) {
     return (
       <div className="space-y-4">
-        {sortedMatches.map(match => {
+        {/* Search Bar */}
+        <div className="relative">
+          <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-5 h-5" />
+          <input
+            type="text"
+            placeholder="Cerca partite per avversario, data, stato..."
+            value={searchTerm}
+            onChange={(e) => setSearchTerm(e.target.value)}
+            className="w-full pl-10 pr-10 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+          />
+          {searchTerm && (
+            <button
+              onClick={() => setSearchTerm('')}
+              className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400 hover:text-gray-600"
+            >
+              <X className="w-5 h-5" />
+            </button>
+          )}
+        </div>
+        
+        {filteredAndSortedMatches.map(match => {
           const statusText = getStatusText(match);
           const statusColor = getStatusColor(match);
           return (
@@ -190,14 +246,38 @@ export function MatchList({ matches, players, onEdit, onDelete, onManage, onRepo
 
   return (
     <div className="space-y-4">
-      {sortedMatches.length === 0 ? (
+      {/* Search Bar */}
+      <div className="relative">
+        <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-5 h-5" />
+        <input
+          type="text"
+          placeholder="Cerca partite per avversario, data, stato..."
+          value={searchTerm}
+          onChange={(e) => setSearchTerm(e.target.value)}
+          className="w-full pl-10 pr-10 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+        />
+        {searchTerm && (
+          <button
+            onClick={() => setSearchTerm('')}
+            className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400 hover:text-gray-600"
+          >
+            <X className="w-5 h-5" />
+          </button>
+        )}
+      </div>
+      
+      {filteredAndSortedMatches.length === 0 ? (
         <div className="text-center py-12">
           <Target className="w-16 h-16 text-gray-300 mx-auto mb-4" />
-          <p className="text-gray-500 text-lg">Nessuna partita registrata</p>
-          <p className="text-gray-400">Aggiungi la prima partita per iniziare</p>
+          <p className="text-gray-500 text-lg">
+            {searchTerm ? 'Nessuna partita trovata' : 'Nessuna partita registrata'}
+          </p>
+          <p className="text-gray-400">
+            {searchTerm ? 'Prova a modificare i termini di ricerca' : 'Aggiungi la prima partita per iniziare'}
+          </p>
         </div>
       ) : (
-        sortedMatches.map(match => {
+        filteredAndSortedMatches.map(match => {
           const result = getResult(match);
           const ourScore = match.homeAway === 'home' ? match.homeScore : match.awayScore;
           const theirScore = match.homeAway === 'home' ? match.awayScore : match.homeScore;
