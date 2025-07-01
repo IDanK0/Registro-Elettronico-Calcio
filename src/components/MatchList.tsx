@@ -113,6 +113,197 @@ export function MatchList({ matches, players, onEdit, onDelete, onManage, onRepo
     }
   };
 
+  const getStatusTextColor = (match: Match) => {
+    const { status, periods, currentPeriodIndex } = match;
+    
+    // Se la partita ha periodi dinamici e un indice corrente valido, usa quello
+    if (periods && periods.length > 0 && currentPeriodIndex !== undefined) {
+      const currentPeriod = periods[currentPeriodIndex];
+      if (currentPeriod) {
+        // Se la partita è finita, usa il colore blu
+        if (status === 'finished') {
+          return 'text-blue-700';
+        }
+        
+        // Se la partita è programmata (non ancora iniziata), usa il colore grigio
+        if (status === 'scheduled') {
+          return 'text-gray-600';
+        }
+        
+        // Usa i colori in base al tipo di periodo
+        if (currentPeriod.type === 'regular') {
+          return 'text-green-700'; // Verde per periodi regolari
+        } else if (currentPeriod.type === 'interval') {
+          return 'text-orange-700'; // Arancione per intervalli
+        } else if (currentPeriod.type === 'extra') {
+          return 'text-purple-700'; // Viola per tempi supplementari
+        }
+      }
+    }
+    
+    // Fallback al vecchio sistema
+    switch (status) {
+      case 'scheduled': return 'text-gray-600';
+      case 'first-half': return 'text-green-700';
+      case 'half-time': return 'text-orange-700';
+      case 'second-half': return 'text-green-700';
+      case 'finished': return 'text-blue-700';
+      default: return 'text-gray-600';
+    }
+  };
+
+  const getStatusBackgroundColor = (match: Match) => {
+    const { status, periods, currentPeriodIndex } = match;
+    
+    // Se la partita ha periodi dinamici e un indice corrente valido, usa quello
+    if (periods && periods.length > 0 && currentPeriodIndex !== undefined) {
+      const currentPeriod = periods[currentPeriodIndex];
+      if (currentPeriod) {
+        // Se la partita è finita, usa il colore blu
+        if (status === 'finished') {
+          return 'from-blue-50 to-blue-100';
+        }
+        
+        // Se la partita è programmata (non ancora iniziata), usa il colore grigio
+        if (status === 'scheduled') {
+          return 'from-gray-50 to-gray-100';
+        }
+        
+        // Usa i colori in base al tipo di periodo
+        if (currentPeriod.type === 'regular') {
+          return 'from-green-50 to-emerald-50'; // Verde per periodi regolari
+        } else if (currentPeriod.type === 'interval') {
+          return 'from-orange-50 to-yellow-50'; // Arancione per intervalli
+        } else if (currentPeriod.type === 'extra') {
+          return 'from-purple-50 to-indigo-50'; // Viola per tempi supplementari
+        }
+      }
+    }
+    
+    // Fallback al vecchio sistema
+    switch (status) {
+      case 'scheduled': return 'from-gray-50 to-gray-100';
+      case 'first-half': return 'from-green-50 to-emerald-50';
+      case 'half-time': return 'from-orange-50 to-yellow-50';
+      case 'second-half': return 'from-green-50 to-emerald-50';
+      case 'finished': return 'from-blue-50 to-blue-100';
+      default: return 'from-gray-50 to-gray-100';
+    }
+  };
+
+  const getStatusBorderColor = (match: Match) => {
+    const { status, periods, currentPeriodIndex } = match;
+    
+    // Se la partita ha periodi dinamici e un indice corrente valido, usa quello
+    if (periods && periods.length > 0 && currentPeriodIndex !== undefined) {
+      const currentPeriod = periods[currentPeriodIndex];
+      if (currentPeriod) {
+        // Se la partita è finita, usa il colore blu
+        if (status === 'finished') {
+          return 'border-blue-500';
+        }
+        
+        // Se la partita è programmata (non ancora iniziata), usa il colore grigio
+        if (status === 'scheduled') {
+          return 'border-gray-400';
+        }
+        
+        // Usa i colori in base al tipo di periodo
+        if (currentPeriod.type === 'regular') {
+          return 'border-green-500'; // Verde per periodi regolari
+        } else if (currentPeriod.type === 'interval') {
+          return 'border-orange-500'; // Arancione per intervalli
+        } else if (currentPeriod.type === 'extra') {
+          return 'border-purple-500'; // Viola per tempi supplementari
+        }
+      }
+    }
+    
+    // Fallback al vecchio sistema
+    switch (status) {
+      case 'scheduled': return 'border-gray-400';
+      case 'first-half': return 'border-green-500';
+      case 'half-time': return 'border-orange-500';
+      case 'second-half': return 'border-green-500';
+      case 'finished': return 'border-blue-500';
+      default: return 'border-gray-400';
+    }
+  };
+
+  const getHomeAwayIconBackgroundColor = (match: Match) => {
+    const { status, periods, currentPeriodIndex } = match;
+    
+    // Per partite programmate, usa grigio
+    if (status === 'scheduled') {
+      return 'bg-gray-100';
+    }
+    
+    // Per partite finite, usa blu
+    if (status === 'finished') {
+      return 'bg-blue-100';
+    }
+    
+    // Per partite in corso, usa i colori dinamici basati sul periodo
+    if (periods && periods.length > 0 && currentPeriodIndex !== undefined) {
+      const currentPeriod = periods[currentPeriodIndex];
+      if (currentPeriod) {
+        // Usa i colori in base al tipo di periodo
+        if (currentPeriod.type === 'regular') {
+          return 'bg-green-100'; // Verde per periodi regolari
+        } else if (currentPeriod.type === 'interval') {
+          return 'bg-orange-100'; // Arancione per intervalli
+        } else if (currentPeriod.type === 'extra') {
+          return 'bg-purple-100'; // Viola per tempi supplementari
+        }
+      }
+    }
+    
+    // Fallback al vecchio sistema per partite in corso
+    switch (status) {
+      case 'first-half': return 'bg-green-100';
+      case 'half-time': return 'bg-orange-100';
+      case 'second-half': return 'bg-green-100';
+      default: return match.homeAway === 'home' ? 'bg-green-100' : 'bg-blue-100';
+    }
+  };
+
+  const getHomeAwayIconColor = (match: Match) => {
+    const { status, periods, currentPeriodIndex } = match;
+    
+    // Per partite programmate, usa grigio
+    if (status === 'scheduled') {
+      return 'text-gray-600';
+    }
+    
+    // Per partite finite, usa blu
+    if (status === 'finished') {
+      return 'text-blue-600';
+    }
+    
+    // Per partite in corso, usa i colori dinamici basati sul periodo
+    if (periods && periods.length > 0 && currentPeriodIndex !== undefined) {
+      const currentPeriod = periods[currentPeriodIndex];
+      if (currentPeriod) {
+        // Usa i colori in base al tipo di periodo
+        if (currentPeriod.type === 'regular') {
+          return 'text-green-600'; // Verde per periodi regolari
+        } else if (currentPeriod.type === 'interval') {
+          return 'text-orange-600'; // Arancione per intervalli
+        } else if (currentPeriod.type === 'extra') {
+          return 'text-purple-600'; // Viola per tempi supplementari
+        }
+      }
+    }
+    
+    // Fallback al vecchio sistema per partite in corso
+    switch (status) {
+      case 'first-half': return 'text-green-600';
+      case 'half-time': return 'text-orange-600';
+      case 'second-half': return 'text-green-600';
+      default: return match.homeAway === 'home' ? 'text-green-600' : 'text-blue-600';
+    }
+  };
+
   const getResult = (match: Match) => {
     if (match.status === 'finished') {
       const ourScore = match.homeAway === 'home' ? match.homeScore : match.awayScore;
@@ -318,13 +509,11 @@ export function MatchList({ matches, players, onEdit, onDelete, onManage, onRepo
               <div key={match.id} className="bg-white rounded-xl shadow-md p-4">
                 <div className="mb-4">
                   <div className="flex items-center gap-3 mb-3">
-                    <div className={`w-10 h-10 rounded-full flex items-center justify-center ${
-                      match.homeAway === 'home' ? 'bg-green-100' : 'bg-blue-100'
-                    }`}>
+                    <div className={`w-10 h-10 rounded-full flex items-center justify-center ${getHomeAwayIconBackgroundColor(match)}`}>
                       {match.homeAway === 'home' ? (
-                        <Home className="w-5 h-5 text-green-600" />
+                        <Home className={`w-5 h-5 ${getHomeAwayIconColor(match)}`} />
                       ) : (
-                        <Plane className="w-5 h-5 text-blue-600" />
+                        <Plane className={`w-5 h-5 ${getHomeAwayIconColor(match)}`} />
                       )}
                     </div>
                     <div className="flex-1">
@@ -345,11 +534,7 @@ export function MatchList({ matches, players, onEdit, onDelete, onManage, onRepo
                   {/* Status bar */}
                   <div className={`w-full h-1 rounded-full mb-2 ${statusColor}`}></div>
                   <div className="flex items-center justify-between text-sm">
-                    <span className={`font-medium ${
-                      match.status === 'finished' ? 'text-blue-700' :
-                      match.status === 'scheduled' ? 'text-gray-600' :
-                      'text-green-700'
-                    }`}>
+                    <span className={`font-medium ${getStatusTextColor(match)}`}>
                       {match.status === 'scheduled' ? 'Programmata' :
                        match.status === 'finished' ? 'Terminata' : statusText}
                     </span>
@@ -406,14 +591,14 @@ export function MatchList({ matches, players, onEdit, onDelete, onManage, onRepo
 
                 {/* Live Match Status */}
                 {match.status !== 'scheduled' && match.status !== 'finished' && (
-                  <div className="mb-4 p-3 bg-green-50 rounded-lg border-l-4 border-green-500">
+                  <div className={`mb-4 p-3 bg-gradient-to-r ${getStatusBackgroundColor(match)} rounded-lg border-l-4 ${getStatusBorderColor(match)}`}>
                     <div className="flex items-center justify-between">
                       <div className="flex items-center gap-2">
-                        <div className="w-2 h-2 bg-green-500 rounded-full animate-pulse"></div>
-                        <span className="text-sm font-medium text-green-800">Partita in corso</span>
+                        <div className={`w-2 h-2 ${getStatusColor(match).replace('bg-', 'bg-')} rounded-full animate-pulse`}></div>
+                        <span className={`text-sm font-medium ${getStatusTextColor(match).replace('text-', 'text-').replace('-700', '-800')}`}>Partita in corso</span>
                       </div>
                       <div className="text-right">
-                        <div className="text-lg font-bold text-green-900">{ourScore} - {theirScore}</div>
+                        <div className={`text-lg font-bold ${getStatusTextColor(match).replace('text-', 'text-').replace('-700', '-900')}`}>{ourScore} - {theirScore}</div>
                       </div>
                     </div>
                   </div>
@@ -737,13 +922,11 @@ export function MatchList({ matches, players, onEdit, onDelete, onManage, onRepo
                 {/* Header with Match Info */}
                 <div className="flex justify-between items-start mb-6">
                   <div className="flex items-center gap-4">
-                    <div className={`w-12 h-12 rounded-full flex items-center justify-center ${
-                      match.homeAway === 'home' ? 'bg-green-100' : 'bg-blue-100'
-                    }`}>
+                    <div className={`w-12 h-12 rounded-full flex items-center justify-center ${getHomeAwayIconBackgroundColor(match)}`}>
                       {match.homeAway === 'home' ? (
-                        <Home className="w-6 h-6 text-green-600" />
+                        <Home className={`w-6 h-6 ${getHomeAwayIconColor(match)}`} />
                       ) : (
-                        <Plane className="w-6 h-6 text-blue-600" />
+                        <Plane className={`w-6 h-6 ${getHomeAwayIconColor(match)}`} />
                       )}
                     </div>
                     <div>
@@ -835,15 +1018,14 @@ export function MatchList({ matches, players, onEdit, onDelete, onManage, onRepo
 
                 {/* Live Match Status */}
                 {match.status !== 'scheduled' && match.status !== 'finished' && (
-                  <div className="mb-6 p-4 bg-gradient-to-r from-green-50 to-emerald-50 rounded-xl border-l-4 border-green-500">
+                  <div className={`mb-6 p-4 bg-gradient-to-r ${getStatusBackgroundColor(match)} rounded-xl border-l-4 ${getStatusBorderColor(match)}`}>
                     <div className="flex items-center justify-between">
                       <div className="flex items-center gap-3">
-                        <div className="w-3 h-3 bg-green-500 rounded-full animate-pulse"></div>
-                        <span className="text-base font-semibold text-green-800">Partita in corso</span>
-                        <span className="text-sm text-green-600">• {getStatusText(match)}</span>
+                        <div className={`w-3 h-3 ${getStatusColor(match).replace('bg-', 'bg-')} rounded-full animate-pulse`}></div>
+                        <span className={`text-base font-semibold ${getStatusTextColor(match).replace('text-', 'text-').replace('-700', '-800')}`}>Partita in corso</span>
                       </div>
                       <div className="text-right">
-                        <div className="text-2xl font-bold text-green-900">{ourScore} - {theirScore}</div>
+                        <div className={`text-2xl font-bold ${getStatusTextColor(match).replace('text-', 'text-').replace('-700', '-900')}`}>{ourScore} - {theirScore}</div>
                       </div>
                     </div>
                   </div>
