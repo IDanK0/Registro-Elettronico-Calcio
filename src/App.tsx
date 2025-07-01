@@ -1345,12 +1345,19 @@ function App() {
       </header>
 
       {/* Mobile sidebar backdrop */}
-      {isMobile && mobileMenuOpen && (
-        <div className="fixed inset-0 bg-black opacity-50 z-30" onClick={() => setMobileMenuOpen(false)} />
+      {isMobile && (
+        <div 
+          className={`fixed inset-0 bg-black z-30 transition-opacity duration-300 ease-in-out ${
+            mobileMenuOpen ? 'opacity-50' : 'opacity-0 pointer-events-none'
+          }`} 
+          onClick={() => setMobileMenuOpen(false)} 
+        />
       )}
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
         <div className="flex flex-col lg:flex-row gap-8">           {/* Sidebar Navigation */}
-          <aside className={`lg:w-64 ${mobileMenuOpen ? 'block fixed top-0 left-0 h-full z-40 bg-white p-4' : 'hidden lg:block'}`}>
+          <aside className={`lg:w-64 lg:block fixed lg:relative top-0 right-0 h-full lg:h-auto z-40 bg-white p-4 w-64 shadow-lg lg:shadow-none transition-transform duration-300 ease-in-out transform ${
+            mobileMenuOpen || !isMobile ? 'translate-x-0' : 'translate-x-full'
+          }`}>
             {/* User Info */}
             <div className="mb-6 p-4 bg-blue-50 rounded-lg">
               <div className="flex items-center justify-between">
@@ -1412,7 +1419,7 @@ function App() {
           </aside>
 
           {/* Main Content */}
-          <main className={`flex-1 ${isMobile && mobileMenuOpen ? 'ml-64' : ''}`}>  {/* apply margin-left only on mobile when sidebar is open */}
+          <main className="flex-1">  {/* Removed conditional margin-left */}
              {/* Page Header */}
              <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-8">
               <div className="flex items-center gap-4">
