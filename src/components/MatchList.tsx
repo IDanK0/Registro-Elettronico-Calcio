@@ -387,7 +387,7 @@ export function MatchList({ matches, players, onEdit, onDelete, onManage, onRepo
         <div className="bg-white rounded-xl shadow-lg p-4">
           <h2 className="text-2xl font-bold text-gray-800 flex items-center gap-3 mb-4">
             <Trophy className="w-7 h-7 text-blue-600" />
-            <span>Partite</span>
+            <span>Gestione Partite</span>
           </h2>
           
           {/* Filters and Search */}
@@ -769,113 +769,111 @@ export function MatchList({ matches, players, onEdit, onDelete, onManage, onRepo
       <div className="bg-white rounded-xl shadow-lg p-6">
         <h2 className="text-2xl font-bold text-gray-800 flex items-center gap-3 mb-6">
           <Trophy className="w-7 h-7 text-blue-600" />
-          <span>Partite</span>
+          <span>Gestione Partite</span>
         </h2>
         
-        {/* Filters and Controls */}
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 mb-6">
+        {/* Filters and Search */}
+        <div className="space-y-4">
           {/* Search Bar */}
-          <div className="lg:col-span-2">
-            <div className="relative">
-              <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-5 h-5" />
-              <input
-                type="text"
-                placeholder="Cerca partite per avversario, data, stato o location..."
-                value={searchTerm}
-                onChange={(e) => setSearchTerm(e.target.value)}
-                className="w-full pl-10 pr-10 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-              />
-              {searchTerm && (
-                <button
-                  onClick={() => setSearchTerm('')}
-                  className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400 hover:text-gray-600"
-                >
-                  <X className="w-5 h-5" />
-                </button>
-              )}
-            </div>
+          <div className="relative">
+            <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-5 h-5" />
+            <input
+              type="text"
+              placeholder="Cerca partite per avversario, data, stato..."
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
+              className="w-full pl-10 pr-10 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+            />
+            {searchTerm && (
+              <button
+                onClick={() => setSearchTerm('')}
+                className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400 hover:text-gray-600"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            )}
+          </div>
+
+          {/* Status Filter */}
+          <div className="flex rounded-lg shadow-sm border border-gray-300 overflow-hidden">
+            <button 
+              onClick={() => setStatusFilter('all')} 
+              className={`flex-1 px-4 py-2 text-sm font-medium transition-colors flex items-center justify-center gap-1 ${
+                statusFilter === 'all' 
+                  ? 'bg-blue-600 text-white' 
+                  : 'bg-white text-gray-700 hover:bg-gray-100'
+              }`}
+            >
+              <Trophy className="w-4 h-4" />
+              <span>Tutte</span>
+            </button>
+            <button 
+              onClick={() => setStatusFilter('scheduled')} 
+              className={`flex-1 px-4 py-2 text-sm font-medium transition-colors flex items-center justify-center gap-1 ${
+                statusFilter === 'scheduled' 
+                  ? 'bg-blue-600 text-white' 
+                  : 'bg-white text-gray-700 hover:bg-gray-100'
+              }`}
+            >
+              <Calendar className="w-4 h-4" />
+              <span>Programmate</span>
+            </button>
+            <button 
+              onClick={() => setStatusFilter('active')} 
+              className={`flex-1 px-4 py-2 text-sm font-medium transition-colors flex items-center justify-center gap-1 ${
+                statusFilter === 'active' 
+                  ? 'bg-blue-600 text-white' 
+                  : 'bg-white text-gray-700 hover:bg-gray-100'
+              }`}
+            >
+              <Activity className="w-4 h-4" />
+              <span>Live</span>
+            </button>
+            <button 
+              onClick={() => setStatusFilter('finished')} 
+              className={`flex-1 px-4 py-2 text-sm font-medium transition-colors flex items-center justify-center gap-1 ${
+                statusFilter === 'finished' 
+                  ? 'bg-blue-600 text-white' 
+                  : 'bg-white text-gray-700 hover:bg-gray-100'
+              }`}
+            >
+              <Award className="w-4 h-4" />
+              <span>Finite</span>
+            </button>
           </div>
 
           {/* Sort Options */}
-          <div>
-            <select 
-              value={sortBy}
-              onChange={(e) => setSortBy(e.target.value as any)}
-              className="w-full bg-white border border-gray-300 hover:border-gray-400 px-3 py-3 rounded-lg shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-            >
-              <option value="date">Ordina per Data</option>
-              <option value="opponent">Ordina per Avversario</option>
-              <option value="status">Ordina per Stato</option>
-            </select>
-          </div>
-        </div>
-
-        {/* Status Filter */}
-        <div className="flex flex-wrap gap-2 mb-6">
-          <button 
-            onClick={() => setStatusFilter('all')} 
-            className={`flex items-center gap-2 px-4 py-2 rounded-lg font-medium transition-colors ${
-              statusFilter === 'all' 
-                ? 'bg-gray-600 text-white' 
-                : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
-            }`}
+          <select 
+            value={sortBy}
+            onChange={(e) => setSortBy(e.target.value as any)}
+            className="w-full bg-white border border-gray-300 hover:border-gray-400 px-3 py-3 rounded-lg shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
           >
-            <Trophy className="w-4 h-4" />
-            <span>Tutte le Partite</span>
-          </button>
-          <button 
-            onClick={() => setStatusFilter('scheduled')} 
-            className={`flex items-center gap-2 px-4 py-2 rounded-lg font-medium transition-colors ${
-              statusFilter === 'scheduled' 
-                ? 'bg-blue-600 text-white' 
-                : 'bg-blue-100 text-blue-700 hover:bg-blue-200'
-            }`}
-          >
-            <Calendar className="w-4 h-4" />
-            <span>Programmate</span>
-          </button>
-          <button 
-            onClick={() => setStatusFilter('active')} 
-            className={`flex items-center gap-2 px-4 py-2 rounded-lg font-medium transition-colors ${
-              statusFilter === 'active' 
-                ? 'bg-green-600 text-white' 
-                : 'bg-green-100 text-green-700 hover:bg-green-200'
-            }`}
-          >
-            <Activity className="w-4 h-4" />
-            <span>In Corso</span>
-          </button>
-          <button 
-            onClick={() => setStatusFilter('finished')} 
-            className={`flex items-center gap-2 px-4 py-2 rounded-lg font-medium transition-colors ${
-              statusFilter === 'finished' 
-                ? 'bg-purple-600 text-white' 
-                : 'bg-purple-100 text-purple-700 hover:bg-purple-200'
-            }`}
-          >
-            <Award className="w-4 h-4" />
-            <span>Terminate</span>
-          </button>
+            <option value="date">Ordina per Data</option>
+            <option value="opponent">Ordina per Avversario</option>
+            <option value="status">Ordina per Stato</option>
+          </select>
         </div>
 
         {/* Stats Summary */}
         {matches.length > 0 && (
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-4 p-4 bg-gray-50 rounded-lg">
-            <div className="text-center">
-              <div className="text-2xl font-bold text-blue-600">{matches.filter(m => m.status === 'scheduled').length}</div>
-              <div className="text-sm text-gray-600">Programmate</div>
-            </div>
-            <div className="text-center">
-              <div className="text-2xl font-bold text-green-600">{matches.filter(m => m.status !== 'scheduled' && m.status !== 'finished').length}</div>
-              <div className="text-sm text-gray-600">In Corso</div>
-            </div>
-            <div className="text-center">
-              <div className="text-2xl font-bold text-purple-600">{matches.filter(m => m.status === 'finished').length}</div>
-              <div className="text-sm text-gray-600">Terminate</div>
-            </div>
-            <div className="text-center">
-              <div className="text-2xl font-bold text-gray-600">{matches.length}</div>
-              <div className="text-sm text-gray-600">Totali</div>
+          <div className="mt-6 pt-4 border-t border-gray-200">
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-center">
+              <div>
+                <div className="text-2xl font-bold text-blue-600">{matches.filter(m => m.status === 'scheduled').length}</div>
+                <div className="text-sm text-gray-600">Programmate</div>
+              </div>
+              <div>
+                <div className="text-2xl font-bold text-green-600">{matches.filter(m => m.status !== 'scheduled' && m.status !== 'finished').length}</div>
+                <div className="text-sm text-gray-600">In corso</div>
+              </div>
+              <div>
+                <div className="text-2xl font-bold text-purple-600">{matches.filter(m => m.status === 'finished').length}</div>
+                <div className="text-sm text-gray-600">Terminate</div>
+              </div>
+              <div>
+                <div className="text-2xl font-bold text-gray-600">{matches.length}</div>
+                <div className="text-sm text-gray-600">Totali</div>
+              </div>
             </div>
           </div>
         )}
