@@ -152,7 +152,7 @@ function App() {
   const [groups, setGroups] = useState<Group[]>([]);
   // Timer for match management
   const timer = useTimer();
-  const isMobile = useIsMobile(1024); // Consider screens up to 1024px (including medium) as mobile
+  const isMobile = useIsMobile(1280); // Consider screens up to 1280px (xl breakpoint) as mobile to match sidebar behavior
   
   // State for dynamic periods
   const defaultPeriods: MatchPeriod[] = [

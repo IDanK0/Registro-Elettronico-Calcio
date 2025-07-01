@@ -266,7 +266,7 @@ export function StatsOverview({ players, matches, trainings, playerStats }: Stat
           {/* General Overview */}
           <div className="bg-white p-4 rounded-xl shadow-sm">
             <h3 className="font-bold text-lg mb-3 flex items-center gap-2"><BarChart3 className="w-5 h-5 text-blue-600"/>Panoramica</h3>
-            <div className="grid grid-cols-2 gap-3">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
               <StatCardMobile icon={Users} label="Giocatori" value={players.filter(p => p.isActive).length} colorClass="bg-blue-500" />
               <StatCardMobile icon={Target} label="Partite" value={finishedMatches.length} colorClass="bg-green-500" />
               <StatCardMobile icon={Calendar} label="Allenamenti" value={trainings.length} colorClass="bg-purple-500" />
