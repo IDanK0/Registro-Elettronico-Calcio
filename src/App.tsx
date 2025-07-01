@@ -68,6 +68,45 @@ function App() {
 
   // Stato per errori di gestione partita
   const [manageError, setManageError] = useState<string | null>(null);
+  
+  // Swipe functionality state
+  const [touchStart, setTouchStart] = useState<number>(0);
+  const [touchEnd, setTouchEnd] = useState<number>(0);
+  
+  // Minimum swipe distance to trigger sidebar open
+  const minSwipeDistance = 50;
+  
+  // Handle touch start
+  const handleTouchStart = (e: React.TouchEvent) => {
+    setTouchEnd(0); // Reset touch end
+    setTouchStart(e.targetTouches[0].clientX);
+  };
+  
+  // Handle touch move
+  const handleTouchMove = (e: React.TouchEvent) => {
+    setTouchEnd(e.targetTouches[0].clientX);
+  };
+  
+  // Handle touch end - detect swipe
+  const handleTouchEnd = () => {
+    if (!touchStart || !touchEnd) return;
+    
+    const distance = touchStart - touchEnd;
+    const isLeftSwipe = distance > minSwipeDistance; // Swipe from right to left
+    const isRightSwipe = distance < -minSwipeDistance; // Swipe from left to right
+    
+    if (isMobile) {
+      // Open sidebar on left swipe (swipe from right to left) when closed
+      if (isLeftSwipe && !mobileMenuOpen) {
+        setMobileMenuOpen(true);
+      }
+      // Close sidebar on right swipe (swipe from left to right) when open
+      else if (isRightSwipe && mobileMenuOpen) {
+        setMobileMenuOpen(false);
+      }
+    }
+  };
+  
   // Database hook
   const database = useDatabase();
   // Session hook
@@ -80,7 +119,7 @@ function App() {
   const [groups, setGroups] = useState<Group[]>([]);
   // Timer for match management
   const timer = useTimer();
-  const isMobile = useIsMobile();
+  const isMobile = useIsMobile(1024); // Consider screens up to 1024px (including medium) as mobile
   
   // State for dynamic periods
   const defaultPeriods: MatchPeriod[] = [
@@ -147,6 +186,32 @@ function App() {
       loadData();
     }
   }, [database.isLoading, database.error]);
+
+  // Prevent body scroll when mobile sidebar is open
+  useEffect(() => {
+    if (isMobile && mobileMenuOpen) {
+      // Store the current scroll position
+      const scrollY = window.scrollY;
+      
+      // Apply styles to prevent scrolling but preserve touch events
+      document.body.style.position = 'fixed';
+      document.body.style.top = `-${scrollY}px`;
+      document.body.style.width = '100%';
+      document.body.style.overflow = 'hidden';
+      
+      // Cleanup function to restore scrolling
+      return () => {
+        // Restore original styles
+        document.body.style.position = '';
+        document.body.style.top = '';
+        document.body.style.width = '';
+        document.body.style.overflow = '';
+        
+        // Restore scroll position
+        window.scrollTo(0, scrollY);
+      };
+    }
+  }, [isMobile, mobileMenuOpen]);
 
   // Load session on app start
   useEffect(() => {
@@ -1322,7 +1387,7 @@ function App() {
     <div className="min-h-screen bg-gray-50">
       {/* Header */}
       <header className="bg-white shadow-sm border-b">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 xl:px-8">
           <div className="flex justify-between items-center h-16">
             <div className="flex items-center gap-3">
               {/* Logo */}
@@ -1337,7 +1402,7 @@ function App() {
             </div>
             <button
               onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
-              className="lg:hidden p-2 rounded-lg hover:bg-gray-100 transition-colors"
+              className="xl:hidden p-2 rounded-lg hover:bg-gray-100 transition-colors"
             >
               {mobileMenuOpen ? <X className="w-6 h-6" /> : <Menu className="w-6 h-6" />}
             </button>
@@ -1354,11 +1419,15 @@ function App() {
           onClick={() => setMobileMenuOpen(false)} 
         />
       )}
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-        <div className="flex flex-col lg:flex-row gap-8">           {/* Sidebar Navigation */}
-          <aside className={`lg:w-64 lg:block fixed lg:relative top-0 right-0 h-full lg:h-auto z-40 bg-white p-4 w-64 shadow-lg lg:shadow-none transition-transform duration-300 ease-in-out transform ${
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 xl:px-8 py-8">
+        <div className="flex flex-col xl:flex-row gap-8">           {/* Sidebar Navigation */}
+          <aside className={`xl:w-64 xl:block fixed xl:relative top-0 right-0 h-full xl:h-auto z-40 bg-white p-4 w-64 shadow-lg xl:shadow-none transition-transform duration-300 ease-in-out transform rounded-lg xl:rounded-l-lg ${
             mobileMenuOpen || !isMobile ? 'translate-x-0' : 'translate-x-full'
-          }`}>
+          }`}
+            onTouchStart={handleTouchStart}
+            onTouchMove={handleTouchMove}
+            onTouchEnd={handleTouchEnd}
+          >
             {/* User Info */}
             <div className="mb-6 p-4 bg-blue-50 rounded-lg">
               <div className="flex items-center justify-between">
@@ -1420,7 +1489,12 @@ function App() {
           </aside>
 
           {/* Main Content */}
-          <main className="flex-1">  {/* Removed conditional margin-left */}
+          <main 
+            className="flex-1"
+            onTouchStart={handleTouchStart}
+            onTouchMove={handleTouchMove}
+            onTouchEnd={handleTouchEnd}
+          >
              {/* Page Header */}
              <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-8">
               <div className="flex items-center gap-4">
