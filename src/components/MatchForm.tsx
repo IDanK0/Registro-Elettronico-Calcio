@@ -12,9 +12,9 @@ interface MatchFormProps {
 
 // Available positions for player selection
 const POSITIONS = [
-  'Portiere', 'Difensore', 'Centrocampista', 'Attaccante',
-  'Terzino Destro', 'Terzino Sinistro', 'Centrale',
-  'Mediano', 'Trequartista', 'Ala Destra', 'Ala Sinistra', 'Punta'
+  'Ala Destra', 'Ala Sinistra', 'Attaccante', 'Capitano', 'Centrale',
+  'Centrocampista', 'Difensore', 'Mediano', 'Portiere', 'Punta',
+  'Terzino Destro', 'Terzino Sinistro', 'Trequartista', 'Vicecapitano'
 ];
 
 export function MatchForm({ players, users = [], onSubmit, initialData, onCancel }: MatchFormProps) {
