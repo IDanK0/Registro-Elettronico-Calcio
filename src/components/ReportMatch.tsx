@@ -503,6 +503,30 @@ export function ReportMatch({ match, players, users, onClose }: ReportMatchProps
             </div>
           </div>
 
+          {/* Formazione Avversaria */}
+          {match.opponentLineup && match.opponentLineup.length > 0 && (
+            <div className="mb-6">
+              <h3 className="text-base font-bold text-gray-800 mb-3 flex items-center gap-2">
+                <Users className="w-4 h-4 text-red-600" />
+                Formazione Avversaria
+              </h3>
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
+                {match.opponentLineup.sort((a, b) => a - b).map(jerseyNumber => (
+                  <div key={jerseyNumber} className="bg-white rounded-lg p-3 border border-gray-200 hover:shadow-md transition-shadow">
+                    <div className="flex items-center gap-2">
+                      <div className="bg-red-100 text-red-700 rounded-full w-8 h-8 flex items-center justify-center font-bold text-sm">
+                        {jerseyNumber}
+                      </div>
+                      <div>
+                        <p className="font-medium text-gray-800 text-sm">Giocatore #{jerseyNumber}</p>
+                      </div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+
           {/* Eventi suddivisi per periodo */}
           <div className="mb-6">
             <h3 className="text-base font-bold text-gray-800 mb-3 flex items-center gap-2">
