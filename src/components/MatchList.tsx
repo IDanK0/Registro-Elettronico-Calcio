@@ -449,7 +449,7 @@ export function MatchList({ matches, players, onEdit, onDelete, onManage, onRepo
                       <div>
                         <div className="flex items-center gap-2 mb-2">
                           <Users className="w-4 h-4 text-blue-600" />
-                          <h5 className="text-xs font-medium text-blue-700 uppercase tracking-wide">Giocatori in campo</h5>
+                          <h5 className="text-xs font-medium text-blue-700 uppercase tracking-wide">Formazione titolare</h5>
                         </div>
                         <div className="grid grid-cols-1 gap-2">
                           {match.lineup.map(matchPlayer => {
@@ -508,6 +508,26 @@ export function MatchList({ matches, players, onEdit, onDelete, onManage, onRepo
                                 </div>
                               );
                             })}
+                          </div>
+                        </div>
+                      )}
+                      
+                      {/* Opponent Lineup */}
+                      {match.opponentLineup && match.opponentLineup.length > 0 && (
+                        <div>
+                          <div className="flex items-center gap-2 mb-2">
+                            <Target className="w-4 h-4 text-red-600" />
+                            <h5 className="text-xs font-medium text-red-700 uppercase tracking-wide">Formazione {match.opponent}</h5>
+                          </div>
+                          <div className="grid grid-cols-2 gap-2">
+                            {match.opponentLineup.map((jerseyNumber, index) => (
+                              <div key={index} className="flex items-center gap-2 text-xs bg-white p-2 rounded border border-red-100">
+                                <span className="w-6 h-6 bg-red-600 text-white rounded-full flex items-center justify-center text-xs font-bold">
+                                  {jerseyNumber}
+                                </span>
+                                <span className="font-medium text-gray-800">Giocatore #{jerseyNumber}</span>
+                              </div>
+                            ))}
                           </div>
                         </div>
                       )}
@@ -907,6 +927,29 @@ export function MatchList({ matches, players, onEdit, onDelete, onManage, onRepo
                                 </div>
                               );
                             })}
+                          </div>
+                        </div>
+                      )}
+                      
+                      {/* Opponent Lineup */}
+                      {match.opponentLineup && match.opponentLineup.length > 0 && (
+                        <div>
+                          <div className="flex items-center gap-2 mb-3">
+                            <Target className="w-5 h-5 text-red-600" />
+                            <h5 className="text-sm font-semibold text-red-700 uppercase tracking-wide">Formazione {match.opponent}</h5>
+                          </div>
+                          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
+                            {match.opponentLineup.map((jerseyNumber, index) => (
+                              <div key={index} className="flex items-center gap-3 text-sm bg-white p-3 rounded-lg border border-red-100">
+                                <span className="w-8 h-8 bg-red-600 text-white rounded-full flex items-center justify-center text-sm font-bold">
+                                  {jerseyNumber}
+                                </span>
+                                <div className="flex-1">
+                                  <span className="font-medium text-gray-800">Giocatore #{jerseyNumber}</span>
+                                  <div className="text-xs text-gray-500">Avversario</div>
+                                </div>
+                              </div>
+                            ))}
                           </div>
                         </div>
                       )}
