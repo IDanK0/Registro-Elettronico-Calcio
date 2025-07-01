@@ -11,12 +11,44 @@ interface ReportMatchProps {
 
 export function ReportMatch({ match, players, users, onClose }: ReportMatchProps) {
   const [showExportMenu, setShowExportMenu] = useState(false);
+  const [selectedPlayer, setSelectedPlayer] = useState<Player | null>(null);
+  const [showDetailsModal, setShowDetailsModal] = useState(false);
   const lineupPlayers = players.filter(p => match.lineup.find(lp => lp.playerId === p.id));
   
   // Funzione per ottenere il numero di maglia di un giocatore
   const getPlayerJerseyNumber = (playerId: string) => {
     const matchPlayer = match.lineup.find(lp => lp.playerId === playerId);
     return matchPlayer?.jerseyNumber;
+  };
+
+  // Funzione per calcolare l'età di un giocatore
+  const calculateAge = (birthDate: string) => {
+    const today = new Date();
+    const birth = new Date(birthDate);
+    let age = today.getFullYear() - birth.getFullYear();
+    const monthDiff = today.getMonth() - birth.getMonth();
+    
+    if (monthDiff < 0 || (monthDiff === 0 && today.getDate() < birth.getDate())) {
+      age--;
+    }
+    
+    return age;
+  };
+
+  // Funzione per aprire il modal dei dettagli giocatore
+  const openPlayerDetails = (player: Player) => {
+    setSelectedPlayer(player);
+    setShowDetailsModal(true);
+  };
+
+  // Funzione per scaricare documenti
+  const downloadDocument = (doc: any) => {
+    const link = document.createElement('a');
+    link.href = `data:${doc.mimeType};base64,${doc.data}`;
+    link.download = doc.fileName;
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
   };
   
   // Funzione per ottenere il nome del periodo
@@ -524,7 +556,15 @@ export function ReportMatch({ match, players, users, onClose }: ReportMatchProps
   };
 
   return (
-    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+    <div 
+      className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4"
+      onClick={(e) => {
+        // Chiudi il modal se si clicca sul backdrop
+        if (e.target === e.currentTarget) {
+          onClose();
+        }
+      }}
+    >
       <div className="bg-white rounded-lg shadow-xl max-w-4xl w-full relative overflow-y-auto max-h-[90vh] border border-gray-200">
         <button 
           onClick={onClose} 
@@ -590,7 +630,12 @@ export function ReportMatch({ match, players, users, onClose }: ReportMatchProps
               {lineupPlayers.map(p => {
                 const matchPlayer = match.lineup.find(lp => lp.playerId === p.id);
                 return (
-                  <div key={p.id} className="bg-white rounded-lg p-3 border border-gray-200 hover:shadow-md transition-shadow">
+                  <div 
+                    key={p.id} 
+                    className="bg-white rounded-lg p-3 border border-gray-200 hover:shadow-md hover:border-blue-300 transition-all cursor-pointer"
+                    onClick={() => openPlayerDetails(p)}
+                    title="Clicca per visualizzare i dettagli del giocatore"
+                  >
                     <div className="flex items-center gap-2">
                       <div className="bg-blue-100 text-blue-700 rounded-full w-8 h-8 flex items-center justify-center font-bold text-sm">
                         {matchPlayer?.jerseyNumber}
@@ -926,6 +971,162 @@ export function ReportMatch({ match, players, users, onClose }: ReportMatchProps
           </div>
         </div>
       </div>
+
+      {/* Modal Dettagli Giocatore */}
+      {showDetailsModal && selectedPlayer && (
+        <div 
+          className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4"
+          onClick={(e) => {
+            // Chiudi il modal se si clicca sul backdrop
+            if (e.target === e.currentTarget) {
+              setShowDetailsModal(false);
+              setSelectedPlayer(null);
+            }
+          }}
+        >
+          <div className="bg-white rounded-xl shadow-2xl max-w-2xl w-full max-h-[90vh] overflow-y-auto">
+            <div className="p-6">
+              <div className="flex justify-between items-start mb-6">
+                <h3 className="text-2xl font-bold text-gray-800 flex items-center gap-3">
+                  <Users className="w-7 h-7 text-blue-600" />
+                  Dettagli Giocatore
+                </h3>
+                <button
+                  onClick={() => {
+                    setShowDetailsModal(false);
+                    setSelectedPlayer(null);
+                  }}
+                  className="p-2 text-gray-400 hover:text-gray-600 hover:bg-gray-100 rounded-lg transition-colors"
+                >
+                  <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                  </svg>
+                </button>
+              </div>
+
+              <div className="space-y-6">
+                {/* Informazioni Personali */}
+                <div className="bg-gray-50 p-4 rounded-lg">
+                  <h4 className="text-lg font-semibold text-gray-800 mb-4 flex items-center gap-2">
+                    <Users className="w-5 h-5 text-blue-600" />
+                    Informazioni Personali
+                  </h4>
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div>
+                      <label className="block text-sm font-medium text-gray-600 mb-1">Nome</label>
+                      <div className="text-gray-900 font-medium">{selectedPlayer.firstName}</div>
+                    </div>
+                    <div>
+                      <label className="block text-sm font-medium text-gray-600 mb-1">Cognome</label>
+                      <div className="text-gray-900 font-medium">{selectedPlayer.lastName}</div>
+                    </div>
+                    <div>
+                      <label className="block text-sm font-medium text-gray-600 mb-1">Data di Nascita</label>
+                      <div className="text-gray-900">{new Date(selectedPlayer.birthDate).toLocaleDateString('it-IT')}</div>
+                    </div>
+                    <div>
+                      <label className="block text-sm font-medium text-gray-600 mb-1">Età</label>
+                      <div className="text-gray-900">{calculateAge(selectedPlayer.birthDate)} anni</div>
+                    </div>
+                    <div>
+                      <label className="block text-sm font-medium text-gray-600 mb-1">Numero Licenza</label>
+                      <div className="text-gray-900 font-mono">#{selectedPlayer.licenseNumber}</div>
+                    </div>
+                    <div>
+                      <label className="block text-sm font-medium text-gray-600 mb-1">Stato</label>
+                      <div>
+                        {selectedPlayer.isActive ? (
+                          <span className="px-3 py-1 inline-flex text-xs leading-5 font-semibold rounded-full bg-green-100 text-green-800 items-center gap-1.5">
+                            <Target className="w-4 h-4" />
+                            Attivo
+                          </span>
+                        ) : (
+                          <span className="px-3 py-1 inline-flex text-xs leading-5 font-semibold rounded-full bg-red-100 text-red-800 items-center gap-1.5">
+                            <Ban className="w-4 h-4" />
+                            Inattivo
+                          </span>
+                        )}
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Contatti */}
+                <div className="bg-gray-50 p-4 rounded-lg">
+                  <h4 className="text-lg font-semibold text-gray-800 mb-4 flex items-center gap-2">
+                    <MapPin className="w-5 h-5 text-green-600" />
+                    Contatti
+                  </h4>
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div>
+                      <label className="block text-sm font-medium text-gray-600 mb-1">Telefono</label>
+                      <div className="text-gray-900">{selectedPlayer.phone || 'Non specificato'}</div>
+                    </div>
+                    <div>
+                      <label className="block text-sm font-medium text-gray-600 mb-1">Email</label>
+                      <div className="text-gray-900">{selectedPlayer.email || 'Non specificato'}</div>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Informazioni Genitore */}
+                <div className="bg-gray-50 p-4 rounded-lg">
+                  <h4 className="text-lg font-semibold text-gray-800 mb-4 flex items-center gap-2">
+                    <Users className="w-5 h-5 text-purple-600" />
+                    Informazioni Genitore
+                  </h4>
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div>
+                      <label className="block text-sm font-medium text-gray-600 mb-1">Nome Genitore</label>
+                      <div className="text-gray-900">{selectedPlayer.parentName || 'Non specificato'}</div>
+                    </div>
+                    <div>
+                      <label className="block text-sm font-medium text-gray-600 mb-1">Telefono Genitore</label>
+                      <div className="text-gray-900">{selectedPlayer.parentPhone || 'Non specificato'}</div>
+                    </div>
+                    <div className="md:col-span-2">
+                      <label className="block text-sm font-medium text-gray-600 mb-1">Email Genitore</label>
+                      <div className="text-gray-900">{selectedPlayer.parentEmail || 'Non specificato'}</div>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Documenti */}
+                <div className="bg-gray-50 p-4 rounded-lg">
+                  <h4 className="text-lg font-semibold text-gray-800 mb-4 flex items-center gap-2">
+                    <FileText className="w-5 h-5 text-orange-600" />
+                    Documenti Allegati
+                  </h4>
+                  {selectedPlayer.documents && selectedPlayer.documents.length > 0 ? (
+                    <div className="space-y-2">
+                      {selectedPlayer.documents.map((doc, index) => (
+                        <div key={index} className="flex items-center justify-between p-3 bg-white rounded-lg border">
+                          <div className="flex items-center gap-2">
+                            <FileText className="w-4 h-4 text-gray-500" />
+                            <span className="text-sm font-medium text-gray-900">{doc.fileName}</span>
+                            <span className="text-xs text-gray-500">({doc.mimeType})</span>
+                          </div>
+                          <button
+                            onClick={() => downloadDocument(doc)}
+                            className="px-3 py-1 text-xs bg-blue-600 text-white rounded hover:bg-blue-700 transition-colors"
+                          >
+                            Scarica
+                          </button>
+                        </div>
+                      ))}
+                    </div>
+                  ) : (
+                    <div className="text-center py-6">
+                      <FileText className="w-12 h-12 text-gray-300 mx-auto mb-2" />
+                      <p className="text-gray-500">Nessun documento allegato</p>
+                    </div>
+                  )}
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

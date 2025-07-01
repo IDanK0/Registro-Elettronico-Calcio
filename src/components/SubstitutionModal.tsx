@@ -62,7 +62,15 @@ export function SubstitutionModal({
   const existingJerseyConflict = existingJerseyNumber && usedJerseyNumbers.includes(existingJerseyNumber);
 
   return (
-    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+    <div 
+      className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50"
+      onClick={(e) => {
+        // Chiudi il modal se si clicca sul backdrop
+        if (e.target === e.currentTarget) {
+          handleClose();
+        }
+      }}
+    >
       <div className="bg-white rounded-xl p-6 w-full max-w-md mx-4">
         <div className="flex justify-between items-center mb-6">
           <h3 className="text-xl font-bold text-gray-800 flex items-center gap-2">
