@@ -3,6 +3,7 @@ import React from 'react';
 import { useDatabase } from './hooks/useDatabase';
 import { useTimer } from './hooks/useTimer';
 import { useSession } from './hooks/useSession';
+import { useLocalStorage } from './hooks/useLocalStorage';
 import { Player, Training, Match, MatchPlayer, Substitution, User, Group, UserWithGroup, Permission, MatchPeriod, MatchEvent } from './types';
 import { usePlayerStats } from './hooks/usePlayerStats';
 import { PlayerForm } from './components/PlayerForm';
@@ -51,8 +52,10 @@ function App() {
   const [loginError, setLoginError] = useState<string>('');
   const [isLoggingIn, setIsLoggingIn] = useState(false);
 
-  const [activeTab, setActiveTab] = useState<Tab>('players');
-  const [currentView, setCurrentView] = useState<View>('list');
+  // Stato di navigazione persistente
+  const [activeTab, setActiveTabState] = useLocalStorage<Tab>('activeTab', 'players');
+  const [currentView, setCurrentViewState] = useLocalStorage<View>('currentView', 'list');
+  const [managingMatchId, setManagingMatchIdState] = useLocalStorage<string | null>('managingMatchId', null);
   const [editingItem, setEditingItem] = useState<any>(null);
   const [managingMatch, setManagingMatch] = useState<Match | null>(null);
   const [initialLineup, setInitialLineup] = useState<MatchPlayer[] | null>(null);
@@ -61,6 +64,36 @@ function App() {
   const [showOtherEventsModal, setShowOtherEventsModal] = useState(false);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [showReportMatch, setShowReportMatch] = useState<null | Match>(null);
+
+  // Funzioni wrapper per aggiornare lo stato e resettare modali quando necessario
+  const setActiveTab = (tab: Tab) => {
+    setActiveTabState(tab);
+    // Reset della vista a 'list' quando si cambia tab (tranne per matches che può rimanere in manage)
+    if (tab !== 'matches' || currentView !== 'manage') {
+      setCurrentView('list');
+    }
+    setEditingItem(null);
+    setMobileMenuOpen(false);
+  };
+
+  const setCurrentView = (view: View) => {
+    setCurrentViewState(view);
+    if (view === 'list') {
+      setEditingItem(null);
+      setManagingMatchId(null);
+    }
+  };
+
+  const setManagingMatchId = (matchId: string | null) => {
+    setManagingMatchIdState(matchId);
+  };
+
+  // Funzione per resettare completamente la gestione partita
+  const resetManagingMatch = () => {
+    setManagingMatch(null);
+    setManagingMatchId(null);
+    setInitialLineup(null);
+  };
 
   // Stato per selezione marcatore
   const [selectedHomeScorer, setSelectedHomeScorer] = useState<string>('');
@@ -231,12 +264,89 @@ function App() {
       }
     }
   }, [database.isLoading, database.error, currentUser]);
+  
+  // Funzione per ripristinare una partita in gestione al ricaricamento della pagina
+  const restoreManagingMatch = (match: Match) => {
+    // Inizializza la mappa dei numeri di maglia se non esiste
+    const playerJerseyNumbers = match.playerJerseyNumbers || {};
+    
+    // Popola la mappa con i numeri di maglia dei giocatori attualmente in formazione
+    match.lineup.forEach(matchPlayer => {
+      if (!playerJerseyNumbers[matchPlayer.playerId]) {
+        playerJerseyNumbers[matchPlayer.playerId] = matchPlayer.jerseyNumber;
+      }
+    });
+
+    const matchWithJerseyNumbers = {
+      ...match,
+      playerJerseyNumbers
+    };
+
+    setManagingMatch(matchWithJerseyNumbers);
+    setInitialLineup(match.lineup);
+    
+    // Inizializza i periodi se non esistono
+    if (!match.periods || match.periods.length === 0) {
+      const updatedMatch = { 
+        ...matchWithJerseyNumbers, 
+        periods: defaultPeriods,
+        currentPeriodIndex: 0 
+      };
+      setManagingMatch(updatedMatch);
+      database.updateMatch(match.id, updatedMatch);
+      setCurrentPeriodIndex(0);
+    } else {
+      setCurrentPeriodIndex(match.currentPeriodIndex || 0);
+      // Aggiorna il database con la mappa dei numeri di maglia se necessario
+      if (!match.playerJerseyNumbers) {
+        database.updateMatch(match.id, matchWithJerseyNumbers);
+      }
+      // Assicurati che managingMatch abbia sempre la mappa dei numeri di maglia
+      setManagingMatch(matchWithJerseyNumbers);
+    }
+    
+    // Restore timer based on current period and lastTimestamp
+    const now = Date.now();
+    const periods = match.periods || defaultPeriods;
+    const currentPeriod = periods[match.currentPeriodIndex || 0];
+    
+    if (currentPeriod) {
+      const computeTime = (base: number) => {
+        if (match.isRunning && match.lastTimestamp) {
+          const elapsed = Math.floor((now - match.lastTimestamp) / 1000);
+          return base + elapsed;
+        }
+        return base;
+      };
+      
+      const secs = computeTime(currentPeriod.duration);
+      timer.resetTo(secs);
+      if (match.isRunning) timer.start(); else timer.pause();
+    } else {
+      timer.resetTo(0);
+      timer.pause();
+    }
+  };
+
   const loadData = () => {
     setPlayers(database.getPlayers());
     setTrainings(database.getTrainings());
-    setMatches(database.getMatches());
+    const matchesData = database.getMatches();
+    setMatches(matchesData);
     setUsers(database.getUsers());
     setGroups(database.getGroups());
+
+    // Ripristina la partita in gestione se esiste
+    if (managingMatchId && currentView === 'manage') {
+      const matchToRestore = matchesData.find(match => match.id === managingMatchId);
+      if (matchToRestore) {
+        restoreManagingMatch(matchToRestore);
+      } else {
+        // La partita non esiste più, reset lo stato
+        setManagingMatchId(null);
+        setCurrentView('list');
+      }
+    }
   };
 
   // Helper functions
@@ -352,6 +462,7 @@ function App() {
     setManagingMatch(matchWithJerseyNumbers);
     setInitialLineup(match.lineup);
     setCurrentView('manage');
+    setManagingMatchId(match.id); // Salva l'ID della partita in gestione
     
     // Inizializza i periodi se non esistono
     if (!match.periods || match.periods.length === 0) {
@@ -487,8 +598,7 @@ function App() {
     }
     setCurrentView('list');
     setEditingItem(null);
-    setManagingMatch(null);
-    setInitialLineup(null); // azzera la formazione iniziale quando si esce dalla gestione partita
+    resetManagingMatch();
     timer.reset();
   };
   const tabs = [
@@ -1377,8 +1487,7 @@ function App() {
       loadData();
       setCurrentView('list');
       setEditingItem(null);
-      setManagingMatch(null);
-      setInitialLineup(null);
+      resetManagingMatch();
       timer.reset();
     }
   };
@@ -1470,7 +1579,7 @@ function App() {
                       setActiveTab(tab.id);
                       setCurrentView('list');
                       setEditingItem(null);
-                      setManagingMatch(null);
+                      resetManagingMatch();
                       setMobileMenuOpen(false);
                       timer.reset();
                     }}
