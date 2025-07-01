@@ -307,7 +307,7 @@ export function EnhancedMatchManagement({
                   }`
                 : `flex items-center gap-2 px-6 py-3 rounded-lg transition-all duration-200 flex-1 justify-center font-medium ${
                     activeView === tab.id
-                      ? 'bg-white text-blue-600 shadow-md transform scale-105'
+                      ? 'bg-white text-blue-600 shadow-md'
                       : 'text-gray-600 hover:text-gray-800 hover:bg-gray-200'
                   }`
             }`}
