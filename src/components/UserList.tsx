@@ -348,6 +348,8 @@ export function UserList({ users, onEdit, onDelete }: UserListProps) {
                               {key === 'matchManagement' && 'Gestione Partite'}
                               {key === 'resultsView' && 'Visualizzazione Risultati'}
                               {key === 'statisticsView' && 'Visualizzazione Statistiche'}
+                              {key === 'userManagement' && 'Gestione Utenti'}
+                              {key === 'groupManagement' && 'Gestione Gruppi'}
                             </span>
                           </div>
                         ))}
@@ -659,6 +661,8 @@ export function UserList({ users, onEdit, onDelete }: UserListProps) {
                             {key === 'matchManagement' && 'Gestione Partite'}
                             {key === 'resultsView' && 'Visualizzazione Risultati'}
                             {key === 'statisticsView' && 'Visualizzazione Statistiche'}
+                            {key === 'userManagement' && 'Gestione Utenti'}
+                            {key === 'groupManagement' && 'Gestione Gruppi'}
                           </span>
                         </div>
                       ))}
