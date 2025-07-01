@@ -8,8 +8,6 @@ import {
   Activity,
   FileText,
   TrendingUp,
-  Eye,
-  EyeOff,
   Timer,
   ArrowLeftRight,
   AlertTriangle,
@@ -90,7 +88,6 @@ export function EnhancedMatchManagement({
   manageError
 }: EnhancedMatchManagementProps) {
   const [activeView, setActiveView] = useState<'overview' | 'field' | 'events' | 'stats'>('overview');
-  const [showFieldVisualization, setShowFieldVisualization] = useState(false);
   const isMobile = useIsMobile();
 
   const currentPeriod = match.periods?.[currentPeriodIndex];
@@ -512,78 +509,63 @@ export function EnhancedMatchManagement({
       {/* Altre viste placeholder */}
       {activeView === 'field' && (
         <div className="bg-white rounded-2xl shadow-lg p-6">
-          <div className="flex items-center justify-between mb-6">
+          <div className="mb-6">
             <h3 className="text-xl font-bold text-gray-800">Visualizzazione Campo</h3>
-            <button
-              onClick={() => setShowFieldVisualization(!showFieldVisualization)}
-              className="flex items-center gap-2 px-4 py-2 bg-blue-500 text-white rounded-lg hover:bg-blue-600 transition-colors"
-            >
-              {showFieldVisualization ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
-              {showFieldVisualization ? 'Vista Lista' : 'Vista Campo'}
-            </button>
           </div>
           
-          {showFieldVisualization ? (
-            <FieldVisualization 
-              match={match}
-              players={players}
-              getPlayerJerseyNumber={getPlayerJerseyNumber}
-            />
-          ) : (
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-              {/* In Campo */}
-              <div className="bg-gray-50 rounded-xl p-6">
-                <h4 className="text-lg font-semibold text-gray-800 mb-4 flex items-center gap-2">
-                  <Users className="w-5 h-5 text-green-600" />
-                  In Campo ({getPlayersOnField().length})
-                </h4>
-                <div className="space-y-3">
-                  {getPlayersOnField().map(player => {
-                    const matchPlayer = match.lineup.find(mp => mp.playerId === player.id);
-                    return (
-                      <div key={player.id} className="flex items-center gap-3 p-3 bg-green-50 rounded-lg border border-green-200">
-                        <div className="flex-shrink-0 w-12 h-12 bg-green-500 text-white rounded-full flex items-center justify-center font-bold">
-                          {matchPlayer?.jerseyNumber}
-                        </div>
-                        <div className="flex-1">
-                          <div className="font-semibold text-gray-800">
-                            {player.firstName} {player.lastName}
-                          </div>
-                          <div className="text-sm text-green-600">{matchPlayer?.position}</div>
-                        </div>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+            {/* In Campo */}
+            <div className="bg-gray-50 rounded-xl p-6">
+              <h4 className="text-lg font-semibold text-gray-800 mb-4 flex items-center gap-2">
+                <Users className="w-5 h-5 text-green-600" />
+                In Campo ({getPlayersOnField().length})
+              </h4>
+              <div className="space-y-3">
+                {getPlayersOnField().map(player => {
+                  const matchPlayer = match.lineup.find(mp => mp.playerId === player.id);
+                  return (
+                    <div key={player.id} className="flex items-center gap-3 p-3 bg-green-50 rounded-lg border border-green-200">
+                      <div className="flex-shrink-0 w-12 h-12 bg-green-500 text-white rounded-full flex items-center justify-center font-bold">
+                        {matchPlayer?.jerseyNumber}
                       </div>
-                    );
-                  })}
-                </div>
-              </div>
-
-              {/* In Panchina */}
-              <div className="bg-gray-50 rounded-xl p-6">
-                <h4 className="text-lg font-semibold text-gray-800 mb-4 flex items-center gap-2">
-                  <Users className="w-5 h-5 text-blue-600" />
-                  In Panchina ({getPlayersOnBench().length})
-                </h4>
-                <div className="space-y-3">
-                  {getPlayersOnBench().map(player => {
-                    const jerseyNumber = getPlayerJerseyNumber(player.id);
-                    return (
-                      <div key={player.id} className="flex items-center gap-3 p-3 bg-blue-50 rounded-lg border border-blue-200">
-                        <div className="flex-shrink-0 w-12 h-12 bg-blue-500 text-white rounded-full flex items-center justify-center font-bold">
-                          {jerseyNumber || '?'}
+                      <div className="flex-1">
+                        <div className="font-semibold text-gray-800">
+                          {player.firstName} {player.lastName}
                         </div>
-                        <div className="flex-1">
-                          <div className="font-semibold text-gray-800">
-                            {player.firstName} {player.lastName}
-                          </div>
-                          <div className="text-sm text-blue-600">Panchina</div>
-                        </div>
+                        <div className="text-sm text-green-600">{matchPlayer?.position}</div>
                       </div>
-                    );
-                  })}
-                </div>
+                    </div>
+                  );
+                })}
               </div>
             </div>
-          )}
+
+            {/* In Panchina */}
+            <div className="bg-gray-50 rounded-xl p-6">
+              <h4 className="text-lg font-semibold text-gray-800 mb-4 flex items-center gap-2">
+                <Users className="w-5 h-5 text-blue-600" />
+                In Panchina ({getPlayersOnBench().length})
+              </h4>
+              <div className="space-y-3">
+                {getPlayersOnBench().map(player => {
+                  const jerseyNumber = getPlayerJerseyNumber(player.id);
+                  return (
+                    <div key={player.id} className="flex items-center gap-3 p-3 bg-blue-50 rounded-lg border border-blue-200">
+                      <div className="flex-shrink-0 w-12 h-12 bg-blue-500 text-white rounded-full flex items-center justify-center font-bold">
+                        {jerseyNumber || '?'}
+                      </div>
+                      <div className="flex-1">
+                        <div className="font-semibold text-gray-800">
+                          {player.firstName} {player.lastName}
+                        </div>
+                        <div className="text-sm text-blue-600">Panchina</div>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+          </div>
         </div>
       )}
 
@@ -910,134 +892,6 @@ function MatchEventChronologies({
           </div>
         </div>
       )}
-    </div>
-  );
-}
-
-// Componente per la visualizzazione del campo
-function FieldVisualization({ 
-  match, 
-  players, 
-  getPlayerJerseyNumber 
-}: { 
-  match: Match; 
-  players: Player[]; 
-  getPlayerJerseyNumber: (playerId: string) => number | null | undefined;
-}) {
-  return (
-    <div className="bg-white rounded-2xl shadow-lg p-6">
-      <h3 className="text-xl font-bold text-gray-800 mb-6 text-center">Campo di Gioco</h3>
-      
-      {/* Campo di calcio stilizzato */}
-      <div className="relative bg-green-500 rounded-xl p-12 min-h-[500px] shadow-inner" style={{ backgroundImage: 'linear-gradient(90deg, #22c55e 50%, #16a34a 50%)' }}>
-        {/* Linee del campo */}
-        <div className="absolute inset-6 border-2 border-white rounded-lg">
-          {/* Linea di metà campo */}
-          <div className="absolute left-1/2 top-0 bottom-0 w-0.5 bg-white"></div>
-          {/* Cerchio di centrocampo */}
-          <div className="absolute left-1/2 top-1/2 w-32 h-32 border-2 border-white rounded-full -translate-x-1/2 -translate-y-1/2"></div>
-          <div className="absolute left-1/2 top-1/2 w-2 h-2 bg-white rounded-full -translate-x-1/2 -translate-y-1/2"></div>
-          
-          {/* Area di rigore sinistra */}
-          <div className="absolute left-0 top-1/2 w-20 h-40 border-2 border-white border-l-0 -translate-y-1/2"></div>
-          <div className="absolute left-0 top-1/2 w-12 h-24 border-2 border-white border-l-0 -translate-y-1/2"></div>
-          
-          {/* Area di rigore destra */}
-          <div className="absolute right-0 top-1/2 w-20 h-40 border-2 border-white border-r-0 -translate-y-1/2"></div>
-          <div className="absolute right-0 top-1/2 w-12 h-24 border-2 border-white border-r-0 -translate-y-1/2"></div>
-          
-          {/* Porte */}
-          <div className="absolute left-0 top-1/2 w-3 h-20 bg-white -translate-y-1/2 -translate-x-1.5 rounded-sm"></div>
-          <div className="absolute right-0 top-1/2 w-3 h-20 bg-white -translate-y-1/2 translate-x-1.5 rounded-sm"></div>
-          
-          {/* Punti di rigore */}
-          <div className="absolute left-16 top-1/2 w-2 h-2 bg-white rounded-full -translate-y-1/2"></div>
-          <div className="absolute right-16 top-1/2 w-2 h-2 bg-white rounded-full -translate-y-1/2"></div>
-        </div>
-
-        {/* Posizionamento giocatori */}
-        <div className="absolute inset-12">
-          {match.lineup.map((matchPlayer, index) => {
-            const player = players.find(p => p.id === matchPlayer.playerId);
-            if (!player) return null;
-
-            // Posizionamento migliorato basato sulla posizione
-            const getPlayerPosition = (position: string, index: number) => {
-              const positions = {
-                'defense': [
-                  { left: '15%', top: '20%' },  // Difensore sinistro
-                  { left: '15%', top: '40%' },  // Difensore centrale sx
-                  { left: '15%', top: '60%' },  // Difensore centrale dx
-                  { left: '15%', top: '80%' },  // Difensore destro
-                ],
-                'midfield': [
-                  { left: '45%', top: '25%' },  // Centrocampista sinistro
-                  { left: '45%', top: '50%' },  // Centrocampista centrale
-                  { left: '45%', top: '75%' },  // Centrocampista destro
-                ],
-                'forward': [
-                  { left: '75%', top: '35%' },  // Attaccante sinistro
-                  { left: '75%', top: '65%' },  // Attaccante destro
-                ]
-              };
-              
-              if (position.toLowerCase().includes('portiere')) {
-                return { left: '5%', top: '50%' };
-              } else if (position.toLowerCase().includes('difens')) {
-                return positions.defense[index % positions.defense.length] || { left: `${15 + (index % 4) * 5}%`, top: `${20 + (index % 4) * 20}%` };
-              } else if (position.toLowerCase().includes('centrocampi')) {
-                return positions.midfield[index % positions.midfield.length] || { left: `${45 + (index % 3) * 5}%`, top: `${25 + (index % 3) * 25}%` };
-              } else if (position.toLowerCase().includes('attaccan')) {
-                return positions.forward[index % positions.forward.length] || { left: `${75 + (index % 2) * 5}%`, top: `${35 + (index % 2) * 30}%` };
-              }
-              
-              // Posizione di fallback
-              return { left: `${25 + (index % 4) * 20}%`, top: `${25 + (index % 3) * 25}%` };
-            };
-
-            const position = getPlayerPosition(matchPlayer.position, index);
-
-            return (
-              <div
-                key={player.id}
-                className="absolute transform -translate-x-1/2 -translate-y-1/2 cursor-pointer hover:scale-110 transition-transform"
-                style={position}
-                title={`${player.firstName} ${player.lastName} - ${matchPlayer.position}`}
-              >
-                <div className="bg-blue-600 text-white rounded-full w-14 h-14 flex items-center justify-center font-bold text-lg shadow-lg border-2 border-white hover:bg-blue-700 transition-colors">
-                  {matchPlayer.jerseyNumber}
-                </div>
-                <div className="text-xs text-white text-center mt-2 font-medium bg-black/70 px-2 py-1 rounded-md shadow-sm">
-                  {player.lastName}
-                </div>
-              </div>
-            );
-          })}
-        </div>
-      </div>
-      
-      {/* Legenda */}
-      <div className="mt-6 bg-gray-50 rounded-xl p-4">
-        <h4 className="font-semibold text-gray-800 mb-3">Legenda Posizioni</h4>
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-sm">
-          <div className="flex items-center gap-2">
-            <div className="w-6 h-6 bg-blue-600 text-white rounded-full flex items-center justify-center text-xs font-bold">P</div>
-            <span className="text-gray-700">Portiere</span>
-          </div>
-          <div className="flex items-center gap-2">
-            <div className="w-6 h-6 bg-blue-600 text-white rounded-full flex items-center justify-center text-xs font-bold">D</div>
-            <span className="text-gray-700">Difensore</span>
-          </div>
-          <div className="flex items-center gap-2">
-            <div className="w-6 h-6 bg-blue-600 text-white rounded-full flex items-center justify-center text-xs font-bold">C</div>
-            <span className="text-gray-700">Centrocampista</span>
-          </div>
-          <div className="flex items-center gap-2">
-            <div className="w-6 h-6 bg-blue-600 text-white rounded-full flex items-center justify-center text-xs font-bold">A</div>
-            <span className="text-gray-700">Attaccante</span>
-          </div>
-        </div>
-      </div>
     </div>
   );
 }
