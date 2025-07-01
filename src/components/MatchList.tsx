@@ -549,14 +549,16 @@ export function MatchList({ matches, players, onEdit, onDelete, onManage, onRepo
 
                 {/* Result Section for Finished Matches */}
                 {match.status === 'finished' && (
-                  <div className="mb-4 p-4 bg-gray-50 rounded-lg">
-                    <div className="flex items-center justify-between mb-3">
-                      <div className="text-center">
-                        <p className="text-xs text-gray-600 mb-1">Pietra Ligure</p>
-                        <p className="text-2xl font-bold text-gray-800">{ourScore}</p>
+                  <div className="mb-4 p-4 bg-white rounded-lg border border-gray-200 shadow-sm">
+                    <div className="flex items-center">
+                      {/* Our Score */}
+                      <div className="flex-1 flex justify-center">
+                        <p className="text-3xl font-bold text-gray-800">{ourScore}</p>
                       </div>
-                      <div className="text-center">
-                        <div className={`text-sm font-bold px-3 py-1 rounded-full ${
+                      
+                      {/* Result Badge */}
+                      <div className="flex-shrink-0 px-4">
+                        <div className={`px-4 py-2 rounded-full text-sm font-bold ${
                           result === 'Vittoria' ? 'bg-green-100 text-green-800' :
                           result === 'Sconfitta' ? 'bg-red-100 text-red-800' :
                           'bg-yellow-100 text-yellow-800'
@@ -564,28 +566,12 @@ export function MatchList({ matches, players, onEdit, onDelete, onManage, onRepo
                           {result}
                         </div>
                       </div>
-                      <div className="text-center">
-                        <p className="text-xs text-gray-600 mb-1">{match.opponent}</p>
-                        <p className="text-2xl font-bold text-gray-800">{theirScore}</p>
+                      
+                      {/* Their Score */}
+                      <div className="flex-1 flex justify-center">
+                        <p className="text-3xl font-bold text-gray-800">{theirScore}</p>
                       </div>
                     </div>
-                    
-                    {/* Match Stats */}
-                    {match.events.length > 0 && (
-                      <div className="pt-3 border-t border-gray-200">
-                        <div className="flex justify-between text-xs text-gray-600">
-                          <span>
-                            Gol: {match.events.filter(e => e.type === 'goal' && e.teamType === 'own').length}
-                          </span>
-                          <span>
-                            Cartellini: {match.events.filter(e => ['yellow-card', 'red-card', 'second-yellow-card'].includes(e.type) && e.teamType === 'own').length}
-                          </span>
-                          <span>
-                            Eventi: {match.events.filter(e => e.teamType === 'own').length}
-                          </span>
-                        </div>
-                      </div>
-                    )}
                   </div>
                 )}
 
@@ -964,53 +950,29 @@ export function MatchList({ matches, players, onEdit, onDelete, onManage, onRepo
 
                 {/* Match Result Section */}
                 {match.status === 'finished' && (
-                  <div className="mb-6 p-6 bg-gradient-to-r from-gray-50 to-gray-100 rounded-xl border border-gray-200">
-                    <div className="flex items-center justify-between">
-                      <div className="text-center">
-                        <p className="text-sm font-medium text-gray-600 mb-2">Pietra Ligure</p>
+                  <div className="mb-4 p-4 bg-white rounded-lg border border-gray-200 shadow-sm">
+                    <div className="flex items-center">
+                      {/* Our Score */}
+                      <div className="flex-1 flex justify-center">
                         <p className="text-4xl font-bold text-gray-800">{ourScore}</p>
                       </div>
-                      <div className="text-center px-6">
-                        <div className={`inline-block px-4 py-2 rounded-full text-lg font-bold ${
+                      
+                      {/* Result Badge */}
+                      <div className="flex-shrink-0 px-6">
+                        <div className={`px-4 py-2 rounded-full text-base font-bold ${
                           result === 'Vittoria' ? 'bg-green-100 text-green-800' :
                           result === 'Sconfitta' ? 'bg-red-100 text-red-800' :
                           'bg-yellow-100 text-yellow-800'
                         }`}>
                           {result}
                         </div>
-                        <div className="text-xs text-gray-500 mt-2">Risultato finale</div>
                       </div>
-                      <div className="text-center">
-                        <p className="text-sm font-medium text-gray-600 mb-2">{match.opponent}</p>
+                      
+                      {/* Their Score */}
+                      <div className="flex-1 flex justify-center">
                         <p className="text-4xl font-bold text-gray-800">{theirScore}</p>
                       </div>
                     </div>
-                    
-                    {/* Match Stats */}
-                    {match.events.length > 0 && (
-                      <div className="mt-6 pt-4 border-t border-gray-300">
-                        <div className="grid grid-cols-3 gap-4 text-center">
-                          <div>
-                            <div className="text-lg font-bold text-blue-600">
-                              {match.events.filter(e => e.type === 'goal' && e.teamType === 'own').length}
-                            </div>
-                            <div className="text-xs text-gray-600">Gol segnati</div>
-                          </div>
-                          <div>
-                            <div className="text-lg font-bold text-yellow-600">
-                              {match.events.filter(e => ['yellow-card', 'red-card'].includes(e.type) && e.teamType === 'own').length}
-                            </div>
-                            <div className="text-xs text-gray-600">Cartellini</div>
-                          </div>
-                          <div>
-                            <div className="text-lg font-bold text-orange-600">
-                              {match.substitutions.length}
-                            </div>
-                            <div className="text-xs text-gray-600">Sostituzioni</div>
-                          </div>
-                        </div>
-                      </div>
-                    )}
                   </div>
                 )}
 
