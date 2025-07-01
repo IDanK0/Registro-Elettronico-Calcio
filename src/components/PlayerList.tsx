@@ -89,10 +89,66 @@ export function PlayerList({ players, onEdit, onDelete, onImportPlayers }: Playe
   if (isMobile) {
     return (
       <div className="space-y-4">
+        {/* Header */}
+        <div className="bg-white rounded-xl shadow-lg p-4">
+          <h2 className="text-2xl font-bold text-gray-800 flex items-center gap-3 mb-4">
+            <User className="w-7 h-7 text-blue-600" />
+            <span>Elenco Giocatori</span>
+          </h2>
+          
+          {/* Filters */}
+          <div className="space-y-3">
+            <div>
+              <select 
+                value={sortBy}
+                onChange={(e) => setSortBy(e.target.value)}
+                className="w-full bg-white border border-gray-300 hover:border-gray-400 px-3 py-2 rounded-md shadow-sm text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+              >
+                <option value="lastName">Ordina per Cognome</option>
+                <option value="firstName">Ordina per Nome</option>
+                <option value="age">Ordina per Età</option>
+              </select>
+            </div>
+            <div className="flex rounded-md shadow-sm border border-gray-300">
+              <button 
+                onClick={() => setFilterStatus('all')} 
+                className={`flex-1 px-3 py-2 text-sm font-medium rounded-l-md transition-colors ${
+                  filterStatus === 'all' 
+                    ? 'bg-blue-600 text-white border-blue-600' 
+                    : 'bg-white text-gray-700 hover:bg-gray-100'
+                }`}
+              >
+                Tutti
+              </button>
+              <button 
+                onClick={() => setFilterStatus('active')} 
+                className={`flex-1 px-3 py-2 text-sm font-medium transition-colors border-l border-r border-gray-300 ${
+                  filterStatus === 'active' 
+                    ? 'bg-blue-600 text-white border-blue-600' 
+                    : 'bg-white text-gray-700 hover:bg-gray-100'
+                }`}
+              >
+                Attivi
+              </button>
+              <button 
+                onClick={() => setFilterStatus('inactive')} 
+                className={`flex-1 px-3 py-2 text-sm font-medium rounded-r-md transition-colors ${
+                  filterStatus === 'inactive' 
+                    ? 'bg-blue-600 text-white border-blue-600' 
+                    : 'bg-white text-gray-700 hover:bg-gray-100'
+                }`}
+              >
+                Inattivi
+              </button>
+            </div>
+          </div>
+        </div>
+
+        {/* Player Cards */}
         {processedPlayers.map(player => (
           <div key={player.id} className="bg-white rounded-xl shadow-md p-4">
             <div className="flex justify-between items-start mb-3">
-              <div>
+              <div className="flex-1">
                 <div className="text-base font-semibold text-gray-900">{player.firstName} {player.lastName}</div>
                 <div className="text-sm text-gray-500">Tessera: {player.licenseNumber} • {calculateAge(player.birthDate)} anni</div>
               </div>
@@ -123,6 +179,21 @@ export function PlayerList({ players, onEdit, onDelete, onImportPlayers }: Playe
                   <Trash2 className="w-4 h-4" />
                 </button>
               </div>
+            </div>
+            
+            {/* Status badge */}
+            <div className="mb-3">
+              {player.isActive ? (
+                <span className="px-3 py-1 inline-flex text-xs leading-5 font-semibold rounded-full bg-green-100 text-green-800 items-center gap-1.5">
+                  <ShieldCheck className="w-4 h-4" />
+                  Attivo
+                </span>
+              ) : (
+                <span className="px-3 py-1 inline-flex text-xs leading-5 font-semibold rounded-full bg-red-100 text-red-800 items-center gap-1.5">
+                  <ShieldOff className="w-4 h-4" />
+                  Inattivo
+                </span>
+              )}
             </div>
             
             {/* Contact info */}
@@ -162,6 +233,14 @@ export function PlayerList({ players, onEdit, onDelete, onImportPlayers }: Playe
             )}
           </div>
         ))}
+
+        {processedPlayers.length === 0 && (
+          <div className="bg-white rounded-xl shadow-md p-8 text-center">
+            <User className="w-16 h-16 text-gray-300 mx-auto mb-4" />
+            <p className="text-gray-500 text-lg">Nessun giocatore trovato</p>
+            <p className="text-gray-400">Modifica i filtri per vedere più risultati</p>
+          </div>
+        )}
       </div>
     );
   }
