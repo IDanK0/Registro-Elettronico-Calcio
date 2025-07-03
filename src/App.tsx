@@ -1,11 +1,9 @@
 import { useState, useEffect } from 'react';
 import React from 'react';
-import { database as db } from './databaseProxy';
 import { useTimer } from './hooks/useTimer';
 import { useSession } from './hooks/useSession';
 import { useLocalStorage } from './hooks/useLocalStorage';
-import { Player, Training, Match, MatchPlayer, Substitution, User, Group, UserWithGroup, Permission, MatchPeriod, MatchEvent } from './types';
-import { usePlayerStats } from './hooks/usePlayerStats';
+import { Player, Training, Match, MatchPlayer, User, Group, UserWithGroup, MatchPeriod, MatchEvent } from './types';
 import { api } from './api';
 import { PlayerForm } from './components/PlayerForm';
 import { PlayerList } from './components/PlayerList';
@@ -141,8 +139,6 @@ function App() {
     }
   };
   
-  // Legacy database proxy (REST backend)
-  const database = db;
   // Session hook
   const session = useSession();
   // Data state
@@ -183,7 +179,7 @@ function App() {
         lastTimestamp: now
       };
       setManagingMatch(updated);
-      database.updateMatch(managingMatch.id, updated);
+      api.updateMatch(managingMatch.id, updated).catch(console.error);
     }
   }, [timer.time, currentPeriodIndex]);
   // Persist timer state on page unload or navigation
@@ -208,18 +204,16 @@ function App() {
           isRunning: timer.isRunning,
           lastTimestamp: now
         };
-        database.updateMatch(managingMatch.id, updated);
+        api.updateMatch(managingMatch.id, updated).catch(console.error);
       }
     };
     window.addEventListener('beforeunload', handler);
     return () => window.removeEventListener('beforeunload', handler);
   }, [managingMatch, timer.time, timer.isRunning, currentPeriodIndex]);
-  // Load data when database is ready
+  // Load data on component mount
   useEffect(() => {
-    if (!database.isLoading && !database.error) {
-      loadData();
-    }
-  }, [database.isLoading, database.error]);
+    loadData();
+  }, []);
 
   // Prevent body scroll when mobile sidebar is open
   useEffect(() => {
@@ -249,14 +243,14 @@ function App() {
 
   // Load session on app start
   useEffect(() => {
-    if (!database.isLoading && !database.error && !currentUser) {
+    if (!currentUser) {
       const savedUser = session.loadSession();
       if (savedUser) {
         // Verifica che l'utente esista ancora nel database
         (async () => {
           try {
             const users = await api.getUsers();
-          const existingUser = users.find(u => u.id === savedUser.id);
+            const existingUser = (users as UserWithGroup[]).find(u => u.id === savedUser.id);
           if (existingUser && existingUser.status === 'active') {
           setCurrentUser(savedUser);
           loadData();
@@ -270,7 +264,7 @@ function App() {
         })();
       }
     }
-  }, [database.isLoading, database.error, currentUser]);
+  }, [currentUser]);
   
   // Funzione per ripristinare una partita in gestione al ricaricamento della pagina
   const restoreManagingMatch = (match: Match) => {
@@ -300,13 +294,13 @@ function App() {
         currentPeriodIndex: 0 
       };
       setManagingMatch(updatedMatch);
-      database.updateMatch(match.id, updatedMatch);
+      api.updateMatch(match.id, updatedMatch).catch(console.error);
       setCurrentPeriodIndex(0);
     } else {
       setCurrentPeriodIndex(match.currentPeriodIndex || 0);
       // Aggiorna il database con la mappa dei numeri di maglia se necessario
       if (!match.playerJerseyNumbers) {
-        database.updateMatch(match.id, matchWithJerseyNumbers);
+        api.updateMatch(match.id, matchWithJerseyNumbers).catch(console.error);
       }
       // Assicurati che managingMatch abbia sempre la mappa dei numeri di maglia
       setManagingMatch(matchWithJerseyNumbers);
@@ -363,8 +357,20 @@ const loadData = async () => {
     setLoginError('');
     
     try {
-      const user = await database.authenticateUser(username, password);
-      if (user) {
+      // TODO: Replace with backend authentication API
+      // For now, use a mock authentication
+      if (username === 'admin' && password === 'admin') {
+        const user = {
+          id: 'mock-admin',
+          firstName: 'Admin',
+          lastName: 'User',
+          group: { id: 'admin-group', name: 'Administrators' },
+          username: 'admin',
+          email: 'admin@test.com',
+          role: 'admin',
+          status: 'active',
+          permissions: ['all']
+        } as UserWithGroup;
         setCurrentUser(user);
         session.saveSession(user, rememberMe);
       } else {
@@ -384,12 +390,12 @@ const loadData = async () => {
   };
 
   // User management functions
-  const handleUserSubmit = (userData: Omit<User, 'id' | 'createdAt'>) => {
+  const handleUserSubmit = async (userData: Omit<User, 'id' | 'createdAt'>) => {
     try {
       if (editingItem) {
-        database.updateUser(editingItem.id, userData);
+        await api.updateUser(editingItem.id, userData);
       } else {
-        database.addUser(userData);
+        await api.createUser(userData);
       }
       loadData();
       setCurrentView('list');
@@ -404,10 +410,10 @@ const loadData = async () => {
     setCurrentView('form');
   };
 
-  const handleUserDelete = (userId: string) => {
+  const handleUserDelete = async (userId: string) => {
     if (confirm('Sei sicuro di voler eliminare questo utente?')) {
       try {
-        database.deleteUser(userId);
+        await api.deleteUser(userId);
         loadData();
       } catch (error) {
         alert('Errore durante l\'eliminazione dell\'utente: ' + (error instanceof Error ? error.message : 'Errore sconosciuto'));
@@ -416,12 +422,12 @@ const loadData = async () => {
   };
 
   // Group management functions
-  const handleGroupSubmit = (groupData: Omit<Group, 'id' | 'createdAt'>) => {
+  const handleGroupSubmit = async (groupData: Omit<Group, 'id' | 'createdAt'>) => {
     try {
       if (editingItem) {
-        database.updateGroup(editingItem.id, groupData);
+        await api.updateGroup(editingItem.id, groupData);
       } else {
-        database.addGroup(groupData);
+        await api.createGroup(groupData);
       }
       loadData();
       setCurrentView('list');
@@ -436,10 +442,10 @@ const loadData = async () => {
     setCurrentView('form');
   };
 
-  const handleGroupDelete = (groupId: string) => {
+  const handleGroupDelete = async (groupId: string) => {
     if (confirm('Sei sicuro di voler eliminare questo gruppo?')) {
       try {
-        database.deleteGroup(groupId);
+        await api.deleteGroup(groupId);
         loadData();
       } catch (error) {
         alert('Errore durante l\'eliminazione del gruppo: ' + (error instanceof Error ? error.message : 'Errore sconosciuto'));
@@ -447,66 +453,205 @@ const loadData = async () => {
     }
   };
 
-  // CSV Import functions
-  const handleImportGroups = (groupsData: Omit<Group, 'id' | 'createdAt'>[]) => {
+  // Player management functions
+  const handlePlayerSubmit = async (playerData: Omit<Player, 'id'>) => {
     try {
-      groupsData.forEach(groupData => {
-        database.addGroup(groupData);
-      });
+      if (editingItem) {
+        await api.updatePlayer(editingItem.id, playerData);
+      } else {
+        await api.createPlayer(playerData);
+      }
+      loadData();
+      setCurrentView('list');
+      setEditingItem(null);
+    } catch (error) {
+      alert('Errore durante il salvataggio del giocatore: ' + (error instanceof Error ? error.message : 'Errore sconosciuto'));
+    }
+  };
+
+  const handlePlayerEdit = (player: Player) => {
+    setEditingItem(player);
+    setCurrentView('form');
+  };
+
+  const handlePlayerDelete = async (playerId: string) => {
+    if (confirm('Sei sicuro di voler eliminare questo giocatore?')) {
+      try {
+        await api.deletePlayer(playerId);
+        loadData();
+      } catch (error) {
+        alert('Errore durante l\'eliminazione del giocatore: ' + (error instanceof Error ? error.message : 'Errore sconosciuto'));
+      }
+    }
+  };
+
+  const handleImportPlayers = async (playersData: Omit<Player, 'id'>[]) => {
+    try {
+      for (const playerData of playersData) {
+        await api.createPlayer(playerData);
+      }
+      loadData();
+    } catch (error) {
+      throw new Error('Errore durante l\'importazione dei giocatori: ' + (error instanceof Error ? error.message : 'Errore sconosciuto'));
+    }
+  };
+
+  // Navigation functions
+  const handleBackToList = () => {
+    setCurrentView('list');
+    setEditingItem(null);
+  };
+
+  // Utility functions
+  const generateId = () => {
+    return Math.random().toString(36).substr(2, 9);
+  };
+
+  const getPlayerJerseyNumber = (playerId: string): number | null => {
+    if (!managingMatch) return null;
+    return managingMatch.playerJerseyNumbers?.[playerId] || null;
+  };
+
+  const getPlayersOnField = () => {
+    if (!managingMatch) return [];
+    return managingMatch.lineup.filter(mp => {
+      // Check if player is currently on field (not substituted out)
+      const hasBeenSubstituted = managingMatch.substitutions.some(sub => sub.playerOut === mp.playerId);
+      return !hasBeenSubstituted;
+    }).map(mp => 
+      players.find(p => p.id === mp.playerId)
+    ).filter(Boolean) as Player[];
+  };
+
+  const getPlayersOnBench = () => {
+    if (!managingMatch) return [];
+    // Players in lineup who have been substituted out + players not in starting lineup
+    const startingPlayerIds = managingMatch.lineup.map(mp => mp.playerId);
+    const playersSubstitutedOut = managingMatch.substitutions.map(sub => sub.playerOut);
+    const playersSubstitutedIn = managingMatch.substitutions.map(sub => sub.playerIn);
+    
+    // Players on bench: those not in starting lineup + those substituted out - those substituted in
+    return players.filter(p => 
+      (!startingPlayerIds.includes(p.id) || playersSubstitutedOut.includes(p.id)) &&
+      !playersSubstitutedIn.includes(p.id)
+    );
+  };
+
+  // Training management functions
+  const handleTrainingSubmit = async (trainingData: Omit<Training, 'id'>) => {
+    try {
+      if (editingItem) {
+        await api.updateTraining(editingItem.id, trainingData);
+      } else {
+        await api.createTraining(trainingData);
+      }
+      loadData();
+      setCurrentView('list');
+      setEditingItem(null);
+    } catch (error) {
+      alert('Errore durante il salvataggio del training: ' + (error instanceof Error ? error.message : 'Errore sconosciuto'));
+    }
+  };
+
+  const handleTrainingEdit = (training: Training) => {
+    setEditingItem(training);
+    setCurrentView('form');
+  };
+
+  const handleTrainingDelete = async (trainingId: string) => {
+    if (confirm('Sei sicuro di voler eliminare questo allenamento?')) {
+      try {
+        await api.deleteTraining(trainingId);
+        loadData();
+      } catch (error) {
+        alert('Errore durante l\'eliminazione dell\'allenamento: ' + (error instanceof Error ? error.message : 'Errore sconosciuto'));
+      }
+    }
+  };
+
+  // Match management functions
+  const handleMatchSubmit = async (matchData: Omit<Match, 'id'>) => {
+    try {
+      if (editingItem) {
+        await api.updateMatch(editingItem.id, matchData);
+      } else {
+        await api.createMatch(matchData);
+      }
+      loadData();
+      setCurrentView('list');
+      setEditingItem(null);
+    } catch (error) {
+      alert('Errore durante il salvataggio della partita: ' + (error instanceof Error ? error.message : 'Errore sconosciuto'));
+    }
+  };
+
+  const handleMatchEdit = (match: Match) => {
+    setEditingItem(match);
+    setCurrentView('form');
+  };
+
+  const handleMatchDelete = async (matchId: string) => {
+    if (confirm('Sei sicuro di voler eliminare questa partita?')) {
+      try {
+        await api.deleteMatch(matchId);
+        loadData();
+      } catch (error) {
+        alert('Errore durante l\'eliminazione della partita: ' + (error instanceof Error ? error.message : 'Errore sconosciuto'));
+      }
+    }
+  };
+
+  const handleMatchManage = (match: Match) => {
+    setManagingMatch(match);
+    setCurrentView('manage');
+  };
+
+  const handleSubstitution = (playerId: string, substituteId: string) => {
+    // Implement substitution logic
+    console.log('Substitution:', playerId, substituteId);
+  };
+
+  // Player stats and tabs configuration
+  const playerStats = players; // Simplified for now
+
+  const tabs = [
+    { id: 'players', name: 'Giocatori', icon: Users, permission: 'view_players' },
+    { id: 'trainings', name: 'Allenamenti', icon: Dumbbell, permission: 'view_trainings' },
+    { id: 'matches', name: 'Partite', icon: Target, permission: 'view_matches' },
+    { id: 'stats', name: 'Statistiche', icon: BarChart3, permission: 'view_stats' },
+    { id: 'users', name: 'Utenti', icon: Shield, permission: 'manage_users' },
+    { id: 'groups', name: 'Gruppi', icon: UserCog, permission: 'manage_groups' },
+  ];
+
+  // Permission checking function
+  const canAccessTab = (tabId: string) => {
+    // For now, allow access to all tabs. TODO: implement proper permission checking
+    return true;
+  };
+
+  // Import functions
+  const handleImportGroups = async (groupsData: Omit<Group, 'id'>[]) => {
+    try {
+      for (const groupData of groupsData) {
+        await api.createGroup(groupData);
+      }
       loadData();
     } catch (error) {
       throw new Error('Errore durante l\'importazione dei gruppi: ' + (error instanceof Error ? error.message : 'Errore sconosciuto'));
     }
   };
 
-  const handleImportUsers = (usersData: Omit<User, 'id' | 'createdAt'>[]) => {
+  const handleImportUsers = async (usersData: Omit<User, 'id'>[]) => {
     try {
-      usersData.forEach(userData => {
-        database.addUser(userData);
-      });
+      for (const userData of usersData) {
+        await api.createUser(userData);
+      }
       loadData();
     } catch (error) {
       throw new Error('Errore durante l\'importazione degli utenti: ' + (error instanceof Error ? error.message : 'Errore sconosciuto'));
     }
   };
-  // Permission check functions
-  const hasPermission = (permission: keyof Permission): boolean => {
-    if (!currentUser) return false;
-    return currentUser.group.permissions[permission];
-  };
-
-  const canAccessTab = (tab: Tab): boolean => {
-    if (!currentUser) return false;
-    
-    switch (tab) {
-      case 'players':
-        return hasPermission('teamManagement');
-      case 'trainings':
-      case 'matches':
-        return hasPermission('matchManagement');
-      case 'stats':
-        return hasPermission('statisticsView') || hasPermission('resultsView');
-      case 'users':
-        return hasPermission('userManagement');
-      case 'groups':
-        return hasPermission('groupManagement');
-      default:
-        return false;
-    }
-  };
-  // Loading state
-  if (database.isLoading) {
-    return (
-      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
-        <div className="text-center">
-          <Loader2 className="w-12 h-12 text-blue-600 animate-spin mx-auto mb-4" />
-          <h2 className="text-xl font-semibold text-gray-800 mb-2">Caricamento Database</h2>
-          <p className="text-gray-600">Inizializzazione del registro elettronico...</p>
-        </div>
-      </div>
-    );
-  }
-
+  
   // Authentication check
   if (!currentUser) {
     return (
@@ -515,27 +660,6 @@ const loadData = async () => {
         error={loginError}
         isLoading={isLoggingIn}
       />
-    );
-  }
-
-  // Error state
-  if (database.error) {
-    return (
-      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
-        <div className="text-center">
-          <div className="w-12 h-12 bg-red-100 rounded-full flex items-center justify-center mx-auto mb-4">
-            <X className="w-6 h-6 text-red-600" />
-          </div>
-          <h2 className="text-xl font-semibold text-gray-800 mb-2">Errore Database</h2>
-          <p className="text-gray-600 mb-4">{database.error}</p>
-          <button
-            onClick={() => window.location.reload()}
-            className="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 transition-colors"
-          >
-            Ricarica Pagina
-          </button>
-        </div>
-      </div>
     );
   }
 
@@ -1325,7 +1449,7 @@ const loadData = async () => {
                         database.updateMatch(managingMatch.id, updated);
                         loadData();
                       }
-                      setActiveTab(tab.id);
+                      setActiveTab(tab.id as Tab);
                       setCurrentView('list');
                       setEditingItem(null);
                       resetManagingMatch();
@@ -1338,7 +1462,7 @@ const loadData = async () => {
                         : 'text-gray-600 hover:bg-gray-100'
                     }`}
                   >
-                    <Icon className={`w-5 h-5 ${activeTab === tab.id ? tab.color : ''}`} />
+                    <Icon className={`w-5 h-5 ${activeTab === tab.id ? 'text-blue-600' : ''}`} />
                     <span className="font-medium">{tab.name}</span>
                   </button>
                 );
