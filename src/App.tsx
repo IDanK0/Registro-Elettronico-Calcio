@@ -333,13 +333,23 @@ function App() {
 
 const loadData = async () => {
     try {
-      const [playersData, trainingsData, matchesData, usersData, groupsData] = await Promise.all([
+      const [playersData, trainingsData, matchesDataRaw, usersData, groupsData] = await Promise.all([
         api.getPlayers(),
         api.getTrainings(),
         api.getMatches(),
         api.getUsers(),
         api.getGroups(),
-      ]) as [Player[], Training[], Match[], UserWithGroup[], Group[]];
+      ]) as [Player[], Training[], any[], UserWithGroup[], Group[]];
+
+      // Convert matches data to maintain compatibility with existing code
+      const matchesData = matchesDataRaw.map((match: any) => ({
+        ...match,
+        lineup: match.lineups?.map((l: any) => ({
+          playerId: l.playerId,
+          position: l.position,
+          jerseyNumber: l.jerseyNumber
+        })) || []
+      }));
 
       setPlayers(playersData);
       setTrainings(trainingsData);

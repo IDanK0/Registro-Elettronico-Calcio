@@ -64,23 +64,27 @@
     - [x] Fixed TrainingList component TypeScript/data structure errors
     - [x] Updated Training type definition to match Prisma schema
     - [x] Corrected training attendance data structure (array vs object)
+    - [x] Fixed MatchList component TypeError (lineup vs lineups)
+    - [x] Added MatchLineup type and compatibility mapping in loadData
+    - [x] Updated Match type to include both lineups and lineup fields
     - [ ] Frontend UI testing for Trainings CRUD (add, edit, delete)
     - [ ] Frontend UI testing for Matches CRUD (add, edit, delete, manage)
     - [ ] Update TrainingForm component to use new attendance structure
+    - [ ] Fix remaining TypeScript errors for better stability
     - [ ] User authentication flow testing
 - [ ] Document setup and dependencies for Windows (MySQL, Prisma, etc.)
 
 ## Current Goal
-✅ TRAINING COMPONENT FIXED:
-- Fixed TrainingList TypeError (Object.entries on undefined/null)
-- Updated Training type to match Prisma schema (attendance array)
-- Corrected data structure mismatch between frontend/backend
-- Both servers restarted and running correctly
+✅ MAJOR COMPONENT ERRORS FIXED:
+- TrainingList TypeError resolved (attendance structure)
+- MatchList TypeError resolved (lineup vs lineups structure)  
+- Added compatibility layer in loadData() for data mapping
+- Both training and match components should now render without crashes
 
-🎯 NOW TESTING TRAININGS UI:
+🎯 READY FOR FULL UI TESTING:
 1. 📝 Test login flow (admin/admin)
-2. 📝 Navigate to trainings section
-3. 📝 Verify trainings list displays correctly (2 trainings available)  
-4. 📝 Test training CRUD operations (add, edit, delete)
-5. 📝 Update TrainingForm for new attendance structure
-6. 📝 Test matches section and CRUD operations
+2. 📝 Navigate to trainings section and verify display
+3. 📝 Navigate to matches section and verify display  
+4. 📝 Test CRUD operations for both trainings and matches
+5. 📝 Identify and fix any remaining integration issues
+6. 📝 Update forms (TrainingForm, MatchForm) if needed

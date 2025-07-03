@@ -50,31 +50,39 @@ export interface MatchPeriod {
 export interface Match {
   id: string;
   date: string;
-  time: string; // Added time field
+  time: string; 
   opponent: string;
   homeAway: 'home' | 'away';
-  location?: string; // Added location field (for away matches)
-  field?: string; // Added field field (for away matches)
+  location?: string;
+  field?: string;
   coaches: string[]; // Array of user IDs for coaches
   managers: string[]; // Array of user IDs for managers
-  status: 'scheduled' | 'first-half' | 'half-time' | 'second-half' | 'finished';
+  status: 'SCHEDULED' | 'FIRST_HALF' | 'HALF_TIME' | 'SECOND_HALF' | 'FINISHED';
   startTime?: number;
   firstHalfDuration: number;
   secondHalfDuration: number;
   homeScore: number;
   awayScore: number;
-  lineup: MatchPlayer[]; // Updated to include position and jersey number per match
-  opponentLineup: number[]; // numeri maglia avversari
+  lineups: MatchLineup[]; // Database structure
+  lineup: MatchPlayer[]; // Compatibility field for existing code
+  opponentLineup: number[]; 
   substitutions: Substitution[];
   events: MatchEvent[];
-  // Timestamp (ms) when timer was last persisted (to compute elapsed time when returning)
   lastTimestamp?: number;
   isRunning?: boolean;
-  // Nuova struttura per periodi dinamici
   periods: MatchPeriod[];
   currentPeriodIndex: number;
-  // Mappa per tenere traccia dei numeri di maglia assegnati ai giocatori
-  playerJerseyNumbers?: Record<string, number>; // playerId -> jerseyNumber
+  playerJerseyNumbers?: Record<string, number>;
+  createdAt: string;
+}
+
+export interface MatchLineup {
+  id: string;
+  matchId: string;
+  playerId: string;
+  position: string;
+  jerseyNumber: number;
+  player?: Player;
 }
 
 export interface MatchPlayer {

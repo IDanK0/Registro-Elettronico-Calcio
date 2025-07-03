@@ -896,7 +896,7 @@ export function MatchList({ matches, players, onEdit, onDelete, onManage, onRepo
           const theirScore = match.homeAway === 'home' ? match.awayScore : match.homeScore;
 
           // Get lineup players for details
-          const lineupPlayers = match.lineup
+          const lineupPlayers = (match.lineup || [])
             .map(matchPlayer => players.find(p => p.id === matchPlayer.playerId))
             .filter(Boolean);
 
