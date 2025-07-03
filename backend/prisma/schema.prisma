@@ -1,0 +1,266 @@
+// Prisma schema for Registro Elettronico Calcio – migrated from sql.js
+// Datasource & generator
+// Remember to set DATABASE_URL in .env (e.g. mysql://user:pass@localhost:3306/registro)
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "mysql"
+  url      = env("DATABASE_URL")
+}
+
+///////////////////////////////////////////////////////////////
+// MODELS                                                    //
+///////////////////////////////////////////////////////////////
+
+model Player {
+  id             String           @id @default(uuid()) @db.Char(36)
+  firstName      String
+  lastName       String
+  birthDate      DateTime
+  licenseNumber  String
+  isActive       Boolean          @default(true)
+  phone          String?          @db.VarChar(32)
+  email          String?          @db.VarChar(255)
+  parentName     String?
+  parentPhone    String?          @db.VarChar(32)
+  parentEmail    String?          @db.VarChar(255)
+  createdAt      DateTime         @default(now())
+  // Relations
+  documents      PlayerDocument[]
+  trainingAttendance TrainingAttendance[]
+  matchLineups   MatchLineup[]
+  substitutionsOut Substitution[] @relation("PlayerOut")
+  substitutionsIn  Substitution[] @relation("PlayerIn")
+  matchEvents    MatchEvent[]
+}
+
+model PlayerDocument {
+  id        String  @id @default(uuid()) @db.Char(36)
+  playerId  String
+  fileName  String
+  mimeType  String
+  data      String   @db.LongText // base64 or data URI
+  uploadDate DateTime @default(now())
+
+  player    Player   @relation(fields: [playerId], references: [id], onDelete: Cascade)
+}
+
+model Training {
+  id        String      @id @default(uuid()) @db.Char(36)
+  date      DateTime
+  time      String      @db.VarChar(10) // hh:mm
+  createdAt DateTime    @default(now())
+
+  attendance TrainingAttendance[]
+}
+
+model TrainingAttendance {
+  id         String   @id @default(uuid()) @db.Char(36)
+  trainingId String
+  playerId   String
+  isPresent  Boolean
+
+  training   Training @relation(fields: [trainingId], references: [id], onDelete: Cascade)
+  player     Player   @relation(fields: [playerId], references: [id], onDelete: Cascade)
+
+  @@unique([trainingId, playerId])
+}
+
+model Match {
+  id               String           @id @default(uuid()) @db.Char(36)
+  date             DateTime
+  time             String?          @db.VarChar(10)
+  opponent         String
+  homeAway         HomeAway
+  status           MatchStatus      @default(SCHEDULED)
+  location         String?          @db.VarChar(255)
+  field            String?          @db.VarChar(255)
+  startTime        Int?             // epoch ms
+  firstHalfDuration Int             @default(0)
+  secondHalfDuration Int            @default(0)
+  homeScore        Int              @default(0)
+  awayScore        Int              @default(0)
+  lastTimestamp    Int?
+  isRunning        Boolean          @default(false)
+  currentPeriodIndex Int            @default(0)
+  playerJerseyNumbers Json          @default("{}")
+  createdAt        DateTime         @default(now())
+
+  // Relations
+  lineups          MatchLineup[]
+  substitutions    Substitution[]
+  events           MatchEvent[]
+  opponentLineup   MatchOpponentLineup[]
+  periods          MatchPeriod[]
+  coaches          MatchCoach[]
+  managers         MatchManager[]
+}
+
+enum HomeAway {
+  home
+  away
+}
+
+enum MatchStatus {
+  SCHEDULED
+  FIRST_HALF
+  HALF_TIME
+  SECOND_HALF
+  FINISHED
+}
+
+model MatchLineup {
+  id         String  @id @default(uuid()) @db.Char(36)
+  matchId    String
+  playerId   String
+  position   String
+  jerseyNumber Int
+
+  match      Match   @relation(fields: [matchId], references: [id], onDelete: Cascade)
+  player     Player  @relation(fields: [playerId], references: [id], onDelete: Cascade)
+
+  @@unique([matchId, playerId])
+}
+
+model Substitution {
+  id         String  @id @default(uuid()) @db.Char(36)
+  matchId    String
+  minute     Int
+  second     Int?
+  playerOutId String
+  playerInId  String
+
+  match      Match   @relation(fields: [matchId], references: [id], onDelete: Cascade)
+  playerOut  Player  @relation("PlayerOut", fields: [playerOutId], references: [id], onDelete: Cascade)
+  playerIn   Player  @relation("PlayerIn", fields: [playerInId], references: [id], onDelete: Cascade)
+}
+
+model MatchEvent {
+  id        String  @id @default(uuid()) @db.Char(36)
+  matchId   String
+  type      MatchEventType
+  minute    Int
+  second    Int?
+  playerId  String
+  description String?
+  reason    String?
+  teamType  TeamType?
+
+  match     Match  @relation(fields: [matchId], references: [id], onDelete: Cascade)
+  player    Player @relation(fields: [playerId], references: [id], onDelete: Cascade)
+}
+
+enum MatchEventType {
+  goal
+  yellow_card
+  red_card
+  second_yellow_card
+  blue_card
+  expulsion
+  warning
+  substitution
+  foul
+  corner
+  offside
+  free_kick
+  penalty
+  throw_in
+  injury
+}
+
+enum TeamType {
+  own
+  opponent
+}
+
+model MatchOpponentLineup {
+  id           String  @id @default(uuid()) @db.Char(36)
+  matchId      String
+  jerseyNumber Int
+
+  match        Match   @relation(fields: [matchId], references: [id], onDelete: Cascade)
+}
+
+model MatchPeriod {
+  id           String  @id @default(uuid()) @db.Char(36)
+  matchId      String
+  type         PeriodType
+  label        String
+  duration     Int
+  isFinished   Boolean @default(false)
+  periodIndex  Int
+
+  match        Match   @relation(fields: [matchId], references: [id], onDelete: Cascade)
+
+  @@unique([matchId, periodIndex])
+}
+
+enum PeriodType {
+  regular
+  extra
+  interval
+}
+
+model Group {
+  id              String   @id @db.Char(36)
+  name            String   @unique
+  description     String?
+  teamManagement  Boolean  @default(false)
+  matchManagement Boolean  @default(false)
+  resultsView     Boolean  @default(false)
+  statisticsView  Boolean  @default(false)
+  userManagement  Boolean  @default(false)
+  groupManagement Boolean  @default(false)
+  createdAt       DateTime @default(now())
+
+  users           User[]
+}
+
+model User {
+  id            String   @id @db.Char(36)
+  firstName     String
+  lastName      String
+  status        UserStatus  @default(active)
+  expirationDate DateTime
+  groupId       String
+  username      String   @unique
+  password      String
+  email         String
+  phone         String
+  matricola     String   @unique
+  createdAt     DateTime @default(now())
+
+  group         Group    @relation(fields: [groupId], references: [id], onDelete: Restrict)
+  matchCoaches  MatchCoach[]
+  matchManagers MatchManager[]
+}
+
+enum UserStatus {
+  active
+  inactive
+}
+
+model MatchCoach {
+  id       String  @id @default(uuid()) @db.Char(36)
+  matchId  String
+  userId   String
+
+  match    Match  @relation(fields: [matchId], references: [id], onDelete: Cascade)
+  user     User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([matchId, userId])
+}
+
+model MatchManager {
+  id       String  @id @default(uuid()) @db.Char(36)
+  matchId  String
+  userId   String
+
+  match    Match  @relation(fields: [matchId], references: [id], onDelete: Cascade)
+  user     User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([matchId, userId])
+}

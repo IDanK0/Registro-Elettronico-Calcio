@@ -1,11 +1,12 @@
 import { useState, useEffect } from 'react';
 import React from 'react';
-import { useDatabase } from './hooks/useDatabase';
+import { database as db } from './databaseProxy';
 import { useTimer } from './hooks/useTimer';
 import { useSession } from './hooks/useSession';
 import { useLocalStorage } from './hooks/useLocalStorage';
 import { Player, Training, Match, MatchPlayer, Substitution, User, Group, UserWithGroup, Permission, MatchPeriod, MatchEvent } from './types';
 import { usePlayerStats } from './hooks/usePlayerStats';
+import { api } from './api';
 import { PlayerForm } from './components/PlayerForm';
 import { PlayerList } from './components/PlayerList';
 import { TrainingForm } from './components/TrainingForm';
@@ -140,8 +141,8 @@ function App() {
     }
   };
   
-  // Database hook
-  const database = useDatabase();
+  // Legacy database proxy (REST backend)
+  const database = db;
   // Session hook
   const session = useSession();
   // Data state
@@ -252,15 +253,21 @@ function App() {
       const savedUser = session.loadSession();
       if (savedUser) {
         // Verifica che l'utente esista ancora nel database
-        const users = database.getUsers();
-        const existingUser = users.find(u => u.id === savedUser.id);
-        if (existingUser && existingUser.status === 'active') {
+        (async () => {
+          try {
+            const users = await api.getUsers();
+          const existingUser = users.find(u => u.id === savedUser.id);
+          if (existingUser && existingUser.status === 'active') {
           setCurrentUser(savedUser);
           loadData();
-        } else {
-          // L'utente non esiste più o è stato disattivato, rimuovi la sessione
-          session.clearSession();
-        }
+          } else {
+            // L'utente non esiste più o è stato disattivato, rimuovi la sessione
+            session.clearSession();
+          }
+          } catch (err) {
+            session.clearSession();
+          }
+        })();
       }
     }
   }, [database.isLoading, database.error, currentUser]);
@@ -326,300 +333,40 @@ function App() {
       timer.resetTo(0);
       timer.pause();
     }
-  };
-
-  const loadData = () => {
-    setPlayers(database.getPlayers());
-    setTrainings(database.getTrainings());
-    const matchesData = database.getMatches();
-    setMatches(matchesData);
-    setUsers(database.getUsers());
-    setGroups(database.getGroups());
-
-    // Ripristina la partita in gestione se esiste
-    if (managingMatchId && currentView === 'manage') {
-      const matchToRestore = matchesData.find(match => match.id === managingMatchId);
-      if (matchToRestore) {
-        restoreManagingMatch(matchToRestore);
-      } else {
-        // La partita non esiste più, reset lo stato
-        setManagingMatchId(null);
-        setCurrentView('list');
-      }
-    }
-  };
-
-  // Helper functions
-  const generateId = () => Date.now().toString();
-  // Player stats extracted to hook
-  const playerStats = usePlayerStats(players, matches);
-
-  // Player management
-  const handlePlayerSubmit = (playerData: Omit<Player, 'id'>) => {
-    if (editingItem) {
-      database.updatePlayer(editingItem.id, playerData);
-    } else {
-      database.addPlayer(playerData);
-    }
-    loadData();
-    setCurrentView('list');
-    setEditingItem(null);
-  };
-
-  const handlePlayerEdit = (player: Player) => {
-    setEditingItem(player);
-    setCurrentView('form');
-  };
-  const handlePlayerDelete = (playerId: string) => {
-    if (confirm('Sei sicuro di voler eliminare questo giocatore?')) {
-      database.deletePlayer(playerId);
-      loadData();
-    }
-  };
-  const handleImportPlayers = (importedPlayers: Omit<Player, 'id'>[]) => {
-    importedPlayers.forEach(playerData => {
-      database.addPlayer(playerData);
-    });
-    loadData();
-  };
-
-  // Training management
-  const handleTrainingSubmit = (trainingData: Omit<Training, 'id'>) => {
-    if (editingItem) {
-      database.updateTraining(editingItem.id, trainingData);
-    } else {
-      database.addTraining(trainingData);
-    }
-    loadData();
-    setCurrentView('list');
-    setEditingItem(null);
-  };
-
-  const handleTrainingEdit = (training: Training) => {
-    setEditingItem(training);
-    setCurrentView('form');
-  };
-
-  const handleTrainingDelete = (trainingId: string) => {
-    if (confirm('Sei sicuro di voler eliminare questo allenamento?')) {
-      database.deleteTraining(trainingId);
-      loadData();
-    }
-  };
-  // Match management
-  const handleMatchSubmit = (matchData: Omit<Match, 'id' | 'status' | 'startTime' | 'firstHalfDuration' | 'secondHalfDuration' | 'substitutions' | 'events'>) => {
-    const newMatch: Match = {
-      ...matchData,
-      id: editingItem?.id || generateId(),
-      status: 'scheduled',
-      firstHalfDuration: 0,
-      secondHalfDuration: 0,
-      substitutions: editingItem?.substitutions || [],
-      events: editingItem?.events || [],
-      opponentLineup: matchData.opponentLineup || [],
-      periods: editingItem?.periods || defaultPeriods,
-      currentPeriodIndex: editingItem?.currentPeriodIndex || 0,
-    };    if (editingItem) {
-      database.updateMatch(editingItem.id, newMatch);
-    } else {
-      database.addMatch(newMatch);
-      // Reset selezione marcatori quando viene creata una nuova partita
-      setSelectedHomeScorer('');
-      setSelectedAwayScorer('');
-    }
-    loadData();
-    setCurrentView('list');
-    setEditingItem(null);
-  };
-
-  const handleMatchEdit = (match: Match) => {
-    setEditingItem(match);
-    setCurrentView('form');
-  };
-
-  const handleMatchDelete = (matchId: string) => {
-    if (confirm('Sei sicuro di voler eliminare questa partita?')) {
-      database.deleteMatch(matchId);
-      loadData();
-    }
-  };
-  const handleMatchManage = (match: Match) => {
-    // Inizializza la mappa dei numeri di maglia se non esiste
-    const playerJerseyNumbers = match.playerJerseyNumbers || {};
-    
-    // Popola la mappa con i numeri di maglia dei giocatori attualmente in formazione
-    match.lineup.forEach(matchPlayer => {
-      if (!playerJerseyNumbers[matchPlayer.playerId]) {
-        playerJerseyNumbers[matchPlayer.playerId] = matchPlayer.jerseyNumber;
-      }
-    });
-
-    const matchWithJerseyNumbers = {
-      ...match,
-      playerJerseyNumbers
     };
 
-    setManagingMatch(matchWithJerseyNumbers);
-    setInitialLineup(match.lineup);
-    setCurrentView('manage');
-    setManagingMatchId(match.id); // Salva l'ID della partita in gestione
-    
-    // Inizializza i periodi se non esistono
-    if (!match.periods || match.periods.length === 0) {
-      const updatedMatch = { 
-        ...matchWithJerseyNumbers, 
-        periods: defaultPeriods,
-        currentPeriodIndex: 0 
-      };
-      setManagingMatch(updatedMatch);
-      database.updateMatch(match.id, updatedMatch);
-      setCurrentPeriodIndex(0);
-    } else {
-      setCurrentPeriodIndex(match.currentPeriodIndex || 0);
-      // Aggiorna il database con la mappa dei numeri di maglia se necessario
-      if (!match.playerJerseyNumbers) {
-        database.updateMatch(match.id, matchWithJerseyNumbers);
-      }
-      // Assicurati che managingMatch abbia sempre la mappa dei numeri di maglia
-      setManagingMatch(matchWithJerseyNumbers);
+// ...
+
+const loadData = async () => {
+    try {
+      const [playersData, trainingsData, matchesData, usersData, groupsData] = await Promise.all([
+        api.getPlayers(),
+        api.getTrainings(),
+        api.getMatches(),
+        api.getUsers(),
+        api.getGroups(),
+      ]) as [Player[], Training[], Match[], UserWithGroup[], Group[]];
+
+      setPlayers(playersData);
+      setTrainings(trainingsData);
+      setMatches(matchesData);
+      setUsers(usersData);
+      setGroups(groupsData);
+    } catch (err) {
+      console.error('Errore caricamento dati:', err instanceof Error ? err.message : err);
     }
-    
-    // Restore timer based on current period and lastTimestamp
-    const now = Date.now();
-    const periods = match.periods || defaultPeriods;
-    const currentPeriod = periods[match.currentPeriodIndex || 0];
-    
-    if (currentPeriod) {
-      const computeTime = (base: number) => {
-        if (match.isRunning && match.lastTimestamp) {
-          const elapsed = Math.floor((now - match.lastTimestamp) / 1000);
-          return base + elapsed;
-        }
-        return base;
-      };
-      
-      const secs = computeTime(currentPeriod.duration);
-      timer.resetTo(secs);
-      if (match.isRunning) timer.start(); else timer.pause();
-    } else {
-      timer.resetTo(0);
-      timer.pause();
-    }  };
-
-  // Substitution functions
-  const handleSubstitution = (playerOutId: string, playerInId: string, jerseyNumber: number) => {
-    if (!managingMatch) return;
-
-    // Trova il numero di maglia del giocatore che esce
-    const playerOutMatch = managingMatch.lineup.find(mp => mp.playerId === playerOutId);
-    const playerOutJerseyNumber = playerOutMatch?.jerseyNumber;
-
-    // Aggiorna la mappa dei numeri di maglia per conservare il numero del giocatore che esce
-    const updatedPlayerJerseyNumbers = {
-      ...managingMatch.playerJerseyNumbers,
-      [playerOutId]: playerOutJerseyNumber || 0,
-      [playerInId]: jerseyNumber
-    };
-
-    const nowSeconds = timer.time;
-    const substitution: Substitution = {
-      id: generateId(),
-      minute: Math.floor(nowSeconds / 60),
-      second: nowSeconds % 60,
-      playerOut: playerOutId,
-      playerIn: playerInId,
-      playerOutJerseyNumber: playerOutJerseyNumber,
-      playerInJerseyNumber: jerseyNumber
-    };
-
-    const updatedLineup = managingMatch.lineup.map(matchPlayer => 
-      matchPlayer.playerId === playerOutId 
-        ? { ...matchPlayer, playerId: playerInId, jerseyNumber: jerseyNumber } 
-        : matchPlayer
-    );
-
-    const updatedMatch = {
-      ...managingMatch,
-      lineup: updatedLineup,
-      playerJerseyNumbers: updatedPlayerJerseyNumbers,
-      substitutions: [...managingMatch.substitutions, substitution]
-    };
-
-    // Se il giocatore che esce è il marcatore selezionato, resetta la selezione
-    if (selectedHomeScorer === playerOutId) {
-      setSelectedHomeScorer('');
-    }
-
-    setManagingMatch(updatedMatch);
-    database.updateMatch(managingMatch.id, updatedMatch);
-    loadData();
-  };
-  const getPlayersOnField = () => {
-    if (!managingMatch) return [];
-    return managingMatch.lineup.map(matchPlayer => {
-      const player = players.find(p => p.id === matchPlayer.playerId);
-      if (!player) return null;
-      return { ...player, matchPlayer };
-    }).filter(Boolean) as (Player & { matchPlayer: MatchPlayer })[];
   };
 
-  const getPlayersOnBench = () => {
-    if (!managingMatch) return [];
-    const activePlayerIds = players.filter(p => p.isActive).map(p => p.id);
-    const onFieldIds = managingMatch.lineup.map(mp => mp.playerId);
-    return players.filter(p => activePlayerIds.includes(p.id) && !onFieldIds.includes(p.id));
-  };
-
-  // Funzione per ottenere il numero di maglia di un giocatore
-  const getPlayerJerseyNumber = (playerId: string): number | null => {
-    if (!managingMatch) return null;
-    
-    // Prima controlla se il giocatore è attualmente in campo
-    const inLineup = managingMatch.lineup.find(mp => mp.playerId === playerId);
-    if (inLineup) return inLineup.jerseyNumber;
-    
-    // Se non è in campo, controlla la mappa dei numeri di maglia
-    return managingMatch.playerJerseyNumbers?.[playerId] || null;
-  };
-
-  // Navigation
-  const handleBackToList = () => {
-    // Persist timer before exiting manage view
-    if (managingMatch) {
-      if (managingMatch.status === 'first-half') {
-        const updatedMatch = { ...managingMatch, firstHalfDuration: timer.time };
-        database.updateMatch(managingMatch.id, updatedMatch);
-      } else if (managingMatch.status === 'second-half') {
-        const secDur = timer.time - managingMatch.firstHalfDuration;
-        const updatedMatch = { ...managingMatch, secondHalfDuration: secDur };
-        database.updateMatch(managingMatch.id, updatedMatch);
-      }
-      loadData();
-    }
-    setCurrentView('list');
-    setEditingItem(null);
-    resetManagingMatch();
-    timer.reset();
-  };
-  const tabs = [
-    { id: 'players' as const, name: 'Giocatori', icon: Users, color: 'text-blue-600' },
-    { id: 'trainings' as const, name: 'Allenamenti', icon: Dumbbell, color: 'text-green-600' },
-    { id: 'matches' as const, name: 'Partite', icon: Target, color: 'text-red-600' },
-    { id: 'stats' as const, name: 'Statistiche', icon: BarChart3, color: 'text-purple-600' },
-    { id: 'users' as const, name: 'Utenti', icon: UserCog, color: 'text-indigo-600' },
-    { id: 'groups' as const, name: 'Gruppi', icon: Shield, color: 'text-yellow-600' }
-  ];
   // Authentication functions
   const handleLogin = async (username: string, password: string, rememberMe: boolean = true) => {
     setIsLoggingIn(true);
     setLoginError('');
     
     try {
-      const user = database.authenticateUser(username, password);
+      const user = await database.authenticateUser(username, password);
       if (user) {
         setCurrentUser(user);
         session.saveSession(user, rememberMe);
-        loadData();
       } else {
         setLoginError('Credenziali non valide o utente scaduto');
       }
