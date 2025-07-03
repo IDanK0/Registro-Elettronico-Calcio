@@ -81,5 +81,5 @@ export const api = {
   deleteGroup: (id: string) => del(`/groups/${id}`),
 
   // auth
-  login: (username: string, password: string) => post("/login", { username, password }),
+  login: (username: string, password: string) => post("/auth/login", { username, password }),
 };

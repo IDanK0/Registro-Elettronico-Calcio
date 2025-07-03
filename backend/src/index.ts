@@ -7,6 +7,7 @@ import trainingsRouter from "./routes/trainings";
 import matchesRouter from "./routes/matches";
 import usersRouter from "./routes/users";
 import groupsRouter from "./routes/groups";
+import authRouter from "./routes/auth";
 
 dotenv.config();
 
@@ -25,6 +26,7 @@ app.use("/api/trainings", trainingsRouter);
 app.use("/api/matches", matchesRouter);
 app.use("/api/users", usersRouter);
 app.use("/api/groups", groupsRouter);
+app.use("/api/auth", authRouter);
 
 app.use((err: any, _req: express.Request, res: express.Response, _next: express.NextFunction) => {
   console.error(err);

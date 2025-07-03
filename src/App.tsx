@@ -357,31 +357,25 @@ const loadData = async () => {
     setLoginError('');
     
     try {
-      // TODO: Replace with backend authentication API
-      // For now, use a mock authentication
-      if (username === 'admin' && password === 'admin') {
-        const user = {
-          id: 'mock-admin',
-          firstName: 'Admin',
-          lastName: 'User',
-          group: { id: 'admin-group', name: 'Administrators' },
-          username: 'admin',
-          email: 'admin@test.com',
-          role: 'admin',
-          status: 'active',
-          permissions: ['all']
+      const response: any = await api.login(username, password);
+      if (response.user) {
+        const userWithGroup = {
+          ...response.user,
+          permissions: ['all'] // Add default permissions
         } as UserWithGroup;
-        setCurrentUser(user);
-        session.saveSession(user, rememberMe);
+        setCurrentUser(userWithGroup);
+        session.saveSession(userWithGroup, rememberMe);
       } else {
-        setLoginError('Credenziali non valide o utente scaduto');
+        setLoginError('Risposta del server non valida');
       }
     } catch (error) {
-      setLoginError('Errore durante l\'autenticazione');
+      console.error('Login error:', error);
+      setLoginError(error instanceof Error ? error.message : 'Errore durante il login');
     } finally {
       setIsLoggingIn(false);
     }
   };
+
   const handleLogout = () => {
     setCurrentUser(null);
     session.clearSession();
@@ -626,7 +620,8 @@ const loadData = async () => {
   // Permission checking function
   const canAccessTab = (tabId: string) => {
     // For now, allow access to all tabs. TODO: implement proper permission checking
-    return true;
+    // In future, check if currentUser has permission for the specific tabId
+    return tabId !== null && currentUser !== null;
   };
 
   // Import functions
@@ -706,7 +701,7 @@ const loadData = async () => {
       events: [...managingMatch.events, ammonitionEvent]
     };
     setManagingMatch(updatedMatch);
-    database.updateMatch(managingMatch.id, updatedMatch);
+    api.updateMatch(managingMatch.id, updatedMatch).catch(console.error);
     loadData();
   };
 
@@ -727,7 +722,7 @@ const loadData = async () => {
     };
     
     setManagingMatch(updatedMatch);
-    database.updateMatch(managingMatch.id, updatedMatch);
+    api.updateMatch(managingMatch.id, updatedMatch).catch(console.error);
     loadData();
   };
 
@@ -754,7 +749,7 @@ const loadData = async () => {
 
     const updatedMatch = { ...managingMatch, events: updatedEvents, homeScore, awayScore };
     setManagingMatch(updatedMatch);
-    database.updateMatch(managingMatch.id, updatedMatch);
+    api.updateMatch(managingMatch.id, updatedMatch).catch(console.error);
     loadData();
   }
 
@@ -805,7 +800,7 @@ const loadData = async () => {
     setManageError(null);
     const updatedMatch = { ...managingMatch, substitutions: updatedSubs, lineup };
     setManagingMatch(updatedMatch);
-    database.updateMatch(managingMatch.id, updatedMatch);
+    api.updateMatch(managingMatch.id, updatedMatch).catch(console.error);
     loadData();
   }
   const renderContent = () => {
@@ -1037,7 +1032,7 @@ const loadData = async () => {
       ]
     };
     setManagingMatch(updatedMatch);
-    database.updateMatch(managingMatch.id, updatedMatch);
+    api.updateMatch(managingMatch.id, updatedMatch).catch(console.error);
     
     // Reset selezione marcatore
     setSelectedHomeScorer('');
@@ -1070,7 +1065,7 @@ const loadData = async () => {
       ]
     };
     setManagingMatch(updatedMatch);
-    database.updateMatch(managingMatch.id, updatedMatch);
+    api.updateMatch(managingMatch.id, updatedMatch).catch(console.error);
     
     // Reset selezione marcatore
     setSelectedAwayScorer('');
@@ -1120,7 +1115,7 @@ const loadData = async () => {
       events
     };
     setManagingMatch(updatedMatch);
-    database.updateMatch(managingMatch.id, updatedMatch);
+    api.updateMatch(managingMatch.id, updatedMatch).catch(console.error);
     loadData();
   };
   const handleAwayGoalRemove = () => {
@@ -1171,7 +1166,7 @@ const loadData = async () => {
       events
     };
     setManagingMatch(updatedMatch);
-    database.updateMatch(managingMatch.id, updatedMatch);
+    api.updateMatch(managingMatch.id, updatedMatch).catch(console.error);
     loadData();
   };
   const handleAddPeriod = (type: 'regular' | 'extra') => {
@@ -1193,7 +1188,7 @@ const loadData = async () => {
       currentPeriodIndex: newCurrentPeriodIndex 
     };
     setManagingMatch(updatedMatch);
-    database.updateMatch(managingMatch.id, updatedMatch);
+    api.updateMatch(managingMatch.id, updatedMatch).catch(console.error);
     setCurrentPeriodIndex(newCurrentPeriodIndex);
     loadData();
   };
@@ -1222,7 +1217,7 @@ const loadData = async () => {
       currentPeriodIndex: newCurrentPeriodIndex 
     };
     setManagingMatch(updatedMatch);
-    database.updateMatch(managingMatch.id, updatedMatch);
+    api.updateMatch(managingMatch.id, updatedMatch).catch(console.error);
     setCurrentPeriodIndex(newCurrentPeriodIndex);
     loadData();
   };  const handleInterval = () => {
@@ -1258,7 +1253,7 @@ const loadData = async () => {
     
     setManagingMatch(updatedMatch);
     setCurrentPeriodIndex(newCurrentPeriodIndex);
-    database.updateMatch(managingMatch.id, updatedMatch);
+    api.updateMatch(managingMatch.id, updatedMatch).catch(console.error);
     
     // Il timer continua dal punto in cui era, senza reset
     // Non chiamiamo timer.reset() né timer.start() perché deve continuare
@@ -1310,7 +1305,7 @@ const loadData = async () => {
     };
     
     setManagingMatch(updatedMatch);
-    database.updateMatch(managingMatch.id, updatedMatch);
+    api.updateMatch(managingMatch.id, updatedMatch).catch(console.error);
     
     timer.start();
   };
@@ -1328,7 +1323,7 @@ const loadData = async () => {
     };
     
     setManagingMatch(updatedMatch);
-    database.updateMatch(managingMatch.id, updatedMatch);
+    api.updateMatch(managingMatch.id, updatedMatch).catch(console.error);
   };
 
   const handleFinishMatchDynamic = (event: React.MouseEvent) => {
@@ -1356,7 +1351,7 @@ const loadData = async () => {
         lastTimestamp: Date.now()
       };
       setManagingMatch(updatedMatch);
-      database.updateMatch(managingMatch.id, updatedMatch);
+      api.updateMatch(managingMatch.id, updatedMatch).catch(console.error);
       loadData();
       setCurrentView('list');
       setEditingItem(null);
@@ -1446,7 +1441,7 @@ const loadData = async () => {
                           common.secondHalfDuration = timer.time - managingMatch.firstHalfDuration;
                         }
                         const updated = { ...managingMatch, ...common };
-                        database.updateMatch(managingMatch.id, updated);
+                        api.updateMatch(managingMatch.id, updated).catch(console.error);
                         loadData();
                       }
                       setActiveTab(tab.id as Tab);

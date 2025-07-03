@@ -29,7 +29,16 @@ export interface Training {
   id: string;
   date: string;
   time: string;
-  attendances: Record<string, boolean>; // playerId -> isPresent
+  createdAt: string;
+  attendance: TrainingAttendance[];
+}
+
+export interface TrainingAttendance {
+  id: string;
+  trainingId: string;
+  playerId: string;
+  isPresent: boolean;
+  player?: Player;
 }
 
 export interface MatchPeriod {

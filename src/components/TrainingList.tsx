@@ -42,19 +42,19 @@ export function TrainingList({ trainings, players, onEdit, onDelete }: TrainingL
           </div>
         ) : (
           sortedTrainings.map(training => {
-            const presentCount = Object.values(training.attendances).filter(v => v).length;
-            const totalCount = Object.keys(training.attendances).length;
+            const presentCount = training.attendance.filter(att => att.isPresent).length;
+            const totalCount = training.attendance.length;
             const attendanceRate = totalCount > 0 ? Math.round((presentCount / totalCount) * 100) : 0;
             
             // Get present and absent players for details
-            const presentPlayers = Object.entries(training.attendances)
-              .filter(([_, isPresent]) => isPresent)
-              .map(([playerId]) => getPlayerById(playerId))
+            const presentPlayers = training.attendance
+              .filter(att => att.isPresent)
+              .map(att => getPlayerById(att.playerId))
               .filter(Boolean);
             
-            const absentPlayers = Object.entries(training.attendances)
-              .filter(([_, isPresent]) => !isPresent)
-              .map(([playerId]) => getPlayerById(playerId))
+            const absentPlayers = training.attendance
+              .filter(att => !att.isPresent)
+              .map(att => getPlayerById(att.playerId))
               .filter(Boolean);
 
             return (
@@ -203,17 +203,17 @@ export function TrainingList({ trainings, players, onEdit, onDelete }: TrainingL
         </div>
       ) : (
         sortedTrainings.map(training => {
-          const presentPlayers = Object.entries(training.attendances)
-            .filter(([_, isPresent]) => isPresent)
-            .map(([playerId]) => getPlayerById(playerId))
+          const presentPlayers = training.attendance
+            .filter(att => att.isPresent)
+            .map(att => getPlayerById(att.playerId))
             .filter(Boolean);
           
-          const absentPlayers = Object.entries(training.attendances)
-            .filter(([_, isPresent]) => !isPresent)
-            .map(([playerId]) => getPlayerById(playerId))
+          const absentPlayers = training.attendance
+            .filter(att => !att.isPresent)
+            .map(att => getPlayerById(att.playerId))
             .filter(Boolean);
 
-          const totalPlayers = Object.keys(training.attendances).length;
+          const totalPlayers = training.attendance.length;
           const attendanceRate = totalPlayers > 0 ? (presentPlayers.length / totalPlayers) * 100 : 0;
 
           return (
