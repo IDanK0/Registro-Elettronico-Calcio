@@ -55,7 +55,15 @@ export function GroupList({ groups, onEdit, onDelete }: GroupListProps) {
     return iconMap[iconName || 'Users'] || Users;
   };
 
-  const getPermissionIcons = (permissions: Group['permissions']) => {
+  const getPermissionIcons = (permissions?: Group['permissions']) => {
+    if (!permissions) {
+      return (
+        <div className="flex flex-wrap gap-1">
+          <span className="text-xs text-gray-500">Nessun permesso configurato</span>
+        </div>
+      );
+    }
+    
     const permissionList = [
       { key: 'teamManagement', label: 'Gestione Squadra', value: permissions.teamManagement },
       { key: 'matchManagement', label: 'Gestione Partite', value: permissions.matchManagement },

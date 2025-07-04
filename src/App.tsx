@@ -1256,7 +1256,7 @@ const loadData = async () => {
       ...managingMatch, 
       periods, 
       currentPeriodIndex: newCurrentPeriodIndex,
-      status: 'half-time' as const, // Aggiorna lo status per l'intervallo
+      status: 'HALF_TIME' as const, // Aggiorna lo status per l'intervallo
       isRunning: true,
       lastTimestamp: Date.now()
     };
@@ -1282,27 +1282,27 @@ const loadData = async () => {
     let newStatus = managingMatch.status;
     
     // Se la partita è programmata e non è mai iniziata, imposta il primo tempo
-    if (managingMatch.status === 'scheduled') {
-      newStatus = 'first-half' as const;
+    if (managingMatch.status === 'SCHEDULED') {
+      newStatus = 'FIRST_HALF' as const;
     }
     // Se il periodo corrente è di tipo regular e la partita non è finita
-    else if (currentPeriod && managingMatch.status !== 'finished') {
+    else if (currentPeriod && managingMatch.status !== 'FINISHED') {
       if (currentPeriod.type === 'regular') {
         // Determina se è primo o secondo tempo in base all'indice
         if (currentPeriodIndex === 0) {
-          newStatus = 'first-half' as const;
+          newStatus = 'FIRST_HALF' as const;
         } else if (currentPeriodIndex === 1) {
-          newStatus = 'second-half' as const;
+          newStatus = 'SECOND_HALF' as const;
         } else {
           // Per periodi regolari successivi, mantieni secondo tempo
-          newStatus = 'second-half' as const;
+          newStatus = 'SECOND_HALF' as const;
         }
       } else if (currentPeriod.type === 'extra') {
         // Per tempi supplementari, usa secondo tempo
-        newStatus = 'second-half' as const;
+        newStatus = 'SECOND_HALF' as const;
       } else if (currentPeriod.type === 'interval') {
         // Per gli intervalli, mantieni lo status precedente o imposta half-time
-        newStatus = 'half-time' as const;
+        newStatus = 'HALF_TIME' as const;
       }
     }
     
@@ -1354,7 +1354,7 @@ const loadData = async () => {
       
       const updatedMatch = { 
         ...managingMatch, 
-        status: 'finished' as const,
+        status: 'FINISHED' as const,
         periods,
         currentPeriodIndex,
         isRunning: false,
@@ -1422,7 +1422,7 @@ const loadData = async () => {
                   <p className="text-sm font-medium text-gray-800">
                     {currentUser.firstName} {currentUser.lastName}
                   </p>
-                  <p className="text-xs text-gray-600">{currentUser.group.name}</p>
+                  <p className="text-xs text-gray-600">{currentUser.group?.name || 'Nessun gruppo'}</p>
                 </div>
                 <button
                   onClick={handleLogout}
@@ -1445,9 +1445,9 @@ const loadData = async () => {
                       if (managingMatch) {
                         const now = Date.now();
                         const common: any = { lastTimestamp: now, isRunning: timer.isRunning };
-                        if (managingMatch.status === 'first-half') {
+                        if (managingMatch.status === 'FIRST_HALF') {
                           common.firstHalfDuration = timer.time;
-                        } else if (managingMatch.status === 'second-half') {
+                        } else if (managingMatch.status === 'SECOND_HALF') {
                           common.secondHalfDuration = timer.time - managingMatch.firstHalfDuration;
                         }
                         const updated = { ...managingMatch, ...common };

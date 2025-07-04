@@ -36,10 +36,29 @@ router.post("/login", async (req: Request, res: Response, next: NextFunction) =>
       return res.status(401).json({ error: "User account has expired" });
     }
 
-    // Return user data (excluding password)
+    // Return user data (excluding password) with transformed group
     const { password: _, ...userWithoutPassword } = user;
+    const transformedUser = {
+      ...userWithoutPassword,
+      group: user.group ? {
+        id: user.group.id,
+        name: user.group.name,
+        description: user.group.description,
+        icon: 'Users', // Default icon since it's not in the database schema
+        createdAt: user.group.createdAt,
+        permissions: {
+          teamManagement: user.group.teamManagement,
+          matchManagement: user.group.matchManagement,
+          resultsView: user.group.resultsView,
+          statisticsView: user.group.statisticsView,
+          userManagement: user.group.userManagement,
+          groupManagement: user.group.groupManagement,
+        }
+      } : null
+    };
+    
     res.json({
-      user: userWithoutPassword,
+      user: transformedUser,
       message: "Login successful"
     });
 

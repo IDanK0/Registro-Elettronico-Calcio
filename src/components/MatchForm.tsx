@@ -37,9 +37,13 @@ export function MatchForm({ players, users = [], onSubmit, initialData, onCancel
   const [selectedPosition, setSelectedPosition] = useState<string>('');
   const [selectedJersey, setSelectedJersey] = useState<string>('');  const activePlayers = players.filter(p => p.isActive);
 
-  // Filter coaches and managers from users
-  const coaches = users.filter(u => u.group.name === 'Allenatore' || u.group.permissions.matchManagement);
-  const managers = users.filter(u => u.group.name === 'Dirigente' || u.group.permissions.teamManagement);
+  // Filter coaches and managers from users with null-safe checks
+  const coaches = users.filter(u => 
+    u.group && (u.group.name === 'Allenatore' || u.group.permissions?.matchManagement)
+  );
+  const managers = users.filter(u => 
+    u.group && (u.group.name === 'Dirigente' || u.group.permissions?.teamManagement)
+  );
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();

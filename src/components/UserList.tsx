@@ -95,7 +95,7 @@ export function UserList({ users, onEdit, onDelete }: UserListProps) {
         case 'username':
           return a.username.localeCompare(b.username);
         case 'group':
-          return a.group.name.localeCompare(b.group.name);
+          return (a.group?.name || '').localeCompare(b.group?.name || '');
         case 'expirationDate':
           return new Date(a.expirationDate).getTime() - new Date(b.expirationDate).getTime();
         case 'lastName':
@@ -202,10 +202,10 @@ export function UserList({ users, onEdit, onDelete }: UserListProps) {
             <div className="mb-3">
               <div className="flex items-center gap-2 mb-2">
                 {(() => {
-                  const GroupIcon = getGroupIcon(user.group.icon);
+                  const GroupIcon = getGroupIcon(user.group?.icon);
                   return <GroupIcon className="w-4 h-4 text-blue-500" />;
                 })()}
-                <span className="text-sm font-medium text-gray-700">{user.group.name}</span>
+                <span className="text-sm font-medium text-gray-700">{user.group?.name || 'Nessun gruppo'}</span>
               </div>
             </div>
 
@@ -331,7 +331,7 @@ export function UserList({ users, onEdit, onDelete }: UserListProps) {
                   <div className="bg-gray-50 p-4 rounded-lg">
                     <h4 className="text-lg font-semibold text-gray-800 mb-4 flex items-center gap-2">
                       {(() => {
-                        const GroupIcon = getGroupIcon(selectedUser.group.icon);
+                        const GroupIcon = getGroupIcon(selectedUser.group?.icon || 'Users');
                         return <GroupIcon className="w-5 h-5 text-blue-600" />;
                       })()}
                       Gruppo e Permessi
@@ -340,16 +340,16 @@ export function UserList({ users, onEdit, onDelete }: UserListProps) {
                       <label className="block text-sm font-medium text-gray-600 mb-1">Gruppo</label>
                       <div className="text-gray-900 font-medium flex items-center gap-2">
                         {(() => {
-                          const GroupIcon = getGroupIcon(selectedUser.group.icon);
+                          const GroupIcon = getGroupIcon(selectedUser.group?.icon || 'Users');
                           return <GroupIcon className="w-4 h-4 text-blue-500" />;
                         })()}
-                        {selectedUser.group.name}
+                        {selectedUser.group?.name || 'Nessun gruppo'}
                       </div>
                     </div>
                     <div>
                       <label className="block text-sm font-medium text-gray-600 mb-2">Permessi</label>
                       <div className="grid grid-cols-1 gap-2">
-                        {Object.entries(selectedUser.group.permissions).map(([key, value]) => (
+                        {selectedUser.group?.permissions ? Object.entries(selectedUser.group.permissions).map(([key, value]) => (
                           <div key={key} className={`flex items-center gap-2 p-2 rounded ${value ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'}`}>
                             <div className={`w-2 h-2 rounded-full ${value ? 'bg-green-500' : 'bg-red-500'}`}></div>
                             <span className="text-sm">
@@ -361,7 +361,7 @@ export function UserList({ users, onEdit, onDelete }: UserListProps) {
                               {key === 'groupManagement' && 'Gestione Gruppi'}
                             </span>
                           </div>
-                        ))}
+                        )) : <p className="text-gray-500">Nessun permesso assegnato</p>}
                       </div>
                     </div>
                   </div>
@@ -508,11 +508,11 @@ export function UserList({ users, onEdit, onDelete }: UserListProps) {
                     </td>                    <td className="px-6 py-4 whitespace-nowrap">
                       <div className="flex items-center">
                         {(() => {
-                          const GroupIcon = getGroupIcon(user.group.icon);
+                          const GroupIcon = getGroupIcon(user.group?.icon || 'Users');
                           return <GroupIcon className="w-4 h-4 mr-2 text-blue-500" />;
                         })()}
                         <span className="text-sm font-medium text-gray-900">
-                          {user.group.name}
+                          {user.group?.name || 'Nessun gruppo'}
                         </span>
                       </div>
                     </td>
@@ -653,7 +653,7 @@ export function UserList({ users, onEdit, onDelete }: UserListProps) {
                 {/* Gruppo e Permessi */}                <div className="bg-gray-50 p-4 rounded-lg">
                   <h4 className="text-lg font-semibold text-gray-800 mb-4 flex items-center gap-2">
                     {(() => {
-                      const GroupIcon = getGroupIcon(selectedUser.group.icon);
+                      const GroupIcon = getGroupIcon(selectedUser.group?.icon || 'Users');
                       return <GroupIcon className="w-5 h-5 text-blue-600" />;
                     })()}
                     Gruppo e Permessi
@@ -662,16 +662,16 @@ export function UserList({ users, onEdit, onDelete }: UserListProps) {
                     <label className="block text-sm font-medium text-gray-600 mb-1">Gruppo</label>
                     <div className="text-gray-900 font-medium flex items-center gap-2">
                       {(() => {
-                        const GroupIcon = getGroupIcon(selectedUser.group.icon);
+                        const GroupIcon = getGroupIcon(selectedUser.group?.icon || 'Users');
                         return <GroupIcon className="w-4 h-4 text-blue-500" />;
                       })()}
-                      {selectedUser.group.name}
+                      {selectedUser.group?.name || 'Nessun gruppo'}
                     </div>
                   </div>
                   <div>
                     <label className="block text-sm font-medium text-gray-600 mb-2">Permessi</label>
                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
-                      {Object.entries(selectedUser.group.permissions).map(([key, value]) => (
+                      {selectedUser.group?.permissions ? Object.entries(selectedUser.group.permissions).map(([key, value]) => (
                         <div key={key} className={`flex items-center gap-2 p-2 rounded ${value ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'}`}>
                           <div className={`w-2 h-2 rounded-full ${value ? 'bg-green-500' : 'bg-red-500'}`}></div>
                           <span className="text-sm">
@@ -683,7 +683,7 @@ export function UserList({ users, onEdit, onDelete }: UserListProps) {
                             {key === 'groupManagement' && 'Gestione Gruppi'}
                           </span>
                         </div>
-                      ))}
+                      )) : <p className="text-gray-500">Nessun permesso assegnato</p>}
                     </div>
                   </div>
                 </div>

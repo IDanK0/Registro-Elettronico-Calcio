@@ -145,8 +145,8 @@ export function ExportStatsButton({ players, matches, trainings, playerStats }: 
     const avgSubs = finished.length > 0 ? (totalSubs / finished.length).toFixed(2) : '0.00';
     const avgAttendance = trainings.length > 0 
       ? trainings.reduce((sum, t) => {
-          const present = Object.values(t.attendances).filter(Boolean).length;
-          const total = Object.keys(t.attendances).length;
+          const present = t.attendance?.filter(att => att.isPresent).length || 0;
+          const total = t.attendance?.length || 0;
           return sum + (total > 0 ? (present / total) * 100 : 0);
         }, 0) / trainings.length 
       : 0;

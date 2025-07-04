@@ -57,7 +57,14 @@ export function GroupForm({ group, onSubmit, onCancel }: GroupFormProps) {
         name: group.name,
         description: group.description || '',
         icon: group.icon || 'Users',
-        permissions: { ...group.permissions }
+        permissions: group.permissions ? { ...group.permissions } : {
+          teamManagement: false,
+          matchManagement: false,
+          resultsView: false,
+          statisticsView: false,
+          userManagement: false,
+          groupManagement: false
+        }
       });
     }
   }, [group]);

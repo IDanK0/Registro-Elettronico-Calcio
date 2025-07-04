@@ -19,10 +19,10 @@ export const exportGroupsToCSV = (groups: Group[]): void => {
     group.name,
     group.description || '',
     group.icon || 'Users',
-    group.permissions.teamManagement ? 'SI' : 'NO',
-    group.permissions.matchManagement ? 'SI' : 'NO',
-    group.permissions.resultsView ? 'SI' : 'NO',
-    group.permissions.statisticsView ? 'SI' : 'NO',
+    group.permissions?.teamManagement ? 'SI' : 'NO',
+    group.permissions?.matchManagement ? 'SI' : 'NO',
+    group.permissions?.resultsView ? 'SI' : 'NO',
+    group.permissions?.statisticsView ? 'SI' : 'NO',
     new Date(group.createdAt).toLocaleDateString('it-IT')
   ]);
 
@@ -58,7 +58,7 @@ export const exportUsersToCSV = (users: UserWithGroup[]): void => {
     user.matricola,
     user.status === 'active' ? 'Attivo' : 'Disattivo',
     new Date(user.expirationDate).toLocaleDateString('it-IT'),
-    user.group.name,
+    user.group?.name || 'Nessun gruppo',
     new Date(user.createdAt).toLocaleDateString('it-IT')
   ]);
 
@@ -138,7 +138,8 @@ export const exportTrainingAttendanceToCSV = (trainings: Training[], players: Pl
 
     // Calculate attendance for each training
     const attendanceData = sortedTrainings.map(training => {
-      const isPresent = training.attendances[player.id];
+      const attendanceRecord = training.attendance?.find(att => att.playerId === player.id);
+      const isPresent = attendanceRecord?.isPresent;
       if (isPresent !== undefined) {
         totalTrainings++;
         if (isPresent) totalPresences++;
@@ -220,7 +221,9 @@ export const parseGroupsFromCSV = (csvContent: string): Omit<Group, 'id' | 'crea
         teamManagement: toBool(getColumnValue('Gestione Squadra')),
         matchManagement: toBool(getColumnValue('Gestione Partite')),
         resultsView: toBool(getColumnValue('Visualizzazione Risultati')),
-        statisticsView: toBool(getColumnValue('Visualizzazione Statistiche'))
+        statisticsView: toBool(getColumnValue('Visualizzazione Statistiche')),
+        userManagement: false,
+        groupManagement: false
       }
     });
   }

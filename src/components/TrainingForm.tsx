@@ -15,16 +15,39 @@ export function TrainingForm({ players, onSubmit, initialData, onCancel }: Train
   // Default attendances: for new training, mark all present (true)
   const defaultAttendances: Record<string, boolean> = {};
   activePlayers.forEach(p => { defaultAttendances[p.id] = true; });
+  
+  // Convert initialData.attendance array to attendances object for form compatibility
+  const initialAttendances = initialData?.attendance 
+    ? initialData.attendance.reduce((acc, att) => {
+        acc[att.playerId] = att.isPresent;
+        return acc;
+      }, {} as Record<string, boolean>)
+    : defaultAttendances;
+  
   // Initialize form data, using existing attendances or default present
   const [formData, setFormData] = useState({
     date: initialData?.date || new Date().toISOString().split('T')[0],
     time: initialData?.time || '18:00',
-    attendances: initialData?.attendances || defaultAttendances
+    attendances: initialAttendances
   });
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    onSubmit(formData);
+    
+    // Convert attendances object to attendance array for backend
+    const attendance = Object.entries(formData.attendances).map(([playerId, isPresent]) => ({
+      playerId,
+      isPresent
+    }));
+    
+    const trainingData: any = {
+      date: formData.date,
+      time: formData.time,
+      attendance,
+      createdAt: initialData?.createdAt || new Date().toISOString()
+    };
+    
+    onSubmit(trainingData);
   };
 
   const toggleAttendance = (playerId: string) => {
@@ -131,13 +154,13 @@ export function TrainingForm({ players, onSubmit, initialData, onCancel }: Train
                 >
                   <div className="flex items-center gap-3">
                     <div className="w-8 h-8 bg-blue-100 rounded-full flex items-center justify-center">
-                      <span className="text-blue-600 font-bold text-sm">#{player.jerseyNumber}</span>
+                      <span className="text-blue-600 font-bold text-sm">{player.firstName.charAt(0)}{player.lastName.charAt(0)}</span>
                     </div>
                     <div>
                       <span className="font-medium text-gray-800">
                         {player.firstName} {player.lastName}
                       </span>
-                      <p className="text-sm text-gray-600">{player.position}</p>
+                      <p className="text-sm text-gray-600">{player.licenseNumber}</p>
                     </div>
                   </div>
                   <div className={`w-6 h-6 rounded-full flex items-center justify-center ${

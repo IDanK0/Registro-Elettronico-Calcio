@@ -32,7 +32,28 @@ router.get("/", async (_req: Request, res: Response, next: NextFunction) => {
       include: { group: true },
       orderBy: { lastName: "asc" },
     });
-    res.json(users);
+    
+    // Transform users to match frontend expectations
+    const transformedUsers = users.map(user => ({
+      ...user,
+      group: user.group ? {
+        id: user.group.id,
+        name: user.group.name,
+        description: user.group.description,
+        icon: 'Users', // Default icon since it's not in the database schema
+        createdAt: user.group.createdAt,
+        permissions: {
+          teamManagement: user.group.teamManagement,
+          matchManagement: user.group.matchManagement,
+          resultsView: user.group.resultsView,
+          statisticsView: user.group.statisticsView,
+          userManagement: user.group.userManagement,
+          groupManagement: user.group.groupManagement,
+        }
+      } : null
+    }));
+    
+    res.json(transformedUsers);
   } catch (err) {
     next(err);
   }

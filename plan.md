@@ -88,3 +88,64 @@
 4. 📝 Test CRUD operations for both trainings and matches
 5. 📝 Identify and fix any remaining integration issues
 6. 📝 Update forms (TrainingForm, MatchForm) if needed
+
+# Piano di Migrazione - Aggiornato 03/01/2025 18:30
+
+## STATO CORRENTE: 🔄 **COMPLETAMENTO CONTROLLI NULL-SAFE E FIXING ERRORI TYPESCRIPT**
+
+### ✅ **COMPLETATO**
+- **Migrazione completa database**: Eliminazione useDatabase.ts, migrazione a API backend
+- **Refactoring componenti**: Players, Trainings, Matches tutti migrati alle API REST
+- **Implementazione autenticazione**: Endpoint login reale, gestione utente corrente
+- **Fix strutture dati**: Training.attendance, Match.lineups, compatibilità mapping
+- **Controlli null-safe completati**: 
+  - ✅ `App.tsx`: `currentUser.group?.name`
+  - ✅ `UserList.tsx`: tutti gli accessi a `group`, `group.icon`, `group.name`, `group.permissions` 
+  - ✅ `MatchForm.tsx`: controlli esistenti su `u.group` confermati corretti
+  - ✅ `csvUtils.ts`: `group?.name`, `attendance` vs `attendances`, permissions complete
+  - ✅ `GroupForm.tsx`: gestione `group.permissions` null-safe
+- **Fix enum MatchStatus**: Correzione da lowercase a UPPERCASE (`SCHEDULED`, `FIRST_HALF`, `HALF_TIME`, `SECOND_HALF`, `FINISHED`)
+- **Fix crash StatsOverview.tsx**: Sistemato `t.attendances` → `t.attendance?.filter(att => att.isPresent)`
+- **Fix crash ExportStatsButton.tsx**: Sistemato stesso problema con attendance structure
+- **Fix TrainingForm.tsx**: 
+  - ✅ Conversione bidirezionale tra `attendances` object e `attendance` array
+  - ✅ Rimozione riferimenti a `player.jerseyNumber` e `player.position` (non esistenti in Player)
+  - ✅ Mapping compatibilità per edit esistenti
+- **Fix crash GroupList.tsx**: 
+  - ✅ Sistemato `getPermissionIcons(permissions?: Group['permissions'])` con controllo null-safe
+  - ✅ Fix struttura dati backend: trasformazione da proprietà flat a oggetto `permissions`
+  - ✅ Aggiornato `/api/groups` GET/POST/PUT per restituire struttura `{permissions: {...}}`
+  - ✅ Aggiornato `/api/users` GET per trasformare gruppo incluso
+  - ✅ Aggiornato `/api/auth/login` per trasformare gruppo utente
+  - ✅ Aggiunta proprietà `icon: 'Users'` di default nei gruppi
+
+### 🔄 **IN CORSO**
+- **Testing interfaccia web**: ✅ Crash principali risolti (StatsOverview, GroupList) - Verifica completa in corso
+- **Risoluzione errori TypeScript rimanenti**: 
+  - ✅ Problemi attendances vs attendance (StatsOverview, ExportStatsButton, TrainingForm) 
+  - ✅ Problemi player.jerseyNumber/position non esistenti
+  - ✅ Problemi group.permissions structure mismatch (GroupList, backend transformation)
+  - 🔄 Problemi di typing su `MatchForm.onSubmit` (createdAt, lineups missing)
+  - 🔄 Problemi su `playersOnField` (manca proprietà matchPlayer)
+  - 🔄 Import problemi (CSVManager per GroupForm/UserForm)
+
+### 📋 **PROSSIMI PASSI PRIORITÀ ALTA**
+1. **Implementare JWT nel backend** - Manca token authentication
+2. **Sistemare typing MatchForm**: Aggiungere proprietà mancanti (createdAt, lineups)
+3. **Fix PlayerStats typing**: Sistemare mismatch Player[] vs PlayerStats[]
+4. **Test completo UI**: Verificare CRUD completo per Players, Trainings, Matches
+5. **Risoluzione import errors**: CSVManager e altri componenti
+
+### 🐛 **PROBLEMI IDENTIFICATI**
+- **Backend login**: Non genera JWT token (solo risposta user + message)
+- **TypeScript errors**: Circa 20 errori rimasti principalmente su typing mismatch
+- **Match management**: Alcune proprietà mancanti nel type checking
+
+### 💡 **NOTE TECNICHE**
+- Database Prisma già popolato con utente admin (username: admin, password: admin)
+- Strutture dati backend/frontend ora allineate
+- Controlli null-safe implementati sistematicamente in tutto il codebase
+- Enum MatchStatus standardizzato in formato UPPERCASE
+
+### 🎯 **OBIETTIVO FINALE**
+Completare tutti i fix TypeScript e testare l'applicazione end-to-end con piena funzionalità CRUD su web browser, garantendo stabilità completa del sistema migrato.

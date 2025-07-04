@@ -12,7 +12,26 @@ router.get("/", async (_req: Request, res: Response, next: NextFunction) => {
       include: { users: true },
       orderBy: { name: "asc" },
     });
-    res.json(groups);
+    
+    // Transform groups to match frontend expectations
+    const transformedGroups = groups.map(group => ({
+      id: group.id,
+      name: group.name,
+      description: group.description,
+      icon: 'Users', // Default icon since it's not in the database schema
+      createdAt: group.createdAt,
+      users: group.users,
+      permissions: {
+        teamManagement: group.teamManagement,
+        matchManagement: group.matchManagement,
+        resultsView: group.resultsView,
+        statisticsView: group.statisticsView,
+        userManagement: group.userManagement,
+        groupManagement: group.groupManagement,
+      }
+    }));
+    
+    res.json(transformedGroups);
   } catch (err) {
     next(err);
   }
@@ -21,34 +40,42 @@ router.get("/", async (_req: Request, res: Response, next: NextFunction) => {
 // POST /api/groups
 router.post("/", async (req: Request, res: Response, next: NextFunction) => {
   try {
-    const {
-      name,
-      description,
-      teamManagement = false,
-      matchManagement = false,
-      resultsView = false,
-      statisticsView = false,
-      userManagement = false,
-      groupManagement = false,
-    } = req.body;
+    const { name, description, icon, permissions } = req.body;
 
     const createData: Prisma.GroupUncheckedCreateInput = {
       id: uuidv4(),
       name,
       description,
-      teamManagement,
-      matchManagement,
-      resultsView,
-      statisticsView,
-      userManagement,
-      groupManagement,
+      teamManagement: permissions?.teamManagement || false,
+      matchManagement: permissions?.matchManagement || false,
+      resultsView: permissions?.resultsView || false,
+      statisticsView: permissions?.statisticsView || false,
+      userManagement: permissions?.userManagement || false,
+      groupManagement: permissions?.groupManagement || false,
     };
 
     const group = await prisma.group.create({
       data: createData,
     });
 
-    res.status(201).json(group);
+    // Transform response to match frontend expectations
+    const transformedGroup = {
+      id: group.id,
+      name: group.name,
+      description: group.description,
+      icon: icon || 'Users',
+      createdAt: group.createdAt,
+      permissions: {
+        teamManagement: group.teamManagement,
+        matchManagement: group.matchManagement,
+        resultsView: group.resultsView,
+        statisticsView: group.statisticsView,
+        userManagement: group.userManagement,
+        groupManagement: group.groupManagement,
+      }
+    };
+
+    res.status(201).json(transformedGroup);
   } catch (err) {
     next(err);
   }
@@ -58,14 +85,42 @@ router.post("/", async (req: Request, res: Response, next: NextFunction) => {
 router.put("/:id", async (req: Request, res: Response, next: NextFunction) => {
   try {
     const { id } = req.params;
-    const data = req.body;
+    const { name, description, icon, permissions } = req.body;
+
+    const updateData: Prisma.GroupUncheckedUpdateInput = {
+      name,
+      description,
+      teamManagement: permissions?.teamManagement,
+      matchManagement: permissions?.matchManagement,
+      resultsView: permissions?.resultsView,
+      statisticsView: permissions?.statisticsView,
+      userManagement: permissions?.userManagement,
+      groupManagement: permissions?.groupManagement,
+    };
 
     const group = await prisma.group.update({
       where: { id },
-      data: data as Prisma.GroupUncheckedUpdateInput,
+      data: updateData,
     });
 
-    res.json(group);
+    // Transform response to match frontend expectations
+    const transformedGroup = {
+      id: group.id,
+      name: group.name,
+      description: group.description,
+      icon: icon || 'Users',
+      createdAt: group.createdAt,
+      permissions: {
+        teamManagement: group.teamManagement,
+        matchManagement: group.matchManagement,
+        resultsView: group.resultsView,
+        statisticsView: group.statisticsView,
+        userManagement: group.userManagement,
+        groupManagement: group.groupManagement,
+      }
+    };
+
+    res.json(transformedGroup);
   } catch (err) {
     next(err);
   }
