@@ -23,3 +23,6 @@ dist-ssr
 *.sln
 *.sw?
 .env
+
+# Ignora la cartella prototipo locale
+Prototipo locale funzionante con SQLite di Registro-Elettronico-Calcio-main/
