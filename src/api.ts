@@ -26,6 +26,22 @@ async function request<T>(
     const msg = await res.text();
     throw new Error(`${res.status} ${res.statusText}: ${msg}`);
   }
+
+  // Handle empty responses (like 204 No Content)
+  if (res.status === 204 || res.headers.get('content-length') === '0') {
+    return undefined as any;
+  }
+
+  // Check if response has content to parse
+  const contentType = res.headers.get('content-type');
+  if (!contentType || !contentType.includes('application/json')) {
+    const text = await res.text();
+    if (!text) {
+      return undefined as any;
+    }
+    throw new Error(`Expected JSON response but got: ${contentType}`);
+  }
+
   return res.json();
 }
 

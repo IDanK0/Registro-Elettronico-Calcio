@@ -14,6 +14,30 @@ interface SubstitutionInput {
   playerOutId: string;
   playerInId: string;
   minute: number;
+  second?: number;
+}
+
+interface EventInput {
+  id: string;
+  type: string;
+  minute: number;
+  second?: number;
+  playerId: string;
+  description?: string;
+  reason?: string;
+  teamType?: string;
+}
+
+interface OpponentLineupInput {
+  jerseyNumber: number;
+}
+
+interface PeriodInput {
+  type: string;
+  label: string;
+  duration: number;
+  isFinished?: boolean;
+  periodIndex: number;
 }
 // future: define event creation when needed
 // MatchOpponentLineup currently only stores jerseyNumber. Adjust when schema changes.
@@ -63,6 +87,12 @@ router.post("/", async (req: Request, res: Response, next: NextFunction) => {
       periods,
       coaches,
       managers,
+      homeScore,
+      awayScore,
+      status,
+      isRunning,
+      currentPeriodIndex,
+      playerJerseyNumbers,
     } = req.body as {
       date: string;
       time?: string;
@@ -74,11 +104,17 @@ router.post("/", async (req: Request, res: Response, next: NextFunction) => {
       secondHalfDuration?: number;
       lineups?: LineupInput[];
       substitutions?: SubstitutionInput[];
-      // events?: any[];
-      // opponentLineup?: any[];
-      // periods?: any[];
+      events?: EventInput[];
+      opponentLineup?: OpponentLineupInput[];
+      periods?: PeriodInput[];
       coaches?: CoachInput[];
       managers?: ManagerInput[];
+      homeScore?: number;
+      awayScore?: number;
+      status?: string;
+      isRunning?: boolean;
+      currentPeriodIndex?: number;
+      playerJerseyNumbers?: any;
     };
 
     const match = await prisma.match.create({
@@ -89,8 +125,14 @@ router.post("/", async (req: Request, res: Response, next: NextFunction) => {
         homeAway,
         location,
         field,
-        firstHalfDuration,
-        secondHalfDuration,
+        firstHalfDuration: firstHalfDuration || 0,
+        secondHalfDuration: secondHalfDuration || 0,
+        homeScore: homeScore || 0,
+        awayScore: awayScore || 0,
+        status: status as any || 'SCHEDULED',
+        isRunning: isRunning || false,
+        currentPeriodIndex: currentPeriodIndex || 0,
+        playerJerseyNumbers: playerJerseyNumbers || {},
         lineups: lineups && lineups.length > 0 ? {
           create: lineups.map((l) => ({
             playerId: l.playerId,
@@ -103,6 +145,33 @@ router.post("/", async (req: Request, res: Response, next: NextFunction) => {
             playerOutId: s.playerOutId,
             playerInId: s.playerInId,
             minute: s.minute,
+            second: s.second,
+          })),
+        } : undefined,
+        events: events && events.length > 0 ? {
+          create: events.map((e) => ({
+            id: e.id,
+            type: e.type as any,
+            minute: e.minute,
+            second: e.second,
+            playerId: e.playerId,
+            description: e.description,
+            reason: e.reason,
+            teamType: e.teamType as any,
+          })),
+        } : undefined,
+        opponentLineup: opponentLineup && opponentLineup.length > 0 ? {
+          create: opponentLineup.map((o) => ({
+            jerseyNumber: o.jerseyNumber,
+          })),
+        } : undefined,
+        periods: periods && periods.length > 0 ? {
+          create: periods.map((p) => ({
+            type: p.type as any,
+            label: p.label,
+            duration: p.duration,
+            isFinished: p.isFinished || false,
+            periodIndex: p.periodIndex,
           })),
         } : undefined,
         
@@ -156,6 +225,12 @@ router.put("/:id", async (req: Request, res: Response, next: NextFunction) => {
       periods,
       coaches,
       managers,
+      homeScore,
+      awayScore,
+      status,
+      isRunning,
+      currentPeriodIndex,
+      playerJerseyNumbers,
     } = req.body;
 
     const match = await prisma.match.update({
@@ -169,6 +244,12 @@ router.put("/:id", async (req: Request, res: Response, next: NextFunction) => {
         field,
         firstHalfDuration,
         secondHalfDuration,
+        homeScore,
+        awayScore,
+        status: status as any,
+        isRunning,
+        currentPeriodIndex,
+        playerJerseyNumbers,
         // replace nested relations completely for simplicity
         lineups: lineups ? {
           deleteMany: {},
@@ -184,6 +265,36 @@ router.put("/:id", async (req: Request, res: Response, next: NextFunction) => {
             playerOutId: s.playerOutId,
             playerInId: s.playerInId,
             minute: s.minute,
+            second: s.second,
+          })),
+        } : undefined,
+        events: events ? {
+          deleteMany: {},
+          create: events.map((e: EventInput) => ({
+            id: e.id,
+            type: e.type as any,
+            minute: e.minute,
+            second: e.second,
+            playerId: e.playerId,
+            description: e.description,
+            reason: e.reason,
+            teamType: e.teamType as any,
+          })),
+        } : undefined,
+        opponentLineup: opponentLineup ? {
+          deleteMany: {},
+          create: opponentLineup.map((o: OpponentLineupInput) => ({
+            jerseyNumber: o.jerseyNumber,
+          })),
+        } : undefined,
+        periods: periods ? {
+          deleteMany: {},
+          create: periods.map((p: PeriodInput) => ({
+            type: p.type as any,
+            label: p.label,
+            duration: p.duration,
+            isFinished: p.isFinished || false,
+            periodIndex: p.periodIndex,
           })),
         } : undefined,
         

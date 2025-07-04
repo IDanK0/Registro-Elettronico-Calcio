@@ -3,7 +3,7 @@ import React from 'react';
 import { useTimer } from './hooks/useTimer';
 import { useSession } from './hooks/useSession';
 import { useLocalStorage } from './hooks/useLocalStorage';
-import { Player, Training, Match, MatchPlayer, User, Group, UserWithGroup, MatchPeriod, MatchEvent } from './types';
+import { Player, Training, Match, MatchPlayer, User, Group, UserWithGroup, MatchPeriod, MatchEvent, PlayerStats } from './types';
 import { api } from './api';
 import { PlayerForm } from './components/PlayerForm';
 import { PlayerList } from './components/PlayerList';
@@ -30,7 +30,6 @@ import {
   ArrowLeft,
   Menu,
   X,
-  Loader2,
   Shield,
   UserCog,
   LogOut,
@@ -54,7 +53,6 @@ function App() {
   // Stato di navigazione persistente
   const [activeTab, setActiveTabState] = useLocalStorage<Tab>('activeTab', 'players');
   const [currentView, setCurrentViewState] = useLocalStorage<View>('currentView', 'list');
-  const [managingMatchId, setManagingMatchIdState] = useLocalStorage<string | null>('managingMatchId', null);
   const [editingItem, setEditingItem] = useState<any>(null);
   const [managingMatch, setManagingMatch] = useState<Match | null>(null);
   const [initialLineup, setInitialLineup] = useState<MatchPlayer[] | null>(null);
@@ -83,8 +81,8 @@ function App() {
     }
   };
 
-  const setManagingMatchId = (matchId: string | null) => {
-    setManagingMatchIdState(matchId);
+  const setManagingMatchId = (_matchId: string | null) => {
+    // Rimosso per semplificazione - non più necessario salvare in localStorage
   };
 
   // Funzione per resettare completamente la gestione partita
@@ -179,7 +177,7 @@ function App() {
         lastTimestamp: now
       };
       setManagingMatch(updated);
-      api.updateMatch(managingMatch.id, updated).catch(console.error);
+      updateManagingMatch(updated);
     }
   }, [timer.time, currentPeriodIndex]);
   // Persist timer state on page unload or navigation
@@ -204,7 +202,7 @@ function App() {
           isRunning: timer.isRunning,
           lastTimestamp: now
         };
-        api.updateMatch(managingMatch.id, updated).catch(console.error);
+        updateManagingMatch(updated);
       }
     };
     window.addEventListener('beforeunload', handler);
@@ -265,69 +263,36 @@ function App() {
       }
     }
   }, [currentUser]);
-  
-  // Funzione per ripristinare una partita in gestione al ricaricamento della pagina
-  const restoreManagingMatch = (match: Match) => {
-    // Inizializza la mappa dei numeri di maglia se non esiste
-    const playerJerseyNumbers = match.playerJerseyNumbers || {};
-    
-    // Popola la mappa con i numeri di maglia dei giocatori attualmente in formazione
-    match.lineup.forEach(matchPlayer => {
-      if (!playerJerseyNumbers[matchPlayer.playerId]) {
-        playerJerseyNumbers[matchPlayer.playerId] = matchPlayer.jerseyNumber;
-      }
-    });
 
-    const matchWithJerseyNumbers = {
-      ...match,
-      playerJerseyNumbers
-    };
+  // Helper function to convert match data for backend
+  const convertMatchForBackend = (match: Partial<Match>) => ({
+    ...match,
+    lineups: match.lineup?.map(lp => ({
+      playerId: lp.playerId,
+      position: lp.position,
+      jerseyNumber: lp.jerseyNumber
+    })) || [],
+    substitutions: match.substitutions?.map(sub => ({
+      playerOutId: sub.playerOut,
+      playerInId: sub.playerIn,
+      minute: sub.minute,
+      second: sub.second
+    })) || [],
+    events: match.events || [],
+    opponentLineup: match.opponentLineup?.map(jerseyNumber => ({
+      jerseyNumber
+    })) || [],
+    periods: match.periods || [],
+    coaches: match.coaches || [],
+    managers: match.managers || []
+  });
 
-    setManagingMatch(matchWithJerseyNumbers);
-    setInitialLineup(match.lineup);
-    
-    // Inizializza i periodi se non esistono
-    if (!match.periods || match.periods.length === 0) {
-      const updatedMatch = { 
-        ...matchWithJerseyNumbers, 
-        periods: defaultPeriods,
-        currentPeriodIndex: 0 
-      };
-      setManagingMatch(updatedMatch);
-      api.updateMatch(match.id, updatedMatch).catch(console.error);
-      setCurrentPeriodIndex(0);
-    } else {
-      setCurrentPeriodIndex(match.currentPeriodIndex || 0);
-      // Aggiorna il database con la mappa dei numeri di maglia se necessario
-      if (!match.playerJerseyNumbers) {
-        api.updateMatch(match.id, matchWithJerseyNumbers).catch(console.error);
-      }
-      // Assicurati che managingMatch abbia sempre la mappa dei numeri di maglia
-      setManagingMatch(matchWithJerseyNumbers);
-    }
-    
-    // Restore timer based on current period and lastTimestamp
-    const now = Date.now();
-    const periods = match.periods || defaultPeriods;
-    const currentPeriod = periods[match.currentPeriodIndex || 0];
-    
-    if (currentPeriod) {
-      const computeTime = (base: number) => {
-        if (match.isRunning && match.lastTimestamp) {
-          const elapsed = Math.floor((now - match.lastTimestamp) / 1000);
-          return base + elapsed;
-        }
-        return base;
-      };
-      
-      const secs = computeTime(currentPeriod.duration);
-      timer.resetTo(secs);
-      if (match.isRunning) timer.start(); else timer.pause();
-    } else {
-      timer.resetTo(0);
-      timer.pause();
-    }
-    };
+  // Helper function to update managing match with automatic backend sync
+  const updateManagingMatch = (updatedMatch: Match) => {
+    setManagingMatch(updatedMatch);
+    api.updateMatch(updatedMatch.id, convertMatchForBackend(updatedMatch)).catch(console.error);
+    loadData();
+  };
 
 // ...
 
@@ -348,7 +313,23 @@ const loadData = async () => {
           playerId: l.playerId,
           position: l.position,
           jerseyNumber: l.jerseyNumber
-        })) || []
+        })) || [],
+        substitutions: match.substitutions?.map((s: any) => ({
+          id: s.id,
+          minute: s.minute,
+          second: s.second,
+          playerOut: s.playerOutId,
+          playerIn: s.playerInId,
+          playerOutJerseyNumber: s.playerOutJerseyNumber,
+          playerInJerseyNumber: s.playerInJerseyNumber
+        })) || [],
+        opponentLineup: Array.isArray(match.opponentLineup) 
+          ? match.opponentLineup.map((o: any) => typeof o === 'object' && o.jerseyNumber ? o.jerseyNumber : o)
+          : [],
+        events: match.events || [],
+        periods: match.periods || [],
+        coaches: match.coaches?.map((c: any) => c.userId) || [],
+        managers: match.managers?.map((m: any) => m.userId) || []
       }));
 
       setPlayers(playersData);
@@ -522,9 +503,11 @@ const loadData = async () => {
       // Check if player is currently on field (not substituted out)
       const hasBeenSubstituted = managingMatch.substitutions.some(sub => sub.playerOut === mp.playerId);
       return !hasBeenSubstituted;
-    }).map(mp => 
-      players.find(p => p.id === mp.playerId)
-    ).filter(Boolean) as Player[];
+    }).map(mp => {
+      const player = players.find(p => p.id === mp.playerId);
+      if (!player) return null;
+      return { ...player, matchPlayer: mp };
+    }).filter(Boolean) as (Player & { matchPlayer: MatchPlayer })[];
   };
 
   const getPlayersOnBench = () => {
@@ -574,12 +557,30 @@ const loadData = async () => {
   };
 
   // Match management functions
-  const handleMatchSubmit = async (matchData: Omit<Match, 'id'>) => {
+  const handleMatchSubmit = async (matchData: Omit<Match, 'id' | 'status' | 'startTime' | 'firstHalfDuration' | 'secondHalfDuration' | 'substitutions' | 'events'>) => {
     try {
+      // Crea un match completo con i campi mancanti
+      const fullMatchData: Omit<Match, 'id'> = {
+        ...matchData,
+        status: 'SCHEDULED' as const,
+        firstHalfDuration: 0,
+        secondHalfDuration: 0,
+        substitutions: [],
+        events: [],
+        homeScore: 0,
+        awayScore: 0,
+        currentPeriodIndex: 0,
+        periods: [],
+        createdAt: new Date().toISOString()
+      };
+      
+      // Converte lineup in lineups per il backend
+      const dataForBackend = convertMatchForBackend(fullMatchData);
+      
       if (editingItem) {
-        await api.updateMatch(editingItem.id, matchData);
+        await api.updateMatch(editingItem.id, dataForBackend);
       } else {
-        await api.createMatch(matchData);
+        await api.createMatch(dataForBackend);
       }
       loadData();
       setCurrentView('list');
@@ -616,7 +617,54 @@ const loadData = async () => {
   };
 
   // Player stats and tabs configuration
-  const playerStats = players; // Simplified for now
+  const calculatePlayerStats = (): PlayerStats[] => {
+    return players.map(player => {
+      // Calcola partite giocate
+      const matchesPlayed = matches.filter(match => 
+        match.lineup.some(mp => mp.playerId === player.id)
+      ).length;
+
+      // Calcola goal
+      const goals = matches.reduce((total, match) => {
+        return total + match.events.filter(event => 
+          event.type === 'goal' && event.playerId === player.id && event.teamType === 'own'
+        ).length;
+      }, 0);
+
+      // Calcola cartellini gialli
+      const yellowCards = matches.reduce((total, match) => {
+        return total + match.events.filter(event => 
+          event.type === 'yellow-card' && event.playerId === player.id
+        ).length;
+      }, 0);
+
+      // Calcola cartellini rossi (rosso diretto + secondo giallo)
+      const redCards = matches.reduce((total, match) => {
+        return total + match.events.filter(event => 
+          (event.type === 'red-card' || event.type === 'second-yellow-card') && event.playerId === player.id
+        ).length;
+      }, 0);
+
+      // Calcola presenze agli allenamenti
+      const trainingAttendance = trainings.reduce((total, training) => {
+        return total + (training.attendance?.filter(att => att.playerId === player.id && att.isPresent).length || 0);
+      }, 0);
+
+      const totalTrainings = trainings.length;
+
+      return {
+        playerId: player.id,
+        matchesPlayed,
+        goals,
+        yellowCards,
+        redCards,
+        trainingAttendance,
+        totalTrainings
+      };
+    });
+  };
+
+  const playerStats = calculatePlayerStats();
 
   const tabs = [
     { id: 'players', name: 'Giocatori', icon: Users, permission: 'view_players' },
@@ -635,10 +683,15 @@ const loadData = async () => {
   };
 
   // Import functions
-  const handleImportGroups = async (groupsData: Omit<Group, 'id'>[]) => {
+  const handleImportGroups = async (groupsData: Omit<Group, 'id' | 'createdAt'>[]) => {
     try {
       for (const groupData of groupsData) {
-        await api.createGroup(groupData);
+        // Aggiungi createdAt se non presente
+        const groupWithTimestamp = {
+          ...groupData,
+          createdAt: new Date().toISOString()
+        };
+        await api.createGroup(groupWithTimestamp);
       }
       loadData();
     } catch (error) {
@@ -646,10 +699,15 @@ const loadData = async () => {
     }
   };
 
-  const handleImportUsers = async (usersData: Omit<User, 'id'>[]) => {
+  const handleImportUsers = async (usersData: Omit<User, 'id' | 'createdAt'>[]) => {
     try {
       for (const userData of usersData) {
-        await api.createUser(userData);
+        // Aggiungi createdAt se non presente
+        const userWithTimestamp = {
+          ...userData,
+          createdAt: new Date().toISOString()
+        };
+        await api.createUser(userWithTimestamp);
       }
       loadData();
     } catch (error) {
@@ -710,9 +768,7 @@ const loadData = async () => {
       ...managingMatch,
       events: [...managingMatch.events, ammonitionEvent]
     };
-    setManagingMatch(updatedMatch);
-    api.updateMatch(managingMatch.id, updatedMatch).catch(console.error);
-    loadData();
+    updateManagingMatch(updatedMatch);
   };
 
   // Funzione per gestire altri eventi (falli, calci d'angolo, ecc.)
@@ -731,9 +787,7 @@ const loadData = async () => {
       events: [...managingMatch.events, newEvent]
     };
     
-    setManagingMatch(updatedMatch);
-    api.updateMatch(managingMatch.id, updatedMatch).catch(console.error);
-    loadData();
+    updateManagingMatch(updatedMatch);
   };
 
   // Funzione per rimuovere un evento (goal o ammonizione)
@@ -758,9 +812,7 @@ const loadData = async () => {
     });
 
     const updatedMatch = { ...managingMatch, events: updatedEvents, homeScore, awayScore };
-    setManagingMatch(updatedMatch);
-    api.updateMatch(managingMatch.id, updatedMatch).catch(console.error);
-    loadData();
+    updateManagingMatch(updatedMatch);
   }
 
   // Funzione per rimuovere una sostituzione e ricalcolare la lineup
@@ -809,9 +861,7 @@ const loadData = async () => {
     }
     setManageError(null);
     const updatedMatch = { ...managingMatch, substitutions: updatedSubs, lineup };
-    setManagingMatch(updatedMatch);
-    api.updateMatch(managingMatch.id, updatedMatch).catch(console.error);
-    loadData();
+    updateManagingMatch(updatedMatch);
   }
   const renderContent = () => {
     if (currentView === 'form') {
@@ -1042,7 +1092,7 @@ const loadData = async () => {
       ]
     };
     setManagingMatch(updatedMatch);
-    api.updateMatch(managingMatch.id, updatedMatch).catch(console.error);
+    updateManagingMatch(updatedMatch);
     
     // Reset selezione marcatore
     setSelectedHomeScorer('');
@@ -1075,7 +1125,7 @@ const loadData = async () => {
       ]
     };
     setManagingMatch(updatedMatch);
-    api.updateMatch(managingMatch.id, updatedMatch).catch(console.error);
+    updateManagingMatch(updatedMatch);
     
     // Reset selezione marcatore
     setSelectedAwayScorer('');
@@ -1125,7 +1175,7 @@ const loadData = async () => {
       events
     };
     setManagingMatch(updatedMatch);
-    api.updateMatch(managingMatch.id, updatedMatch).catch(console.error);
+    updateManagingMatch(updatedMatch);
     loadData();
   };
   const handleAwayGoalRemove = () => {
@@ -1176,7 +1226,7 @@ const loadData = async () => {
       events
     };
     setManagingMatch(updatedMatch);
-    api.updateMatch(managingMatch.id, updatedMatch).catch(console.error);
+    updateManagingMatch(updatedMatch);
     loadData();
   };
   const handleAddPeriod = (type: 'regular' | 'extra') => {
@@ -1198,7 +1248,7 @@ const loadData = async () => {
       currentPeriodIndex: newCurrentPeriodIndex 
     };
     setManagingMatch(updatedMatch);
-    api.updateMatch(managingMatch.id, updatedMatch).catch(console.error);
+    updateManagingMatch(updatedMatch);
     setCurrentPeriodIndex(newCurrentPeriodIndex);
     loadData();
   };
@@ -1227,7 +1277,7 @@ const loadData = async () => {
       currentPeriodIndex: newCurrentPeriodIndex 
     };
     setManagingMatch(updatedMatch);
-    api.updateMatch(managingMatch.id, updatedMatch).catch(console.error);
+    updateManagingMatch(updatedMatch);
     setCurrentPeriodIndex(newCurrentPeriodIndex);
     loadData();
   };  const handleInterval = () => {
@@ -1263,7 +1313,7 @@ const loadData = async () => {
     
     setManagingMatch(updatedMatch);
     setCurrentPeriodIndex(newCurrentPeriodIndex);
-    api.updateMatch(managingMatch.id, updatedMatch).catch(console.error);
+    updateManagingMatch(updatedMatch);
     
     // Il timer continua dal punto in cui era, senza reset
     // Non chiamiamo timer.reset() né timer.start() perché deve continuare
@@ -1315,7 +1365,7 @@ const loadData = async () => {
     };
     
     setManagingMatch(updatedMatch);
-    api.updateMatch(managingMatch.id, updatedMatch).catch(console.error);
+    updateManagingMatch(updatedMatch);
     
     timer.start();
   };
@@ -1333,7 +1383,7 @@ const loadData = async () => {
     };
     
     setManagingMatch(updatedMatch);
-    api.updateMatch(managingMatch.id, updatedMatch).catch(console.error);
+    updateManagingMatch(updatedMatch);
   };
 
   const handleFinishMatchDynamic = (event: React.MouseEvent) => {
@@ -1361,7 +1411,7 @@ const loadData = async () => {
         lastTimestamp: Date.now()
       };
       setManagingMatch(updatedMatch);
-      api.updateMatch(managingMatch.id, updatedMatch).catch(console.error);
+      updateManagingMatch(updatedMatch);
       loadData();
       setCurrentView('list');
       setEditingItem(null);
@@ -1451,7 +1501,7 @@ const loadData = async () => {
                           common.secondHalfDuration = timer.time - managingMatch.firstHalfDuration;
                         }
                         const updated = { ...managingMatch, ...common };
-                        api.updateMatch(managingMatch.id, updated).catch(console.error);
+                        api.updateMatch(managingMatch.id, convertMatchForBackend(updated)).catch(console.error);
                         loadData();
                       }
                       setActiveTab(tab.id as Tab);

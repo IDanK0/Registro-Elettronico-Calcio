@@ -15,7 +15,7 @@ interface MatchListProps {
 export function MatchList({ matches, players, onEdit, onDelete, onManage, onReport }: MatchListProps) {
   const isMobile = useIsMobile();
   const [searchTerm, setSearchTerm] = useState('');
-  const [statusFilter, setStatusFilter] = useState<'all' | 'scheduled' | 'active' | 'finished'>('all');
+  const [statusFilter, setStatusFilter] = useState<'all' | 'SCHEDULED' | 'active' | 'FINISHED'>('all');
   const [sortBy, setSortBy] = useState<'date' | 'opponent' | 'status'>('date');
 
   const formatDate = (dateString: string) => {
@@ -36,12 +36,12 @@ export function MatchList({ matches, players, onEdit, onDelete, onManage, onRepo
       const currentPeriod = periods[currentPeriodIndex];
       if (currentPeriod) {
         // Se la partita è finita, mostra "Terminata"
-        if (status === 'finished') {
+        if (status === 'FINISHED') {
           return 'Terminata';
         }
         
         // Se la partita è programmata (non ancora iniziata), mostra il testo appropriato
-        if (status === 'scheduled') {
+        if (status === 'SCHEDULED') {
           if (match.homeAway === 'away' && match.location) {
             if (match.field) {
               return `Programmata a ${match.location} al campo ${match.field}`;
@@ -58,7 +58,7 @@ export function MatchList({ matches, players, onEdit, onDelete, onManage, onRepo
     
     // Fallback al vecchio sistema
     switch (status) {
-      case 'scheduled': 
+      case 'SCHEDULED': 
         if (match.homeAway === 'away' && match.location) {
           if (match.field) {
             return `Programmata a ${match.location} al campo ${match.field}`;
@@ -66,10 +66,10 @@ export function MatchList({ matches, players, onEdit, onDelete, onManage, onRepo
           return `Programmata a ${match.location}`;
         }
         return 'Programmata';
-      case 'first-half': return '1° Tempo';
-      case 'half-time': return 'Intervallo';
-      case 'second-half': return '2° Tempo';
-      case 'finished': return 'Terminata';
+      case 'FIRST_HALF': return '1° Tempo';
+      case 'HALF_TIME': return 'Intervallo';
+      case 'SECOND_HALF': return '2° Tempo';
+      case 'FINISHED': return 'Terminata';
       default: return '';
     }
   };
@@ -82,12 +82,12 @@ export function MatchList({ matches, players, onEdit, onDelete, onManage, onRepo
       const currentPeriod = periods[currentPeriodIndex];
       if (currentPeriod) {
         // Se la partita è finita, usa il colore blu
-        if (status === 'finished') {
+        if (status === 'FINISHED') {
           return 'bg-blue-500';
         }
         
         // Se la partita è programmata (non ancora iniziata), usa il colore grigio
-        if (status === 'scheduled') {
+        if (status === 'SCHEDULED') {
           return 'bg-gray-400';
         }
         
@@ -104,11 +104,11 @@ export function MatchList({ matches, players, onEdit, onDelete, onManage, onRepo
     
     // Fallback al vecchio sistema
     switch (status) {
-      case 'scheduled': return 'bg-gray-400';
-      case 'first-half': return 'bg-green-500';
-      case 'half-time': return 'bg-orange-500';
-      case 'second-half': return 'bg-green-500';
-      case 'finished': return 'bg-blue-500';
+      case 'SCHEDULED': return 'bg-gray-400';
+      case 'FIRST_HALF': return 'bg-green-500';
+      case 'HALF_TIME': return 'bg-orange-500';
+      case 'SECOND_HALF': return 'bg-green-500';
+      case 'FINISHED': return 'bg-blue-500';
       default: return 'bg-gray-400';
     }
   };
@@ -121,12 +121,12 @@ export function MatchList({ matches, players, onEdit, onDelete, onManage, onRepo
       const currentPeriod = periods[currentPeriodIndex];
       if (currentPeriod) {
         // Se la partita è finita, usa il colore blu
-        if (status === 'finished') {
+        if (status === 'FINISHED') {
           return 'text-blue-700';
         }
         
         // Se la partita è programmata (non ancora iniziata), usa il colore grigio
-        if (status === 'scheduled') {
+        if (status === 'SCHEDULED') {
           return 'text-gray-600';
         }
         
@@ -143,11 +143,11 @@ export function MatchList({ matches, players, onEdit, onDelete, onManage, onRepo
     
     // Fallback al vecchio sistema
     switch (status) {
-      case 'scheduled': return 'text-gray-600';
-      case 'first-half': return 'text-green-700';
-      case 'half-time': return 'text-orange-700';
-      case 'second-half': return 'text-green-700';
-      case 'finished': return 'text-blue-700';
+      case 'SCHEDULED': return 'text-gray-600';
+      case 'FIRST_HALF': return 'text-green-700';
+      case 'HALF_TIME': return 'text-orange-700';
+      case 'SECOND_HALF': return 'text-green-700';
+      case 'FINISHED': return 'text-blue-700';
       default: return 'text-gray-600';
     }
   };
@@ -160,12 +160,12 @@ export function MatchList({ matches, players, onEdit, onDelete, onManage, onRepo
       const currentPeriod = periods[currentPeriodIndex];
       if (currentPeriod) {
         // Se la partita è finita, usa il colore blu
-        if (status === 'finished') {
+        if (status === 'FINISHED') {
           return 'from-blue-50 to-blue-100';
         }
         
         // Se la partita è programmata (non ancora iniziata), usa il colore grigio
-        if (status === 'scheduled') {
+        if (status === 'SCHEDULED') {
           return 'from-gray-50 to-gray-100';
         }
         
@@ -182,11 +182,11 @@ export function MatchList({ matches, players, onEdit, onDelete, onManage, onRepo
     
     // Fallback al vecchio sistema
     switch (status) {
-      case 'scheduled': return 'from-gray-50 to-gray-100';
-      case 'first-half': return 'from-green-50 to-emerald-50';
-      case 'half-time': return 'from-orange-50 to-yellow-50';
-      case 'second-half': return 'from-green-50 to-emerald-50';
-      case 'finished': return 'from-blue-50 to-blue-100';
+      case 'SCHEDULED': return 'from-gray-50 to-gray-100';
+      case 'FIRST_HALF': return 'from-green-50 to-emerald-50';
+      case 'HALF_TIME': return 'from-orange-50 to-yellow-50';
+      case 'SECOND_HALF': return 'from-green-50 to-emerald-50';
+      case 'FINISHED': return 'from-blue-50 to-blue-100';
       default: return 'from-gray-50 to-gray-100';
     }
   };
@@ -199,12 +199,12 @@ export function MatchList({ matches, players, onEdit, onDelete, onManage, onRepo
       const currentPeriod = periods[currentPeriodIndex];
       if (currentPeriod) {
         // Se la partita è finita, usa il colore blu
-        if (status === 'finished') {
+        if (status === 'FINISHED') {
           return 'border-blue-500';
         }
         
         // Se la partita è programmata (non ancora iniziata), usa il colore grigio
-        if (status === 'scheduled') {
+        if (status === 'SCHEDULED') {
           return 'border-gray-400';
         }
         
@@ -221,11 +221,11 @@ export function MatchList({ matches, players, onEdit, onDelete, onManage, onRepo
     
     // Fallback al vecchio sistema
     switch (status) {
-      case 'scheduled': return 'border-gray-400';
-      case 'first-half': return 'border-green-500';
-      case 'half-time': return 'border-orange-500';
-      case 'second-half': return 'border-green-500';
-      case 'finished': return 'border-blue-500';
+      case 'SCHEDULED': return 'border-gray-400';
+      case 'FIRST_HALF': return 'border-green-500';
+      case 'HALF_TIME': return 'border-orange-500';
+      case 'SECOND_HALF': return 'border-green-500';
+      case 'FINISHED': return 'border-blue-500';
       default: return 'border-gray-400';
     }
   };
@@ -234,12 +234,12 @@ export function MatchList({ matches, players, onEdit, onDelete, onManage, onRepo
     const { status, periods, currentPeriodIndex } = match;
     
     // Per partite programmate, usa grigio
-    if (status === 'scheduled') {
+    if (status === 'SCHEDULED') {
       return 'bg-gray-100';
     }
     
     // Per partite finite, usa blu
-    if (status === 'finished') {
+    if (status === 'FINISHED') {
       return 'bg-blue-100';
     }
     
@@ -260,9 +260,9 @@ export function MatchList({ matches, players, onEdit, onDelete, onManage, onRepo
     
     // Fallback al vecchio sistema per partite in corso
     switch (status) {
-      case 'first-half': return 'bg-green-100';
-      case 'half-time': return 'bg-orange-100';
-      case 'second-half': return 'bg-green-100';
+      case 'FIRST_HALF': return 'bg-green-100';
+      case 'HALF_TIME': return 'bg-orange-100';
+      case 'SECOND_HALF': return 'bg-green-100';
       default: return match.homeAway === 'home' ? 'bg-green-100' : 'bg-blue-100';
     }
   };
@@ -271,12 +271,12 @@ export function MatchList({ matches, players, onEdit, onDelete, onManage, onRepo
     const { status, periods, currentPeriodIndex } = match;
     
     // Per partite programmate, usa grigio
-    if (status === 'scheduled') {
+    if (status === 'SCHEDULED') {
       return 'text-gray-600';
     }
     
     // Per partite finite, usa blu
-    if (status === 'finished') {
+    if (status === 'FINISHED') {
       return 'text-blue-600';
     }
     
@@ -297,15 +297,15 @@ export function MatchList({ matches, players, onEdit, onDelete, onManage, onRepo
     
     // Fallback al vecchio sistema per partite in corso
     switch (status) {
-      case 'first-half': return 'text-green-600';
-      case 'half-time': return 'text-orange-600';
-      case 'second-half': return 'text-green-600';
+      case 'FIRST_HALF': return 'text-green-600';
+      case 'HALF_TIME': return 'text-orange-600';
+      case 'SECOND_HALF': return 'text-green-600';
       default: return match.homeAway === 'home' ? 'text-green-600' : 'text-blue-600';
     }
   };
 
   const getResult = (match: Match) => {
-    if (match.status === 'finished') {
+    if (match.status === 'FINISHED') {
       const ourScore = match.homeAway === 'home' ? match.homeScore : match.awayScore;
       const theirScore = match.homeAway === 'home' ? match.awayScore : match.homeScore;
       
@@ -322,7 +322,7 @@ export function MatchList({ matches, players, onEdit, onDelete, onManage, onRepo
     // Filter by status
     if (statusFilter !== 'all') {
       if (statusFilter === 'active') {
-        filtered = matches.filter(match => match.status !== 'scheduled' && match.status !== 'finished');
+        filtered = matches.filter(match => match.status !== 'SCHEDULED' && match.status !== 'FINISHED');
       } else {
         filtered = matches.filter(match => match.status === statusFilter);
       }
@@ -350,7 +350,7 @@ export function MatchList({ matches, players, onEdit, onDelete, onManage, onRepo
         if (match.field && match.field.toLowerCase().includes(search)) return true;
         
         // Search in result type for finished matches
-        if (match.status === 'finished') {
+        if (match.status === 'FINISHED') {
           const result = getResult(match);
           if (result && result.toLowerCase().includes(search)) return true;
         }
@@ -369,9 +369,9 @@ export function MatchList({ matches, players, onEdit, onDelete, onManage, onRepo
             return new Date(b.date).getTime() - new Date(a.date).getTime();
           }
           // Priority: active > scheduled > finished
-          const statusPriority = { 'active': 3, 'scheduled': 2, 'finished': 1 };
-          const aPriority = a.status === 'scheduled' || a.status === 'finished' ? statusPriority[a.status] : statusPriority.active;
-          const bPriority = b.status === 'scheduled' || b.status === 'finished' ? statusPriority[b.status] : statusPriority.active;
+          const statusPriority = { 'active': 3, 'SCHEDULED': 2, 'FINISHED': 1 };
+          const aPriority = a.status === 'SCHEDULED' || a.status === 'FINISHED' ? statusPriority[a.status] : statusPriority.active;
+          const bPriority = b.status === 'SCHEDULED' || b.status === 'FINISHED' ? statusPriority[b.status] : statusPriority.active;
           return bPriority - aPriority;
         case 'date':
         default:
@@ -452,15 +452,15 @@ export function MatchList({ matches, players, onEdit, onDelete, onManage, onRepo
             <div className="mt-4 pt-4 border-t border-gray-200">
               <div className="grid grid-cols-3 gap-4 text-center">
                 <div>
-                  <div className="text-lg font-bold text-blue-600">{matches.filter(m => m.status === 'scheduled').length}</div>
+                  <div className="text-lg font-bold text-blue-600">{matches.filter(m => m.status === 'SCHEDULED').length}</div>
                   <div className="text-xs text-gray-600">Programmate</div>
                 </div>
                 <div>
-                  <div className="text-lg font-bold text-green-600">{matches.filter(m => m.status !== 'scheduled' && m.status !== 'finished').length}</div>
+                  <div className="text-lg font-bold text-green-600">{matches.filter(m => m.status !== 'SCHEDULED' && m.status !== 'FINISHED').length}</div>
                   <div className="text-xs text-gray-600">In corso</div>
                 </div>
                 <div>
-                  <div className="text-lg font-bold text-gray-600">{matches.filter(m => m.status === 'finished').length}</div>
+                  <div className="text-lg font-bold text-gray-600">{matches.filter(m => m.status === 'FINISHED').length}</div>
                   <div className="text-xs text-gray-600">Terminate</div>
                 </div>
               </div>
@@ -535,10 +535,10 @@ export function MatchList({ matches, players, onEdit, onDelete, onManage, onRepo
                   <div className={`w-full h-1 rounded-full mb-2 ${statusColor}`}></div>
                   <div className="flex items-center justify-between text-sm">
                     <span className={`font-medium ${getStatusTextColor(match)}`}>
-                      {match.status === 'scheduled' ? 'Programmata' :
-                       match.status === 'finished' ? 'Terminata' : statusText}
+                      {match.status === 'SCHEDULED' ? 'Programmata' :
+                       match.status === 'FINISHED' ? 'Terminata' : statusText}
                     </span>
-                    {match.status === 'scheduled' && match.location && (
+                    {match.status === 'SCHEDULED' && match.location && (
                       <span className="text-xs text-gray-500 truncate ml-2">
                         {match.homeAway === 'away' ? '@ ' : ''}{match.location}
                         {match.field && ` - Campo ${match.field}`}
@@ -548,7 +548,7 @@ export function MatchList({ matches, players, onEdit, onDelete, onManage, onRepo
                 </div>
 
                 {/* Result Section for Finished Matches */}
-                {match.status === 'finished' && (
+                {match.status === 'FINISHED' && (
                   <div className="mb-4 p-4 bg-white rounded-lg border border-gray-200 shadow-sm">
                     <div className="flex items-center">
                       {/* Our Score */}
@@ -576,7 +576,7 @@ export function MatchList({ matches, players, onEdit, onDelete, onManage, onRepo
                 )}
 
                 {/* Live Match Status */}
-                {match.status !== 'scheduled' && match.status !== 'finished' && (
+                {match.status !== 'SCHEDULED' && match.status !== 'FINISHED' && (
                   <div className={`mb-4 p-3 bg-gradient-to-r ${getStatusBackgroundColor(match)} rounded-lg border-l-4 ${getStatusBorderColor(match)}`}>
                     <div className="flex items-center justify-between">
                       <div className="flex items-center gap-2">
@@ -691,14 +691,21 @@ export function MatchList({ matches, players, onEdit, onDelete, onManage, onRepo
                             <h5 className="text-xs font-medium text-red-700 uppercase tracking-wide">Formazione {match.opponent}</h5>
                           </div>
                           <div className="grid grid-cols-2 gap-2">
-                            {match.opponentLineup.map((jerseyNumber, index) => (
-                              <div key={index} className="flex items-center gap-2 text-xs bg-white p-2 rounded border border-red-100">
-                                <span className="w-6 h-6 bg-red-600 text-white rounded-full flex items-center justify-center text-xs font-bold">
-                                  {jerseyNumber}
-                                </span>
-                                <span className="font-medium text-gray-800">Giocatore #{jerseyNumber}</span>
-                              </div>
-                            ))}
+                            {match.opponentLineup.map((jerseyNumber, index) => {
+                              // Ensure jerseyNumber is a number
+                              const displayNumber = typeof jerseyNumber === 'object' && jerseyNumber && 'jerseyNumber' in jerseyNumber
+                                ? (jerseyNumber as any).jerseyNumber 
+                                : jerseyNumber;
+                              
+                              return (
+                                <div key={index} className="flex items-center gap-2 text-xs bg-white p-2 rounded border border-red-100">
+                                  <span className="w-6 h-6 bg-red-600 text-white rounded-full flex items-center justify-center text-xs font-bold">
+                                    {displayNumber}
+                                  </span>
+                                  <span className="font-medium text-gray-800">Giocatore #{displayNumber}</span>
+                                </div>
+                              );
+                            })}
                           </div>
                         </div>
                       )}
@@ -708,7 +715,7 @@ export function MatchList({ matches, players, onEdit, onDelete, onManage, onRepo
 
                 {/* Action Buttons */}
                 <div className="flex justify-end gap-2 pt-2 border-t border-gray-100">
-                  {match.status !== 'finished' && (
+                  {match.status !== 'FINISHED' && (
                     <button 
                       onClick={() => onManage(match)} 
                       className="p-2 text-green-600 hover:bg-green-100 rounded-lg transition-colors"
@@ -717,7 +724,7 @@ export function MatchList({ matches, players, onEdit, onDelete, onManage, onRepo
                       <Clock className="w-5 h-5" />
                     </button>
                   )}
-                  {match.status === 'finished' && onReport && (
+                  {match.status === 'FINISHED' && onReport && (
                     <button 
                       onClick={() => onReport(match)} 
                       className="p-2 text-purple-600 hover:bg-purple-100 rounded-lg transition-colors"
@@ -794,9 +801,9 @@ export function MatchList({ matches, players, onEdit, onDelete, onManage, onRepo
               <span>Tutte</span>
             </button>
             <button 
-              onClick={() => setStatusFilter('scheduled')} 
+              onClick={() => setStatusFilter('SCHEDULED')} 
               className={`flex-1 px-4 py-2 text-sm font-medium transition-colors flex items-center justify-center gap-1 ${
-                statusFilter === 'scheduled' 
+                statusFilter === 'SCHEDULED' 
                   ? 'bg-blue-600 text-white' 
                   : 'bg-white text-gray-700 hover:bg-gray-100'
               }`}
@@ -816,9 +823,9 @@ export function MatchList({ matches, players, onEdit, onDelete, onManage, onRepo
               <span>Live</span>
             </button>
             <button 
-              onClick={() => setStatusFilter('finished')} 
+              onClick={() => setStatusFilter('FINISHED')} 
               className={`flex-1 px-4 py-2 text-sm font-medium transition-colors flex items-center justify-center gap-1 ${
-                statusFilter === 'finished' 
+                statusFilter === 'FINISHED' 
                   ? 'bg-blue-600 text-white' 
                   : 'bg-white text-gray-700 hover:bg-gray-100'
               }`}
@@ -845,15 +852,15 @@ export function MatchList({ matches, players, onEdit, onDelete, onManage, onRepo
           <div className="mt-6 pt-4 border-t border-gray-200">
             <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-center">
               <div>
-                <div className="text-2xl font-bold text-blue-600">{matches.filter(m => m.status === 'scheduled').length}</div>
+                <div className="text-2xl font-bold text-blue-600">{matches.filter(m => m.status === 'SCHEDULED').length}</div>
                 <div className="text-sm text-gray-600">Programmate</div>
               </div>
               <div>
-                <div className="text-2xl font-bold text-green-600">{matches.filter(m => m.status !== 'scheduled' && m.status !== 'finished').length}</div>
+                <div className="text-2xl font-bold text-green-600">{matches.filter(m => m.status !== 'SCHEDULED' && m.status !== 'FINISHED').length}</div>
                 <div className="text-sm text-gray-600">In corso</div>
               </div>
               <div>
-                <div className="text-2xl font-bold text-purple-600">{matches.filter(m => m.status === 'finished').length}</div>
+                <div className="text-2xl font-bold text-purple-600">{matches.filter(m => m.status === 'FINISHED').length}</div>
                 <div className="text-sm text-gray-600">Terminate</div>
               </div>
               <div>
@@ -949,7 +956,7 @@ export function MatchList({ matches, players, onEdit, onDelete, onManage, onRepo
                 </div>
 
                 {/* Match Result Section */}
-                {match.status === 'finished' && (
+                {match.status === 'FINISHED' && (
                   <div className="mb-4 p-4 bg-white rounded-lg border border-gray-200 shadow-sm">
                     <div className="flex items-center">
                       {/* Our Score */}
@@ -977,7 +984,7 @@ export function MatchList({ matches, players, onEdit, onDelete, onManage, onRepo
                 )}
 
                 {/* Live Match Status */}
-                {match.status !== 'scheduled' && match.status !== 'finished' && (
+                {match.status !== 'SCHEDULED' && match.status !== 'FINISHED' && (
                   <div className={`mb-6 p-4 bg-gradient-to-r ${getStatusBackgroundColor(match)} rounded-xl border-l-4 ${getStatusBorderColor(match)}`}>
                     <div className="flex items-center justify-between">
                       <div className="flex items-center gap-3">
@@ -1081,17 +1088,24 @@ export function MatchList({ matches, players, onEdit, onDelete, onManage, onRepo
                             <h5 className="text-sm font-semibold text-red-700 uppercase tracking-wide">Formazione {match.opponent}</h5>
                           </div>
                           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
-                            {match.opponentLineup.map((jerseyNumber, index) => (
-                              <div key={index} className="flex items-center gap-3 text-sm bg-white p-3 rounded-lg border border-red-100">
-                                <span className="w-8 h-8 bg-red-600 text-white rounded-full flex items-center justify-center text-sm font-bold">
-                                  {jerseyNumber}
-                                </span>
-                                <div className="flex-1">
-                                  <span className="font-medium text-gray-800">Giocatore #{jerseyNumber}</span>
-                                  <div className="text-xs text-gray-500">Avversario</div>
+                            {match.opponentLineup.map((jerseyNumber, index) => {
+                              // Ensure jerseyNumber is a number
+                              const displayNumber = typeof jerseyNumber === 'object' && jerseyNumber && 'jerseyNumber' in jerseyNumber
+                                ? (jerseyNumber as any).jerseyNumber 
+                                : jerseyNumber;
+                              
+                              return (
+                                <div key={index} className="flex items-center gap-3 text-sm bg-white p-3 rounded-lg border border-red-100">
+                                  <span className="w-8 h-8 bg-red-600 text-white rounded-full flex items-center justify-center text-sm font-bold">
+                                    {displayNumber}
+                                  </span>
+                                  <div className="flex-1">
+                                    <span className="font-medium text-gray-800">Giocatore #{displayNumber}</span>
+                                    <div className="text-xs text-gray-500">Avversario</div>
+                                  </div>
                                 </div>
-                              </div>
-                            ))}
+                              );
+                            })}
                           </div>
                         </div>
                       )}
@@ -1105,7 +1119,7 @@ export function MatchList({ matches, players, onEdit, onDelete, onManage, onRepo
                   
                   {/* Action Buttons */}
                   <div className="flex gap-2">
-                    {match.status === 'finished' && onReport && (
+                    {match.status === 'FINISHED' && onReport && (
                       <button
                         onClick={() => onReport(match)}
                         className="p-2 text-purple-600 hover:bg-purple-100 rounded-lg transition-colors"
@@ -1114,7 +1128,7 @@ export function MatchList({ matches, players, onEdit, onDelete, onManage, onRepo
                         <Trophy className="w-5 h-5" />
                       </button>
                     )}
-                    {match.status !== 'finished' && (
+                    {match.status !== 'FINISHED' && (
                       <button
                         onClick={() => onManage(match)}
                         className="p-2 text-green-600 hover:bg-green-100 rounded-lg transition-colors"
